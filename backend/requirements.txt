@@ -1,0 +1,8 @@
+django
+djangorestframework
+scikit-learn
+pandas
+numpy
+nltk
+gunicorn
+psycopg2-binary   # PostgreSQL
