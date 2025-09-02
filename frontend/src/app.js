@@ -1,4 +1,4 @@
-/*import React from "react";
+import React from "react";
 import Home from "./pages/home";
 
 function App() {
@@ -6,8 +6,8 @@ function App() {
 }
 
 export default App;
-*/
 
+/*
 import ChatPage from "./pages/chatbot";
 
 function App() {
@@ -15,3 +15,4 @@ function App() {
 }
 
 export default App;
+*/
