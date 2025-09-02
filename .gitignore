@@ -14,3 +14,5 @@ frontend/build/
 
 # VSCode
 .vscode/
+
+.config/
