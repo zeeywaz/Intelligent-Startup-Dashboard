@@ -6,7 +6,6 @@ function App() {
 }
 
 export default App;
-
 /*
 import ChatPage from "./pages/chatbot";
 
