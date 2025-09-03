@@ -76,6 +76,7 @@ function Navbar({ className }) {
             </Button>
           </div>
 
+
         </nav>
 
         
@@ -144,7 +145,7 @@ export default function Home() {
         <section id="about" className="if-section if-intro" aria-labelledby="intro-title">
           <div className="container">
             <div className="if-section__eyebrow" aria-hidden>
-              <Code className="w-12 h-12" strokeWidth={1.5} />
+              <Code className="w-9 h-9" strokeWidth={1.5} />
             </div>
 
             <div className="if-split">
