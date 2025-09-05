@@ -28,10 +28,10 @@ function App() {
 export default App;
 */
 
-import CompetitorsPage from "./pages/competitors";  // Import Mystartup page
+import ProfilePage from "./pages/profile";  // Import Mystartup page
 
 function App() {
-  return <CompetitorsPage />;  // Render the Competitors page
+  return <ProfilePage />;  // Render the Profile page
 }
 
 export default App;
