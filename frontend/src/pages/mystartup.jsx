@@ -1,110 +1,7 @@
-
-
 import React, { useEffect, useRef, useState } from "react";
 import "../styles/mystartup.css";
-import Header from "./Header.jsx";
-/* ===========================
-   Footer
-   =========================== */
-function Footer() {
-  return (
-    <footer className="ftr">
-      <div className="container">
-        <div className="ftr__cols">
-          <div className="ftr__social">
-            <div className="ftr__icons" aria-label="Socials">
-              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M14.2737 10.1635L23.2023 0H21.0872L13.3313 8.82305L7.14125 0H0L9.3626 13.3433L0 24H2.11504L10.3002 14.6806L16.8388 24H23.98M2.8784 1.5619H6.12769L21.0856 22.5148H17.8355" />
-              </svg>
-              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 25 24" aria-hidden="true">
-                <path d="M12.98 2.163C16.184 2.163 16.564 2.175 17.83 2.233C21.082 2.381 22.601 3.924 22.749 7.152C22.807 8.417 22.818 8.797 22.818 12.001C22.818 15.206 22.806 15.585 22.749 16.85C22.6 20.075 21.085 21.621 17.83 21.769C16.564 21.827 16.186 21.839 12.98 21.839C9.77598 21.839 9.39598 21.827 8.13098 21.769C4.87098 21.62 3.35998 20.07 3.21198 16.849C3.15398 15.584 3.14198 15.205 3.14198 12C3.14198 8.796 3.15498 8.417 3.21198 7.151C3.36098 3.924 4.87598 2.38 8.13098 2.232C9.39698 2.175 9.77598 2.163 12.98 2.163Z" />
-              </svg>
-              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 25 24" aria-hidden="true">
-                <path d="M20.595 3.184C16.991 2.938 8.96398 2.939 5.36498 3.184C1.46798 3.45 1.00898 5.804 0.97998 12C1.00898 18.185 1.46398 20.549 5.36498 20.816C8.96498 21.061 16.991 21.062 20.595 20.816C24.492 20.55 24.951 18.196 24.98 12C24.951 5.815 24.496 3.451 20.595 3.184ZM9.97998 16V8L17.98 11.993L9.97998 16Z" />
-              </svg>
-              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 25 24" aria-hidden="true">
-                <path d="M19.98 0H5.97998C3.21898 0 0.97998 2.239 0.97998 5V19C0.97998 21.761 3.21898 24 5.97998 24H19.98C22.742 24 24.98 21.761 24.98 19V5Z" />
-              </svg>
-            </div>
-          </div>
-
-          <div className="ftr__col">
-            <h5 className="ftr__title">Navigation</h5>
-            <a href="#" className="ftr__link">Resources and Services</a>
-            <a href="#" className="ftr__link">Other Business/ Competitors</a>
-            <a href="#" className="ftr__link">Sponsors/Investors</a>
-            <a href="#" className="ftr__link">My startup</a>
-            <a href="#" className="ftr__link">Brainstorming</a>
-          </div>
-
-          <div className="ftr__col">
-            <h5 className="ftr__title">Explore</h5>
-            <a href="#" className="ftr__link">Navigation</a>
-            <a href="#" className="ftr__link">Analytics</a>
-            <a href="#" className="ftr__link">Collaboration features</a>
-          </div>
-
-          <div className="ftr__col">
-            <h5 className="ftr__title">Resources</h5>
-            <a href="#" className="ftr__link">About Us</a>
-            <a href="#" className="ftr__link">Contact</a>
-            <a href="#" className="ftr__link">Help Us Improve</a>
-          </div>
-        </div>
-
-        <div className="ftr__contacts">
-          <div className="contact">
-            <svg className="contact__icon" fill="none" viewBox="0 0 40 40" aria-hidden="true">
-              <path
-                d="M36.6666 10c0-1.833-1.5-3.333-3.333-3.333H6.6667C4.8334 6.667 3.3334 8.167 3.3334 10V30c0 1.833 1.5 3.333 3.3333 3.333h26.6666C35.1666 33.333 36.6666 31.833 36.6666 30V10Z"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div>
-              <h6 className="contact__title">Email</h6>
-              <p className="contact__text">
-                Reach us at:
-                <br />
-                <br />
-                support@IDEAFORGE.com
-              </p>
-            </div>
-          </div>
-
-          <div className="contact">
-            <svg className="contact__icon" fill="none" viewBox="0 0 40 40" aria-hidden="true">
-              <path
-                d="M25.083 8.333c1.628.318 3.124 1.114 4.297 2.287 1.173 1.173 1.969 2.669 2.287 4.297M36.667 28.2V33.2c0 .464-.095.923-.281 1.349a3.334 3.334 0 0 1-1.8 1.821c-.44.162-.906.218-1.368.176-5.128-.557-10.055-2.31-14.382-5.116-4.027-2.559-7.44-5.973-9.999-10"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div>
-              <h6 className="contact__title">Phone</h6>
-              <p className="contact__text">
-                Call us anytime:
-                <br />
-                <br />
-                +94 123456789
-              </p>
-            </div>
-          </div>
-
-          <div className="contact">
-            <svg className="contact__icon contact__icon--solid" viewBox="0 0 40 40" aria-hidden="true" />
-            <div>
-              <h6 className="contact__title">Office</h6>
-              <p className="contact__text">123, sample St. Colombo 10</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
+import Header from "../components/Header.jsx";
+import Footer from "../components/footer.jsx";
 
 /* ===========================
    Panel
@@ -160,7 +57,9 @@ function Modal({ open, title, children, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
@@ -178,11 +77,15 @@ function Modal({ open, title, children, onClose }) {
       aria-modal="true"
       aria-labelledby="modal-title"
       ref={dialogRef}
-      onMouseDown={(e) => { if (e.target === dialogRef.current) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === dialogRef.current) onClose();
+      }}
     >
       <div className="modal__panel" role="document">
         <div className="modal__header">
-          <h2 id="modal-title" className="modal__title">{title}</h2>
+          <h2 id="modal-title" className="modal__title">
+            {title}
+          </h2>
           <button
             type="button"
             className="modal__close"
@@ -195,7 +98,9 @@ function Modal({ open, title, children, onClose }) {
         </div>
         <div className="modal__body">{children}</div>
         <div className="modal__footer">
-          <button type="button" className="btn btn--ghost" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn--ghost" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>
@@ -237,49 +142,108 @@ export default function StartupPage() {
   const [item, setItem] = useState(null);
   const [kind, setKind] = useState(""); // "investor" | "resource" | "business" | "bookmark"
 
-  const show = (k, obj) => { setKind(k); setItem(obj); setOpen(true); };
-  const hide = () => { setOpen(false); setItem(null); setKind(""); };
+  const show = (k, obj) => {
+    setKind(k);
+    setItem(obj);
+    setOpen(true);
+  };
+  const hide = () => {
+    setOpen(false);
+    setItem(null);
+    setKind("");
+  };
 
   const renderModalBody = () => {
     if (!item) return null;
     if (kind === "investor") {
       return (
         <div className="modal-grid">
-          <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Type</strong><div>{item.type}</div></div>
-          <div><strong>Amount</strong><div>{item.amount}</div></div>
-          <div><strong>Status</strong><div>{item.status}</div></div>
+          <div>
+            <strong>Name</strong>
+            <div>{item.name}</div>
+          </div>
+          <div>
+            <strong>Type</strong>
+            <div>{item.type}</div>
+          </div>
+          <div>
+            <strong>Amount</strong>
+            <div>{item.amount}</div>
+          </div>
+          <div>
+            <strong>Status</strong>
+            <div>{item.status}</div>
+          </div>
         </div>
       );
     }
     if (kind === "resource") {
       return (
         <div className="modal-grid">
-          <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Provider</strong><div>{item.provider}</div></div>
-          <div><strong>Category</strong><div>{item.category}</div></div>
-          <div><strong>Value</strong><div>{item.value}</div></div>
+          <div>
+            <strong>Name</strong>
+            <div>{item.name}</div>
+          </div>
+          <div>
+            <strong>Provider</strong>
+            <div>{item.provider}</div>
+          </div>
+          <div>
+            <strong>Category</strong>
+            <div>{item.category}</div>
+          </div>
+          <div>
+            <strong>Value</strong>
+            <div>{item.value}</div>
+          </div>
         </div>
       );
     }
     if (kind === "business") {
       return (
         <div className="modal-grid">
-          <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Location</strong><div>{item.location}</div></div>
-          <div><strong>Industry</strong><div>{item.industry}</div></div>
-          <div><strong>Employees</strong><div>{item.employees}</div></div>
-          <div><strong>Funding</strong><div>{item.funding}</div></div>
+          <div>
+            <strong>Name</strong>
+            <div>{item.name}</div>
+          </div>
+          <div>
+            <strong>Location</strong>
+            <div>{item.location}</div>
+          </div>
+          <div>
+            <strong>Industry</strong>
+            <div>{item.industry}</div>
+          </div>
+          <div>
+            <strong>Employees</strong>
+            <div>{item.employees}</div>
+          </div>
+          <div>
+            <strong>Funding</strong>
+            <div>{item.funding}</div>
+          </div>
         </div>
       );
     }
     if (kind === "bookmark") {
       return (
         <div className="modal-grid">
-          <div><strong>Title</strong><div>{item.title}</div></div>
-          <div><strong>Type</strong><div>{item.type}</div></div>
-          <div><strong>Source</strong><div>{item.source}</div></div>
-          <div><strong>Date</strong><div>{item.date}</div></div>
+          <div>
+            <strong>Title</strong>
+            <div>{item.title}</div>
+          </div>
+          <div>
+            <strong>Type</strong>
+            <div>{item.type}</div>
+          </div>
+          <div>
+            <strong>Source</strong>
+            <div>{item.source}</div>
+          </div>
+          <div>
+            <strong>Date</strong>
+            <div>{item.date}</div>
+          </div>
         </div>
       );
     }
@@ -288,10 +252,8 @@ export default function StartupPage() {
 
   return (
     <div className="app">
-       <Header />
-+      <main id="main" className="pb-12" role="main"></main>
-      {/* No header/navbar here — shared Navbar should be rendered by your layout/App */}
-      <main className="pb-12" role="main">
+      <Header />
+      <main id="main" className="pb-12" role="main">
         <section className="hero">
           <h2 className="hero__h2">Your Startup: {startupName}</h2>
           <h3 className="hero__h3">Where do you want to start</h3>

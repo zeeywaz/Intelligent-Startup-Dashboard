@@ -1,0 +1,162 @@
+/* ==== Header.css (Metallic Chic Blue) ==== */
+/* Tokens */
+:root {
+  /* Brand & accents (your palette) */
+  --brand: #3D52A0;      /* deep indigo for text/links */
+  --accent: #7091E6;     /* underline/hover */
+
+  /* Navbar background (soft silver-blue) */
+  --nav-top: #EDE8F5;    /* soft base */
+  --nav-bot: #ADBBDA;    /* pale steel */
+  --nav-top-rgb: 237, 232, 245;
+  --nav-bot-rgb: 173, 187, 218;
+
+  /* Lines & surfaces */
+  --nav-brd: rgba(134, 151, 196, 0.55); /* from #8697C4 */
+  --border: #e5e7eb;
+  --muted: #f3f4f6;
+}
+
+/* Base header */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--nav-top-rgb), 0.92) 0%,
+    rgba(var(--nav-bot-rgb), 0.92) 100%
+  );
+  border-bottom: 1px solid var(--nav-brd);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 0.75rem clamp(1rem, 4vw, 2rem);
+}
+
+/* Left cluster */
+.header__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Logo (higher specificity so other stylesheets can't override it) */
+.header .logo {
+  margin: 0;
+  font-weight: 800;
+  color: var(--brand); /* set to #000 if you want pure black */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+  font-size: clamp(1.25rem, 0.8rem + 2vw, 2rem);
+  letter-spacing: 0.2px;
+}
+
+/* Menu button */
+.menu-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--nav-brd);
+  cursor: pointer;
+}
+.menu-btn:hover { background: var(--muted); }
+.menu-btn:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+
+/* Nav links */
+.nav {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.nav__link {
+  position: relative;
+  text-decoration: none;
+  color: var(--brand);
+  font-weight: 600;
+  font-size: clamp(0.95rem, 0.85rem + 0.2vw, 1rem);
+  padding: 0.25rem 0.1rem;
+}
+
+.nav__link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.2s ease;
+}
+
+.nav__link:hover::after,
+.nav__link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* Mobile behavior */
+@media (max-width: 767.98px) {
+  .nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 64px;
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.5rem clamp(1rem, 4vw, 2rem) 1rem;
+    background: linear-gradient(
+      180deg,
+      rgba(var(--nav-top-rgb), 0.98) 0%,
+      rgba(var(--nav-bot-rgb), 0.98) 100%
+    );
+    border-bottom: 1px solid var(--nav-brd);
+    opacity: 0;
+    transform: translateY(-8px);
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+  }
+  .nav--open {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+}
+
+/* Desktop: hide menu button */
+@media (min-width: 768px) {
+  .menu-btn { display: none; }
+}
+
+/* A11y utility: skip link */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-link:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+}

@@ -1,0 +1,173 @@
+/* =========================================================
+   investors.css — Metallic Chic Blue theme, text black
+   Prefixed with .inv-* to avoid collisions
+   ========================================================= */
+
+/* Palette (your blues) */
+:root {
+  --blue-900: #3D52A0;
+  --blue-600: #7091E6;
+  --blue-500: #8697C4;
+  --blue-300: #ADBBDA;
+  --blue-100: #EDE8F5;
+
+  --text: #000; /* keep text black */
+  --surface: #fff;
+  --border: rgba(134, 151, 196, 0.55);
+  --shadow-sm: 0 6px 14px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+/* App */
+.inv-app {
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(800px 480px at 85% -10%, rgba(255,255,255,0.55), transparent 60%),
+    linear-gradient(135deg, var(--blue-100), var(--blue-300), var(--blue-500));
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+}
+
+.inv-main {
+  padding: 1.25rem clamp(1rem, 4vw, 2rem) 3rem;
+}
+
+/* Screen reader utility */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* Search */
+.inv-search {
+  position: relative;
+  max-width: 920px;
+  margin: 0 auto 1.75rem;
+}
+
+.inv-search__input {
+  width: 100%;
+  padding: 0.9rem 3rem 0.9rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: clamp(0.95rem, 0.85rem + 0.2vw, 1rem);
+  color: var(--text);
+}
+.inv-search__input::placeholder { color: #444; }
+.inv-search__input:focus-visible {
+  outline: 3px solid var(--blue-600);
+  outline-offset: 2px;
+}
+
+.inv-search__icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  color: var(--blue-900);
+  pointer-events: none;
+}
+
+/* ===== Scrollable grid wrapper ===== */
+.inv-grid-scroll {
+  /* viewport-aware height so header + search stay visible */
+  max-height: clamp(420px, 100vh - 240px, 72vh);
+  overflow-y: auto;
+  padding-right: 0.25rem; /* room for scrollbar */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  border-radius: 18px;
+}
+
+/* custom scrollbar (supported browsers) */
+.inv-grid-scroll::-webkit-scrollbar { width: 10px; }
+.inv-grid-scroll::-webkit-scrollbar-track {
+  background: rgba(237,232,245,0.6);
+  border-radius: 10px;
+}
+.inv-grid-scroll::-webkit-scrollbar-thumb {
+  background: rgba(61,82,160,0.55);
+  border-radius: 10px;
+  border: 2px solid rgba(237,232,245,0.85);
+}
+.inv-grid-scroll { scrollbar-color: rgba(61,82,160,0.55) rgba(237,232,245,0.6); }
+
+/* Grid */
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.75rem;
+  max-width: 1200px;
+  margin: 0 auto 0; /* bottom margin handled by main padding */
+}
+
+@media (max-width: 1024px) {
+  .inv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .inv-grid { grid-template-columns: 1fr; }
+}
+
+.inv-grid__item { display: block; }
+
+/* Card */
+.inv-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.inv-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(134,151,196,0.7);
+}
+
+.inv-card__avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--blue-600);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+}
+
+.inv-card__body { min-width: 0; }
+
+.inv-card__title {
+  margin: 0 0 .25rem;
+  font-weight: 800;
+  font-size: clamp(1rem, .9rem + .4vw, 1.25rem);
+  color: var(--text);
+}
+
+.inv-card__line {
+  margin: .15rem 0;
+  font-size: clamp(.9rem, .85rem + .2vw, 1rem);
+  color: var(--text);
+}
+
+.inv-card__label {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Links inside cards */
+.inv-link {
+  color: var(--blue-900);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color .16s ease;
+}
+.inv-link:hover { border-color: currentColor; }
