@@ -1,0 +1,148 @@
+/* =========================================================
+   signup_verified.css — Metallic Chic Blue (black text)
+   Scoped with .regv-* to avoid collisions
+   ========================================================= */
+
+:root{
+  --blue-900:#3D52A0;
+  --blue-600:#7091E6;
+  --blue-500:#8697C4;
+  --blue-300:#ADBBDA;
+  --blue-100:#EDE8F5;
+
+  --text:#000;
+  --surface:#ffffff;
+  --border: rgba(134,151,196,.55);
+  --shadow-lg: 6px 12px 0 rgba(0,0,0,.18);
+  --shadow-inset: inset 0 2px 3px rgba(0,0,0,.04);
+}
+
+*{ box-sizing:border-box; }
+html, body{ margin:0; padding:0; }
+body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif; color:var(--text); }
+
+.regv-app{
+  min-height:100vh;
+  background:
+    radial-gradient(900px 520px at 90% -10%, rgba(255,255,255,.55), transparent 60%),
+    linear-gradient(135deg, #8ed8ff, var(--blue-600));
+  display:grid;
+}
+
+/* tiny brand */
+.regv-brand{
+  position: fixed; top: 14px; left: 14px;
+  text-decoration:none; font-weight:800; color:var(--text); opacity:.9;
+}
+
+.regv-main{ display:grid; place-items:center; padding: clamp(1rem,3vw,2rem); }
+
+.regv-card{
+  width: min(920px, 94vw);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 1rem 1.2rem 1.25rem;
+}
+
+/* header */
+.regv-head{ text-align:center; }
+.regv-title{
+  margin:.25rem 0 .25rem; font-weight:900;
+  font-size: clamp(1.35rem, 1.05rem + 1.2vw, 1.8rem);
+}
+.regv-subtitle{ margin:0; font-size:.8rem; opacity:.9; }
+
+/* form */
+.regv-form{ margin-top:.6rem; display:grid; gap:.75rem; }
+
+/* grid of inputs */
+.regv-grid{
+  display:grid; gap:.6rem .8rem;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+}
+@media (max-width:680px){
+  .regv-grid{ grid-template-columns: 1fr; }
+}
+
+.regv-field{ display:block; }
+.regv-field--wide{ }
+
+.regv-input{
+  width:100%; height:40px; padding:0 .9rem;
+  border-radius:10px; border:1px solid var(--border);
+  background:#fff; color:var(--text);
+  font-size:.95rem; box-shadow: var(--shadow-inset);
+}
+.regv-input::placeholder{ color:#666; }
+.regv-input:focus-visible{ outline:3px solid var(--blue-600); outline-offset:2px; }
+
+/* verification selector */
+.regv-verify{
+  margin-top:.25rem; border:1px dashed var(--border);
+  border-radius:12px; padding:.6rem .8rem;
+}
+.regv-verify__title{
+  margin:0 0 .35rem; font-weight:800; font-size:.95rem;
+}
+.regv-radio{
+  display:flex; gap:.5rem; align-items:center; margin:.25rem 0;
+}
+.regv-radio input{ width:1rem; height:1rem; }
+
+/* upload area */
+.regv-upload{ display:grid; gap:.5rem; }
+.regv-drop{
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  background: #fff;
+  padding: .9rem;
+  text-align: center;
+}
+.regv-drop__title{
+  margin:0 0 .25rem; font-weight:800;
+}
+.regv-drop__hint{
+  margin:0; font-size:.9rem;
+}
+.regv-files{ list-style:none; padding:0; margin:0; display:grid; gap:.35rem; }
+.regv-file{
+  display:flex; justify-content:space-between; align-items:center;
+  border:1px solid var(--border); border-radius:10px; background:#fff; padding:.5rem .6rem;
+}
+.regv-file__meta{ display:flex; gap:.6rem; align-items:center; }
+.regv-file__name{ font-weight:600; }
+.regv-file__size{ font-size:.85rem; opacity:.8; }
+.regv-file__remove{
+  appearance:none; border:0; background:transparent; color:var(--blue-900);
+  font-weight:700; cursor:pointer; padding:.25rem .4rem; border-radius:8px;
+}
+.regv-file__remove:focus-visible{ outline:2px solid var(--blue-600); outline-offset:2px; }
+
+.regv-consent{
+  display:flex; gap:.5rem; align-items:flex-start; font-size:.9rem;
+}
+
+/* submit */
+.regv-btn{
+  appearance:none; border:0; cursor:pointer; width:min(520px,100%); height:44px;
+  margin:.25rem auto 0; border-radius:12px; font-weight:800; color:#fff;
+  background: linear-gradient(180deg, var(--blue-300), var(--blue-600));
+  box-shadow: 0 6px 14px rgba(0,0,0,.18);
+}
+.regv-btn:disabled{ filter: grayscale(.2) brightness(.95); cursor:not-allowed; }
+
+/* meta */
+.regv-meta{ text-align:center; margin-top:.6rem; }
+.regv-link{
+  color: var(--blue-900);
+  text-decoration:none; border-bottom:1px solid transparent; transition:border-color .15s ease;
+}
+.regv-link:hover{ border-color: currentColor; }
+
+/* a11y */
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}

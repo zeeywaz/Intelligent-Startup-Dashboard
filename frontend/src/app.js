@@ -28,10 +28,10 @@ function App() {
 export default App;
 */
 
-import ProfilePage from "./pages/profile";  // Import Mystartup page
+import InvestorSignUpPage from "./pages/investor_signup";  // Import Mystartup page
 
 function App() {
-  return <ProfilePage />;  // Render the Profile page
+  return <InvestorSignUpPage />;  // Render the InvestorSignUp page
 }
 
 export default App;
