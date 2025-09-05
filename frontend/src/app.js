@@ -1,5 +1,5 @@
 import React from "react";
-/*
+
 import Home from "./pages/home.jsx";
 
 function App() {
@@ -8,7 +8,7 @@ function App() {
 
 export default App;
 
-
+/*
 import ChatPage from "./pages/chatbot";
 
 function App() {
@@ -16,7 +16,7 @@ function App() {
 }
 
 export default App;
-*/
+
 
 
 import Mystartup from "./pages/mystartup";  // Import Mystartup page
@@ -26,3 +26,4 @@ function App() {
 }
 
 export default App;
+*/

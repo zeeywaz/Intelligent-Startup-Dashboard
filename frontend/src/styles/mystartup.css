@@ -1,24 +1,34 @@
 /* mystartup.css
-   - Adds modal styles + small ghost button variant
+   - Modal styles + ghost button variant
+   - Blue Metallic Chic palette applied
+   - Texts remain black
 */
 
-/* Design tokens */
+/* Design tokens (palette) */
 :root {
-  --bg1: #c0c0c0;
-  --bg2: #e8e8e8;
-  --bg3: #b8b8b8;
+  /* Your palette */
+  --blue-900: #3D52A0;
+  --blue-600: #7091E6;
+  --blue-500: #8697C4;
+  --blue-300: #ADBBDA;
+  --blue-100: #EDE8F5;
 
-  --text: #000000;
+  /* Mapped tokens used across the page */
+  --bg1: var(--blue-100);
+  --bg2: var(--blue-300);
+  --bg3: var(--blue-500);
+
+  --text: #000000;          /* keep text black */
   --muted: #666666;
 
-  --card: #d9d9d9;
-  --surface: rgba(255, 255, 255, 0.72);
-  --border: rgba(128, 128, 128, 0.8);
+  --card: #ffffff;          /* white panels for readability */
+  --surface: rgba(255, 255, 255, 0.90);
+  --border: rgba(134, 151, 196, 0.60); /* from #8697C4 */
 
   --shadow: -5px 6px 4px rgba(0, 0, 0, 0.25);
   --shadow-soft: 12px 5px 4px rgba(0, 0, 0, 0.25);
 
-  --primary: #7091e6;
+  --primary: var(--blue-600); /* button + badge background */
 }
 
 /* Base */
@@ -41,7 +51,7 @@ a { color: inherit; text-decoration: none; }
   padding: 0 4rem;
 }
 @media (max-width: 1024px) { .container { padding: 0 2rem; } }
-@media (max-width: 640px) { .container { padding: 0 1rem; } }
+@media (max-width: 640px)  { .container { padding: 0 1rem; } }
 
 /* Header / Nav */
 .hdr { padding-top: 1.5rem; }
@@ -53,7 +63,7 @@ a { color: inherit; text-decoration: none; }
   padding: 0 4rem;
 }
 @media (max-width: 1024px) { .nav { padding: 0 2rem; } }
-@media (max-width: 640px) { .nav { padding: 0 1rem; } }
+@media (max-width: 640px)  { .nav { padding: 0 1rem; } }
 
 .nav__left { display: flex; align-items: center; gap: 1rem; }
 
@@ -89,15 +99,16 @@ a { color: inherit; text-decoration: none; }
 /* Hero */
 .hero { padding: 2rem 4rem 0; }
 @media (max-width: 1024px) { .hero { padding: 2rem 2rem 0; } }
-@media (max-width: 640px) { .hero { padding: 1rem 1rem 0; } }
+@media (max-width: 640px)  { .hero { padding: 1rem 1rem 0; } }
 
-.hero_h2, .hero_h3 {
-  margin: 0; font-weight: 700; color: #0f0c0c; line-height: 1.2; letter-spacing: 6px;
+/* Text stays black */
+.hero__h2, .hero__h3 {
+  margin: 0; font-weight: 700; color: #000; line-height: 1.2; letter-spacing: 6px;
 }
 .hero__h2 { margin-bottom: 0.5rem; font-size: clamp(32px, 5vw, 60px); }
 .hero__h3 { font-size: clamp(32px, 5vw, 60px); }
 @media (max-width: 640px) {
-  .hero_h2, .hero_h3 { letter-spacing: 3px; }
+  .hero__h2, .hero__h3 { letter-spacing: 3px; }
 }
 
 /* Grid */
@@ -105,12 +116,12 @@ a { color: inherit; text-decoration: none; }
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; padding: 2.5rem 4rem 0;
 }
 @media (max-width: 1024px) { .grid2 { grid-template-columns: 1fr; gap: 1.5rem; padding: 1.5rem 2rem 0; } }
-@media (max-width: 640px) { .grid2 { padding: 1rem 1rem 0; } }
+@media (max-width: 640px)  { .grid2 { padding: 1rem 1rem 0; } }
 
 /* Panel */
 .panel { background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 2rem; min-height: 546px; }
 @media (max-width: 1024px) { .panel { padding: 1.5rem; } }
-@media (max-width: 640px) { .panel { padding: 1rem; } }
+@media (max-width: 640px)  { .panel { padding: 1rem; } }
 
 .panel__title {
   margin: 0 0 2rem; font-weight: 700; text-align: center; letter-spacing: 1.4px; color: #000; font-size: clamp(20px, 2.2vw, 28px);
@@ -122,16 +133,16 @@ a { color: inherit; text-decoration: none; }
 .row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 1rem; border-radius: 1rem;
-  background: var(--surface); border: 1px solid #e5e7eb; backdrop-filter: blur(6px);
+  background: var(--surface); border: 1px solid var(--border); backdrop-filter: blur(6px);
   transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 .row--interactive { cursor: pointer; }
 .row--interactive:hover {
   transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.9); border-color: rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.95); border-color: rgba(134,151,196,0.75);
 }
 .row--interactive:active { transform: translateY(0); box-shadow: 0 6px 14px rgba(0,0,0,0.14); }
-.row--interactive:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+.row--interactive:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
 
 .row__title { margin: 0; font-size: 1.125rem; font-weight: 600; color: #000; }
 .row__sub { margin: 0.125rem 0 0; font-size: 0.875rem; color: #4b5563; }
@@ -147,7 +158,7 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 3rem 4rem;
 }
 @media (max-width: 1024px) { .actions { padding: 2rem; flex-direction: column; } }
-@media (max-width: 640px) { .actions { padding: 1.5rem 1rem 2rem; } }
+@media (max-width: 640px)  { .actions { padding: 1.5rem 1rem 2rem; } }
 
 .btn {
   appearance: none; border: 0; cursor: pointer;
@@ -158,19 +169,19 @@ a { color: inherit; text-decoration: none; }
   font-size: clamp(20px, 2.2vw, 28px);
   min-width: 267px;
 }
-.btn:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+.btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
 @media (max-width: 1024px) { .btn { min-width: 0; width: 100%; } }
 
 /* Ghost button used in modal footer */
 .btn--ghost {
   background: #fff;
   color: #111827;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   box-shadow: none;
 }
 
 /* Footer */
-.ftr { background: #d9d9d9; margin-top: 4rem; padding: 3rem 0; }
+.ftr { background: var(--blue-100); margin-top: 4rem; padding: 3rem 0; }
 @media (max-width: 1024px) { .ftr { padding: 2rem 0; } }
 
 .ftr__cols { display: flex; justify-content: space-between; gap: 2rem; flex-wrap: wrap; }
@@ -211,7 +222,7 @@ a { color: inherit; text-decoration: none; }
   width: min(720px, 100%);
   background: #fff;
   border-radius: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.24);
   animation: modal-in 160ms ease-out both;
 }
@@ -231,7 +242,7 @@ a { color: inherit; text-decoration: none; }
   appearance: none; border: 0; background: transparent; cursor: pointer;
   font-size: 1.25rem; line-height: 1; padding: 0.25rem 0.5rem; border-radius: 8px;
 }
-.modal__close:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+.modal__close:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 
 .modal__body {
   padding: 1.25rem;

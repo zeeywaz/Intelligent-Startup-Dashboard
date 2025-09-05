@@ -1,88 +1,10 @@
-// mystartup.jsx
-// - Adds an accessible Modal that opens when you click any row card
-// - No new dependencies
-// - Simple state (selected item + type) and clean handlers
+
 
 import React, { useEffect, useRef, useState } from "react";
 import "../styles/mystartup.css";
-
+import Header from "./Header.jsx";
 /* ===========================
-   Header (unchanged)
-   =========================== */
-function Header() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  return (
-    <header className="hdr">
-      <nav className="nav" aria-label="Primary">
-        <div className="nav__left">
-          <button
-            type="button"
-            className="nav__menu-btn"
-            aria-label="Toggle menu"
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            <svg
-              className="icon"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-
-          <h1 className="brand">
-            <a href="#" className="brand__link">
-              Idea Forge
-            </a>
-          </h1>
-        </div>
-
-        <div className="nav__links">
-          <a href="#" className="nav__link">About Us</a>
-          <a href="#" className="nav__link">Contact</a>
-        </div>
-
-        <div className="nav__right">
-          <img
-            src="https://placehold.co/64x64/000000/FFFFFF?text=%F0%9F%94%94"
-            alt="Notifications"
-            className="notif"
-            width="64"
-            height="64"
-          />
-          <div className="avatar">
-            <img
-              src="https://placehold.co/99x98/FFFFFF/000000?text=%F0%9F%91%A4"
-              alt="Profile"
-              className="avatar__img"
-              width="99"
-              height="98"
-            />
-          </div>
-        </div>
-      </nav>
-
-      {mobileOpen && (
-        <div className="mobile-menu" role="dialog" aria-label="Mobile navigation">
-          <a href="#" className="mobile-menu__link">About Us</a>
-          <a href="#" className="mobile-menu__link">Contact</a>
-        </div>
-      )}
-    </header>
-  );
-}
-
-/* ===========================
-   Footer (unchanged)
+   Footer
    =========================== */
 function Footer() {
   return (
@@ -91,16 +13,16 @@ function Footer() {
         <div className="ftr__cols">
           <div className="ftr__social">
             <div className="ftr__icons" aria-label="Socials">
-              <svg className="ftr_icon ftr_icon--fill" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M14.2737 10.1635L23.2023 0H21.0872L13.3313 8.82305L7.14125 0H0L9.3626 13.3433L0 24H2.11504L10.3002 14.6806L16.8388 24H23.98M2.8784 1.5619H6.12769L21.0856 22.5148H17.8355" />
               </svg>
-              <svg className="ftr_icon ftr_icon--fill" viewBox="0 0 25 24" aria-hidden="true">
+              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 25 24" aria-hidden="true">
                 <path d="M12.98 2.163C16.184 2.163 16.564 2.175 17.83 2.233C21.082 2.381 22.601 3.924 22.749 7.152C22.807 8.417 22.818 8.797 22.818 12.001C22.818 15.206 22.806 15.585 22.749 16.85C22.6 20.075 21.085 21.621 17.83 21.769C16.564 21.827 16.186 21.839 12.98 21.839C9.77598 21.839 9.39598 21.827 8.13098 21.769C4.87098 21.62 3.35998 20.07 3.21198 16.849C3.15398 15.584 3.14198 15.205 3.14198 12C3.14198 8.796 3.15498 8.417 3.21198 7.151C3.36098 3.924 4.87598 2.38 8.13098 2.232C9.39698 2.175 9.77598 2.163 12.98 2.163Z" />
               </svg>
-              <svg className="ftr_icon ftr_icon--fill" viewBox="0 0 25 24" aria-hidden="true">
+              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 25 24" aria-hidden="true">
                 <path d="M20.595 3.184C16.991 2.938 8.96398 2.939 5.36498 3.184C1.46798 3.45 1.00898 5.804 0.97998 12C1.00898 18.185 1.46398 20.549 5.36498 20.816C8.96498 21.061 16.991 21.062 20.595 20.816C24.492 20.55 24.951 18.196 24.98 12C24.951 5.815 24.496 3.451 20.595 3.184ZM9.97998 16V8L17.98 11.993L9.97998 16Z" />
               </svg>
-              <svg className="ftr_icon ftr_icon--fill" viewBox="0 0 25 24" aria-hidden="true">
+              <svg className="ftr__icon ftr__icon--fill" viewBox="0 0 25 24" aria-hidden="true">
                 <path d="M19.98 0H5.97998C3.21898 0 0.97998 2.239 0.97998 5V19C0.97998 21.761 3.21898 24 5.97998 24H19.98C22.742 24 24.98 21.761 24.98 19V5Z" />
               </svg>
             </div>
@@ -172,7 +94,7 @@ function Footer() {
           </div>
 
           <div className="contact">
-            <svg className="contact_icon contact_icon--solid" viewBox="0 0 40 40" aria-hidden="true" />
+            <svg className="contact__icon contact__icon--solid" viewBox="0 0 40 40" aria-hidden="true" />
             <div>
               <h6 className="contact__title">Office</h6>
               <p className="contact__text">123, sample St. Colombo 10</p>
@@ -185,9 +107,9 @@ function Footer() {
 }
 
 /* ===========================
-   Panel Shell (unchanged)
+   Panel
    =========================== */
-function SectionShell({ title, children, rounded = "30px" }) {
+function Panel({ title, children, rounded = "30px" }) {
   return (
     <section className="panel" style={{ borderRadius: rounded }}>
       <h4 className="panel__title">{title}</h4>
@@ -196,14 +118,13 @@ function SectionShell({ title, children, rounded = "30px" }) {
   );
 }
 
-/* =========================================================
-   Row (card) — already interactive via CSS classes
-   Now we just pass onClick to open the modal.
-   ========================================================= */
-function Row({ title, subtitle, right, badge, onClick }) {
+/* ===========================
+   List Item (row)
+   =========================== */
+function ListItem({ title, subtitle, right, badge, onClick }) {
   const isInteractive = typeof onClick === "function";
 
-  const handleKeyDown = (e) => {
+  const onKeyDown = (e) => {
     if (!isInteractive) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -215,13 +136,7 @@ function Row({ title, subtitle, right, badge, onClick }) {
     <div
       className={`row ${isInteractive ? "row--interactive" : ""}`}
       {...(isInteractive
-        ? {
-            role: "button",
-            tabIndex: 0,
-            "aria-label": title,
-            onClick,
-            onKeyDown: handleKeyDown,
-          }
+        ? { role: "button", tabIndex: 0, "aria-label": title, onClick, onKeyDown }
         : {})}
     >
       <div>
@@ -236,31 +151,22 @@ function Row({ title, subtitle, right, badge, onClick }) {
   );
 }
 
-/* =========================================================
-   Modal component (accessible)
-   - Focus trap (lightweight): focuses close button on open
-   - ESC closes modal
-   - Click on backdrop closes modal
-   ========================================================= */
+/* ===========================
+   Modal (accessible)
+   =========================== */
 function Modal({ open, title, children, onClose }) {
   const dialogRef = useRef(null);
   const closeBtnRef = useRef(null);
 
-  // Close on ESC
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Focus close button when opened
   useEffect(() => {
-    if (open && closeBtnRef.current) {
-      closeBtnRef.current.focus();
-    }
+    if (open && closeBtnRef.current) closeBtnRef.current.focus();
   }, [open]);
 
   if (!open) return null;
@@ -272,10 +178,7 @@ function Modal({ open, title, children, onClose }) {
       aria-modal="true"
       aria-labelledby="modal-title"
       ref={dialogRef}
-      onMouseDown={(e) => {
-        // close when clicking backdrop (but NOT when clicking the panel)
-        if (e.target === dialogRef.current) onClose();
-      }}
+      onMouseDown={(e) => { if (e.target === dialogRef.current) onClose(); }}
     >
       <div className="modal__panel" role="document">
         <div className="modal__header">
@@ -292,9 +195,7 @@ function Modal({ open, title, children, onClose }) {
         </div>
         <div className="modal__body">{children}</div>
         <div className="modal__footer">
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Close
-          </button>
+          <button type="button" className="btn btn--ghost" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
@@ -302,10 +203,10 @@ function Modal({ open, title, children, onClose }) {
 }
 
 /* ===========================
-   Main Page
+   Page
    =========================== */
-export default function Startup() {
-  const name = "TechFlow";
+export default function StartupPage() {
+  const startupName = "TechFlow";
 
   const investors = [
     { name: "Venture Capital Partners", type: "VC Fund", amount: "$2M", status: "Interested" },
@@ -333,25 +234,14 @@ export default function Startup() {
 
   // Modal state
   const [open, setOpen] = useState(false);
-  const [item, setItem] = useState(null); // selected object
-  const [kind, setKind] = useState("");   // "investor" | "resource" | "business" | "bookmark"
+  const [item, setItem] = useState(null);
+  const [kind, setKind] = useState(""); // "investor" | "resource" | "business" | "bookmark"
 
-  const show = (k, obj) => {
-    setKind(k);
-    setItem(obj);
-    setOpen(true);
-  };
+  const show = (k, obj) => { setKind(k); setItem(obj); setOpen(true); };
+  const hide = () => { setOpen(false); setItem(null); setKind(""); };
 
-  const hide = () => {
-    setOpen(false);
-    setItem(null);
-    setKind("");
-  };
-
-  // Render modal content per kind
   const renderModalBody = () => {
     if (!item) return null;
-
     if (kind === "investor") {
       return (
         <div className="modal-grid">
@@ -398,20 +288,21 @@ export default function Startup() {
 
   return (
     <div className="app">
-      <Header />
-
+       <Header />
++      <main id="main" className="pb-12" role="main"></main>
+      {/* No header/navbar here — shared Navbar should be rendered by your layout/App */}
       <main className="pb-12" role="main">
         <section className="hero">
-          <h2 className="hero__h2">Your Startup: {name}</h2>
+          <h2 className="hero__h2">Your Startup: {startupName}</h2>
           <h3 className="hero__h3">Where do you want to start</h3>
         </section>
 
         {/* Primary panels */}
         <section className="grid2" aria-label="Primary panels">
-          <SectionShell title="Saved Investors / Sponsors">
+          <Panel title="Saved Investors / Sponsors">
             <div className="list" role="list">
               {investors.map((it) => (
-                <Row
+                <ListItem
                   key={it.name}
                   title={it.name}
                   subtitle={it.type}
@@ -421,52 +312,52 @@ export default function Startup() {
                 />
               ))}
             </div>
-          </SectionShell>
+          </Panel>
 
-          <SectionShell title="Saved Resources / Services" rounded="44px">
+          <Panel title="Saved Resources / Services" rounded="44px">
             <div className="list" role="list">
               {resources.map((it) => (
-                <Row
+                <ListItem
                   key={it.name}
                   title={it.name}
-                  subtitle={'${it.provider} • ${it.category}'}
+                  subtitle={`${it.provider} • ${it.category}`}
                   right={it.value}
                   onClick={() => show("resource", it)}
                 />
               ))}
             </div>
-          </SectionShell>
+          </Panel>
         </section>
 
         {/* Secondary panels */}
         <section className="grid2" aria-label="Secondary panels">
-          <SectionShell title="Similar Businesses around You">
+          <Panel title="Similar Businesses around You">
             <div className="list" role="list">
               {businesses.map((it) => (
-                <Row
+                <ListItem
                   key={it.name}
                   title={it.name}
-                  subtitle={'${it.location} • ${it.industry} • ${it.employees}'}
+                  subtitle={`${it.location} • ${it.industry} • ${it.employees}`}
                   right={it.funding}
                   onClick={() => show("business", it)}
                 />
               ))}
             </div>
-          </SectionShell>
+          </Panel>
 
-          <SectionShell title="Book Marked">
+          <Panel title="Book Marked">
             <div className="list" role="list">
               {bookmarks.map((it) => (
-                <Row
+                <ListItem
                   key={it.title}
                   title={it.title}
-                  subtitle={'${it.type} • ${it.source}'}
+                  subtitle={`${it.type} • ${it.source}`}
                   right={it.date}
                   onClick={() => show("bookmark", it)}
                 />
               ))}
             </div>
-          </SectionShell>
+          </Panel>
         </section>
 
         {/* Page actions */}
@@ -480,14 +371,9 @@ export default function Startup() {
         </div>
       </main>
 
-      {/* Modal */}
       <Modal
         open={open}
-        title={
-          item
-            ? (kind === "bookmark" ? item.title : item.name || "Details")
-            : "Details"
-        }
+        title={item ? (kind === "bookmark" ? item.title : item.name || "Details") : "Details"}
         onClose={hide}
       >
         {renderModalBody()}
