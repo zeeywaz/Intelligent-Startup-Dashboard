@@ -37,7 +37,7 @@ function App() {
 export default App;
 
 
-
+*/
 import ResourcesServicesPage from "./pages/resources";
 
 function App() {
@@ -45,25 +45,10 @@ function App() {
 }
 
 export default App;
-*/
 
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import ResourcesServicesPage from "./pages/resources";
-import Home from "./pages/home.jsx";
-export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/resources" element={<ResourcesServicesPage />} />
-        {/* Add other routes here */}
-      </Routes>
-    </BrowserRouter>
-  )
-}
 
-    
+
      
 
 
