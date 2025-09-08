@@ -1,0 +1,85 @@
+/* Metallic chic blue palette (texts kept black) */
+:root{
+  --blue-900:#3D52A0;
+  --blue-700:#7091E6;
+  --blue-500:#8697C4;
+  --blue-300:#ADBBDA;
+  --blue-100:#EDE8F5;
+  --text:#000;
+  --border:rgba(0,0,0,.08);
+  --shadow:0 6px 18px rgba(0,0,0,.08);
+}
+
+*{box-sizing:border-box}
+body{margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif}
+
+/* Page area */
+.ib-main{
+  background: linear-gradient(180deg, #fff 0%, var(--blue-100) 35%, var(--blue-500) 120%);
+  padding: 1.25rem 0 2.5rem;
+}
+.ib-container{
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* Heading */
+.ib-h1{
+  margin: 1rem 0 1.25rem;
+  font-weight: 800;
+  font-size: clamp(1.25rem, 0.9rem + 1.5vw, 1.5rem);
+  letter-spacing: .2px;
+}
+
+/* 2 columns */
+.ib-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 1.5rem;
+}
+.ib-col{
+  display:grid;
+  gap:.9rem;
+}
+@media (max-width: 900px){
+  .ib-grid{ grid-template-columns: 1fr; }
+}
+
+/* Card */
+.ib-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:.8rem .9rem;
+  box-shadow: var(--shadow);
+}
+.ib-left{
+  display:flex;align-items:center;gap:.65rem;
+}
+.ib-avatar{
+  width:36px;height:36px;border-radius:999px;
+  display:grid;place-items:center;
+  background: var(--blue-100);
+  border:1px solid var(--blue-300);
+  font-size:16px;
+}
+.ib-title{
+  margin:0;font-weight:700;font-size:.95rem;color:#000;
+}
+.ib-sub{
+  margin:.15rem 0 0;color:#333;font-size:.8rem;opacity:.9;
+}
+
+/* Right actions */
+.ib-actions{display:flex;gap:.4rem}
+.ib-pill{
+  width:28px;height:28px;border-radius:999px;cursor:pointer;
+  background: var(--blue-100);
+  border:1px solid var(--blue-300);
+}
+.ib-pill:hover{ background: #fff; border-color: var(--blue-500); }
+.ib-pill:focus-visible{ outline:3px solid var(--blue-700); outline-offset:2px; }

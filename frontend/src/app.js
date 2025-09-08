@@ -38,10 +38,10 @@ export default App;
 
 
 */
-import UserDashboard from "./pages/userdashboard";
+import AdminDashboard from "./pages/admin";  // Import Mystartup page
 
 function App() {
-  return <UserDashboard />;
+  return <AdminDashboard />;
 }
 
 export default App;
