@@ -2,7 +2,7 @@ import Card from "../components/Card";
 import Header from "../components/Header";
 import Footer from "../components/footer";
 import "../styles/userdashboard.css"
-import { ChartBarIncreasing, DollarSign, Lightbulb } from "lucide-react";
+import { Store, BrainCircuit, Wallet } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -37,9 +37,9 @@ export default function App() {
         {/* ================================= */}
 
         <div className="cards">
-          <Card icon={ChartBarIncreasing} label="Businesses & Startups" />
-          <Card icon={DollarSign} label="Sponsors and Investors" />
-          <Card icon={Lightbulb} label="My Interests" />
+          <Card icon={Store} label="Businesses & Startups" />
+          <Card icon={Wallet} label="Sponsors and Investors" />
+          <Card icon={BrainCircuit} label="My Interests" />
         </div>
 
         <div
