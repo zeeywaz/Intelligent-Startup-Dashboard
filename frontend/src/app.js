@@ -38,7 +38,7 @@ export default App;
 
 
 */
-import UserDashboard from "./pages/investordashboard";
+import UserDashboard from "./pages/userdashboard";
 
 function App() {
   return <UserDashboard />;
