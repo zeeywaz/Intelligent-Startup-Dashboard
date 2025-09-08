@@ -2,7 +2,7 @@ import Card from "../components/Card";
 import Header from "../components/Header";
 import Footer from "../components/footer";
 import "../styles/userdashboard.css"
-import { Pickaxe, ChartBarIncreasing, DollarSign, Lightbulb } from "lucide-react";
+import { ChartBarIncreasing, DollarSign, Lightbulb } from "lucide-react";
 import {
   PieChart,
   Pie,
