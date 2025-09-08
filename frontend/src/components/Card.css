@@ -1,15 +1,14 @@
 .cards {
   display: flex;
-  gap: 16px;
+  gap: 36px;
   justify-content: center;
   flex-wrap: nowrap;
 }
 
 .card {
-  background: white;
+  background: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  width: 200px;
+  width: 220px;
   height: 280px;
   display: flex;
   flex-direction: column;
@@ -18,14 +17,23 @@
   padding: 20px;
   text-align: center;
   gap: 20px;
+
+  /* Soft shadow */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+
+  /* Soft outline glow */
+  outline: none;
+  box-shadow: 0 0 10px rgba(113, 126, 129, 0.3), 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
+
 .card svg {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
 }
 
 .card p {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 25px;
+  font-weight: 500;
 }
+

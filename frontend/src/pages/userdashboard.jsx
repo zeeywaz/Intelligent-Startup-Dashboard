@@ -1,6 +1,7 @@
 import Card from "../components/Card";
 import Header from "../components/header";
 import Footer from "../components/footer";
+import "../styles/userdashboard.css"
 import { Pickaxe, ChartBarIncreasing, DollarSign, Lightbulb } from "lucide-react";
 import {
   PieChart,
@@ -14,30 +15,37 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import "../components/Card.css";
 
 export default function App() {
   const pieData = [
-    { name: "Resource & Services", value: 400 },
-    { name: "Competitors", value: 300 },
-    { name: "Investors", value: 200 },
-    { name: "Startup", value: 100 },
+    { name: "Niche 1", value: 400 },
+    { name: "Niche 2", value: 300 },
+    { name: "Niche 3", value: 200 },
+    { name: "Niche 4", value: 100 },
+    { name: "Niche 5", value: 100 },
   ];
 
-  const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042"];
-
+  const COLORS = ["#2a5684ff", "#c1dfff", "#8699c4", "#667ba5ff", "#a9b8d9"];
   const lineData = [
-    { month: "Jan", uv: 400 },
-    { month: "Feb", uv: 300 },
-    { month: "Mar", uv: 200 },
-    { month: "Apr", uv: 278 },
-    { month: "May", uv: 189 },
+    { month: "Jan", thisMonth: 400, lastMonth: 350 },
+    { month: "Feb", thisMonth: 300, lastMonth: 280 },
+    { month: "Mar", thisMonth: 200, lastMonth: 220 },
+    { month: "Apr", thisMonth: 278, lastMonth: 260 },
+    { month: "May", thisMonth: 189, lastMonth: 210 },
   ];
 
   return (
     <>
       <Header />
       <div className="container">
+        {/* === Added Section Above Cards === */}
+        <div style={{ textAlign: "center", margin: "2rem 0" }}>
+          <h2 style={{ fontSize: "3.1rem", fontWeight: "2", marginTop: "1rem" , marginBottom: "1rem"}}>
+            Welcome, Adam 👋
+          </h2>
+        </div>
+        {/* ================================= */}
+
         <div className="cards">
           <Card icon={Pickaxe} label="Resource & Services" />
           <Card icon={ChartBarIncreasing} label="Other Business & Competitors" />
@@ -47,50 +55,66 @@ export default function App() {
 
         <div
           style={{
-              display: "flex",
-              justifyContent: "space-around",
-              alignItems: "center",
-              marginTop: "2rem",
-              padding: "2rem 4rem",   // vertical 2rem, horizontal 4rem
-              borderRadius: "20px",
-              backgroundColor: "#f9f9f9",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              width: "100%",          // span parent
-              maxWidth: "1200px"      // optional cap, remove if you want edge-to-edge
+            display: "flex",
+            justifyContent: "space-around",
+            alignItems: "flex-start",
+            marginTop: "3rem",
+            marginBottom: "12rem",
+            padding: "2rem 4rem",
+            borderRadius: "20px",
+            backgroundColor: "#f9f9f9",
+            boxShadow: "1 14px 8px rgba(255, 61, 61, 0.1)",
+            width: "100%",
+            maxWidth: "1200px",
+            height: "100%",
+            maxHeight : "600px",
           }}
-          
         >
-          <PieChart width={300} height={300}>
-            <Pie
-              data={pieData}
-              cx="50%"
-              cy="50%"
-              outerRadius={100}
-              dataKey="value"
-              label
-            >
-              {pieData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
+          {/* Pie Chart Section */}
+          <div style={{ textAlign: "center" }}>
+            <h3 style={{ fontSize: "1.6rem", fontWeight: "10", marginBottom: "2rem" }}>
+              Market Distribution
+            </h3>
+            <PieChart width={400} height={400} style={{filter: "drop-shadow(0px 4px 8px rgba(7, 7, 7, 0.15))"}}>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                outerRadius={140}
+                innerRadius={70}
+                dataKey="value"
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend wrapperStyle={{ paddingTop: "30px" }}/>
+            </PieChart>
+          </div>
 
-          <LineChart width={400} height={300} data={lineData}>
-            <CartesianGrid stroke="#ccc" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Line type="monotone" dataKey="uv" stroke="#8884d8" />
-          </LineChart>
+          {/* Line Chart Section */}
+          <div style={{ textAlign: "center" }}>
+            <h3 style={{ fontSize: "1.6rem", fontWeight: "3", marginBottom: "2rem" }}>
+              Monthly Growth
+            </h3>
+              <LineChart width={600} height={400} data={lineData}>
+                <CartesianGrid stroke="#ccc" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                {/* This Month Line */}
+                <Line type="monotone" dataKey="thisMonth" stroke="#8884d8" strokeWidth={2} />
+                {/* Last Month Line */}
+                <Line type="monotone" dataKey="lastMonth" stroke="#82ca9d" strokeWidth={2} />
+              </LineChart>
+          </div>
         </div>
       </div>
       <Footer />
     </>
   );
 }
+
+
