@@ -17,6 +17,7 @@
   padding: 20px;
   text-align: center;
   gap: 20px;
+  
 
   /* Soft shadow */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
@@ -26,7 +27,7 @@
   box-shadow: 0 0 10px rgba(113, 126, 129, 0.3), 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
-
+.card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); background-color: #ffffff7e; }
 .card svg {
   width: 64px;
   height: 64px;

@@ -9,11 +9,7 @@ import {
   Tooltip,
   Cell,
   Legend,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  
 } from "recharts";
 
 export default function App() {
@@ -26,13 +22,7 @@ export default function App() {
   ];
 
   const COLORS = ["#2a5684ff", "#c1dfff", "#8699c4", "#667ba5ff", "#a9b8d9"];
-  const lineData = [
-    { month: "Jan", thisMonth: 400, lastMonth: 350 },
-    { month: "Feb", thisMonth: 300, lastMonth: 280 },
-    { month: "Mar", thisMonth: 200, lastMonth: 220 },
-    { month: "Apr", thisMonth: 278, lastMonth: 260 },
-    { month: "May", thisMonth: 189, lastMonth: 210 },
-  ];
+  
 
   return (
     <>
@@ -47,10 +37,9 @@ export default function App() {
         {/* ================================= */}
 
         <div className="cards">
-          <Card icon={Pickaxe} label="Resource & Services" />
-          <Card icon={ChartBarIncreasing} label="Other Business & Competitors" />
+          <Card icon={ChartBarIncreasing} label="Businesses & Startups" />
           <Card icon={DollarSign} label="Sponsors and Investors" />
-          <Card icon={Lightbulb} label="My Start up" />
+          <Card icon={Lightbulb} label="My Interests" />
         </div>
 
         <div
@@ -93,23 +82,7 @@ export default function App() {
             </PieChart>
           </div>
 
-          {/* Line Chart Section */}
-          <div style={{ textAlign: "center" }}>
-            <h3 style={{ fontSize: "1.6rem", fontWeight: "3", marginBottom: "2rem" }}>
-              Analytics of Monthly Growth Of Niche
-            </h3>
-              <LineChart width={600} height={400} data={lineData}>
-                <CartesianGrid stroke="#ccc" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {/* This Month Line */}
-                <Line type="monotone" dataKey="thisMonth" stroke="#8884d8" strokeWidth={2} />
-                {/* Last Month Line */}
-                <Line type="monotone" dataKey="lastMonth" stroke="#82ca9d" strokeWidth={2} />
-              </LineChart>
-          </div>
+          
         </div>
       </div>
       <Footer />

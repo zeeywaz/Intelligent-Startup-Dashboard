@@ -2,17 +2,17 @@
 /* Tokens */
 :root {
   /* Brand & accents (your palette) */
-  --brand: #3D52A0;      /* deep indigo for text/links */
+  --brand: #5467aa;      /* deep indigo for text/links */
   --accent: #7091E6;     /* underline/hover */
 
-  /* Navbar background (soft silver-blue) */
-  --nav-top: #EDE8F5;    /* soft base */
-  --nav-bot: #ADBBDA;    /* pale steel */
+  /* Navbar background  */
+  --nav-top: #91c8de;    
+  --nav-bot: #8397c0;    
   --nav-top-rgb: 237, 232, 245;
   --nav-bot-rgb: 173, 187, 218;
 
   /* Lines & surfaces */
-  --nav-brd: rgba(134, 151, 196, 0.55); /* from #8697C4 */
+  --nav-brd: rgba(134, 151, 196, 0.55); 
   --border: #e5e7eb;
   --muted: #f3f4f6;
 }

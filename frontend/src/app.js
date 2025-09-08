@@ -38,16 +38,13 @@ export default App;
 
 
 */
-import ResourcesServicesPage from "./pages/resources";
+import UserDashboard from "./pages/investordashboard";
 
 function App() {
-  return <ResourcesServicesPage />;
+  return <UserDashboard />;
 }
 
-export default App;
-
-
-
+export default App;
 
      
 
