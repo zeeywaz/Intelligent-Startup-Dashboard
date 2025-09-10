@@ -59,14 +59,32 @@ export default App;
 
 
 
+<<<<<<< Updated upstream
 import AdminDashboard from "./pages/admin";  // Import Mystartup page
+=======
+import ResourcesServicesPage from "./pages/resources";
+>>>>>>> Stashed changes
 
 function App() {
   return <AdminDashboard />;
 }
 
+<<<<<<< Updated upstream
 export default App;
 */
      
+=======
+export default App;
+
+import UserDashboard from "./pages/userdashboard";
+
+function App() {
+  return <UserDashboard />;
+}
+
+export default App;
+*/
+
+>>>>>>> Stashed changes
 
 
