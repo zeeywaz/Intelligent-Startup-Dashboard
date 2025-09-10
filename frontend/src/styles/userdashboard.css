@@ -1,25 +1,68 @@
-.container {
+/* Namespace everything under .dashboard-app so it won't conflict with Home */
+.dashboard-app .container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center;          /* center children horizontally */
   justify-content: flex-start;
-  gap: 32px;
-  padding: 32px 16px;
-  background: linear-gradient(to bottom, white, #6791c4);
-  padding: 2rem;
+  gap: 2rem;
+  padding: 2rem 1rem;
+  background: linear-gradient(to bottom, #ffffff, #6791c4);
 }
 
+/* Welcome block */
+.dashboard-app .dash-welcome h2 {
+  font-size: 3rem;
+  font-weight: 800;
+  margin: 1rem 0;
+}
 
-.charts-box {
+/* Cards grid (centered, capped width) */
+.dashboard-app .cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 1rem;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+}
+@media (max-width: 1024px) {
+  .dashboard-app .cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .dashboard-app .cards { grid-template-columns: 1fr; }
+}
+
+/* Charts container: centered, capped width */
+.dashboard-app .charts-box {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 2rem;
-  border-radius: 20px;
-  background-color: #f9f9f9;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  gap: 2rem;
+  align-items: flex-start;
+  justify-content: space-between;
 
-  width: 100vw;   /* full width */
-  max-width: 100%;
+  width: min(1200px, 100%);  /* cap width */
+  margin: 0 auto 6rem;       /* center horizontally */
+  padding: 2rem 3rem;
+
+  background: #f9f9f9;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Each column in charts box */
+.dashboard-app .chart-col {
+  text-align: center;
+}
+
+/* Chart headings */
+.dashboard-app .chart-col h3 {
+  font-size: 1.6rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Optional: make charts stack on small screens */
+@media (max-width: 1024px) {
+  .dashboard-app .charts-box {
+    flex-direction: column;
+    align-items: center;
+  }
 }

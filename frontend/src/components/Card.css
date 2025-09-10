@@ -1,40 +1,50 @@
-.cards {
+/* Scoped styles for DASHBOARD cards only */
+.ud-cards {
   display: flex;
   gap: 36px;
   justify-content: center;
-  flex-wrap: nowrap;
+  flex-wrap: nowrap;         /* change to wrap if you want responsive rows */
 }
 
-.card {
-  background: #ffffff;
+/* The card itself */
+.ud-card {
+  --ud-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
+
   width: 220px;
   height: 280px;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   padding: 20px;
   text-align: center;
-  gap: 20px;
-  
 
-  /* Soft shadow */
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  color: inherit;
+  text-decoration: none;
 
-  /* Soft outline glow */
-  outline: none;
-  box-shadow: 0 0 10px rgba(113, 126, 129, 0.3), 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--ud-shadow);
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
 }
 
-.card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); background-color: #ffffff7e; }
-.card svg {
+.ud-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  background-color: #fff; /* no grey haze */
+}
+
+.ud-card__icon svg {
   width: 64px;
   height: 64px;
 }
 
-.card p {
-  font-size: 25px;
-  font-weight: 500;
+.ud-card__label {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
 }
-

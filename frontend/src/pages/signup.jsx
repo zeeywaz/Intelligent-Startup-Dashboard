@@ -151,7 +151,7 @@ export default function SignUpPage() {
             </p>
             <p className="reg-fine">
               Are you an investor looking for start-ups?{" "}
-              <a href="/investor-signup" className="reg-link">
+              <a href="/investor_signup" className="reg-link">
                 Click here to sign up as an investor
               </a>
             </p>

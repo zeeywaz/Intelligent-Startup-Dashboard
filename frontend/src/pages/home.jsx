@@ -1,6 +1,7 @@
 import React from "react";
 import "../styles/home.css";
 import { Code, BarChart, Package, Mail, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 /** Join class names safely */
 function classNames(...list) {
@@ -22,11 +23,7 @@ function Button({
     ghost: "btn--ghost",
   }[variant];
 
-  const sizeClass = {
-    sm: "btn--sm",
-    md: "btn--md",
-    lg: "btn--lg",
-  }[size];
+  const sizeClass = { sm: "btn--sm", md: "btn--md", lg: "btn--lg" }[size];
 
   return (
     <Component className={classNames("btn group", variantClass, sizeClass, className)} {...props}>
@@ -44,9 +41,9 @@ function Header({ className }) {
       <div className="container">
         <nav className="navbar__row" aria-label="Primary">
           {/* Brand */}
-          <a href="#top" className="navbar__brand" aria-label="IdeaForge home">
+          <Link to="/" className="navbar__brand" aria-label="IdeaForge home">
             <span className="logo">IdeaForge</span>
-          </a>
+          </Link>
 
           {/* Desktop nav */}
           <ul className="nav md:flex hidden" role="list">
@@ -56,7 +53,9 @@ function Header({ className }) {
 
           {/* Auth */}
           <div className="navbar__actions">
-            <Button variant="secondary" size="md" aria-label="Log in">Log In</Button>
+            <Button as={Link} to="/login" variant="secondary" size="md" aria-label="Log in">
+              Log In
+            </Button>
           </div>
         </nav>
       </div>
@@ -91,7 +90,7 @@ function ProcessStep({ align = "left", title, children }) {
 
 export default function HomePage() {
   return (
-    <div id="top" className="app">
+    <div id="top" className="home-app">
       <Header />
 
       <main>
@@ -110,8 +109,8 @@ export default function HomePage() {
               </header>
 
               <div className="hero__ctas">
-                <Button variant="primary" size="lg">Get Started</Button>
-                <Button variant="primary" size="lg">Learn More</Button>
+                <Button as={Link} to="/signup" variant="primary" size="lg">Get Started</Button>
+                <Button as="a" href="#about" variant="primary" size="lg">Learn More</Button>
               </div>
             </div>
           </div>
@@ -132,8 +131,8 @@ export default function HomePage() {
                   competitors, and essential resources. With a user-friendly dashboard, you can track progress and gain analytics.
                 </p>
                 <div className="actions">
-                  <Button variant="primary" size="md">Get Started</Button>
-                  <Button variant="secondary" size="md">Learn More</Button>
+                  <Button as={Link} to="/signup" variant="primary" size="md">Get Started</Button>
+                  <Button as="a" href="#features" variant="primary" size="md">Learn More</Button>
                 </div>
               </div>
               <div className="split__right" aria-hidden>
@@ -144,7 +143,7 @@ export default function HomePage() {
         </section>
 
         {/* Features */}
-        <section className="section" aria-labelledby="features-title">
+        <section id="features" className="section" aria-labelledby="features-title">
           <div className="container">
             <header className="section__header">
               <h2 id="features-title" className="section__title">Empower Your Ideas Today</h2>
@@ -184,7 +183,7 @@ export default function HomePage() {
             </div>
 
             <div className="cta--right">
-              <Button variant="primary" size="lg">Get Started</Button>
+              <Button as={Link} to="/signup" variant="primary" size="md">Get Started</Button>
             </div>
           </div>
         </section>
@@ -217,7 +216,7 @@ export default function HomePage() {
             <div className="cta">
               <h3 className="cta__title">Transform Your Ideas into Reality</h3>
               <p className="cta__desc">Join our platform today and unlock the resources to bring your vision to life.</p>
-              <Button variant="primary" size="lg">Get Started</Button>
+              <Button as={Link} to="/signup" variant="primary" size="lg">Get Started</Button>
             </div>
           </div>
         </section>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./Header.css";
 import { Menu, X } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -21,7 +22,6 @@ export default function Header() {
 
   return (
     <header className="header">
-      {/* optional: works if your <main> has id="main" */}
       <a className="skip-link" href="#main">Skip to content</a>
 
       <div className="header__row">
@@ -36,7 +36,10 @@ export default function Header() {
             {open ? <X size={28} aria-hidden /> : <Menu size={28} aria-hidden />}
           </button>
 
-          <h1 className="logo">IdeaForge</h1>
+          {/* Renamed to avoid conflicts with footer */}
+          <h1 className="site-logo">
+            <Link to="/userdashboard" className="site-logo__link">IdeaForge</Link>
+          </h1>
         </div>
 
         <nav

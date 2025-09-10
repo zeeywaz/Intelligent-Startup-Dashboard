@@ -1,30 +1,30 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/login.css";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
+  const navigate = useNavigate();
 
-  const update = (key) => (e) => setForm((s) => ({ ...s, [key]: e.target.value }));
+  // Change this if your dashboard uses a different route, e.g. "/dashboard"
+  const DASHBOARD_PATH = "/userdashboard";
 
-  const canSubmit = useMemo(() => {
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
-    return emailOk && form.password.trim().length >= 6;
-  }, [form]);
+  const update = (key) => (e) =>
+    setForm((s) => ({ ...s, [key]: e.target.value }));
 
   const onSubmit = (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    // TODO: wire to your auth API
-    alert(`Logging in as ${form.email}`);
+    // Accept anything for now; plug in real auth later
+    navigate(DASHBOARD_PATH, { replace: true });
   };
 
   return (
     <div className="auth-app">
-      {/* tiny brand like the mock */}
-      <a href="/" className="auth-brand" aria-label="IdeaForge home">
+      {/* tiny brand */}
+      <Link to="/" className="auth-brand" aria-label="IdeaForge home">
         ideaForge
-      </a>
+      </Link>
 
       <main id="main" className="auth-main" role="main">
         <section className="auth-card" aria-label="Login">
@@ -46,7 +46,6 @@ export default function LoginPage() {
                 className="auth-input"
                 value={form.email}
                 onChange={update("email")}
-                required
               />
             </div>
 
@@ -61,8 +60,6 @@ export default function LoginPage() {
                 className="auth-input"
                 value={form.password}
                 onChange={update("password")}
-                required
-                minLength={6}
               />
               <button
                 type="button"
@@ -76,19 +73,19 @@ export default function LoginPage() {
             </div>
 
             <div className="auth-links">
-              <a href="/forgot" className="auth-link">Forgot Password?</a>
+              <Link to="/forgot" className="auth-link">Forgot Password?</Link>
             </div>
 
-            <button type="submit" className="auth-btn" disabled={!canSubmit}>
+            <button type="submit" className="auth-btn">
               Login
             </button>
           </form>
 
           <p className="auth-meta">
             Not a user?{" "}
-            <a href="/signup" className="auth-link">
+            <Link to="/signup" className="auth-link">
               Sign up for a free account here
-            </a>
+            </Link>
           </p>
         </section>
       </main>

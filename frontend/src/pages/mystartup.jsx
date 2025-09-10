@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/mystartup.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
@@ -57,9 +58,7 @@ function Modal({ open, title, children, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
@@ -77,15 +76,11 @@ function Modal({ open, title, children, onClose }) {
       aria-modal="true"
       aria-labelledby="modal-title"
       ref={dialogRef}
-      onMouseDown={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
+      onMouseDown={(e) => { if (e.target === dialogRef.current) onClose(); }}
     >
       <div className="modal__panel" role="document">
         <div className="modal__header">
-          <h2 id="modal-title" className="modal__title">
-            {title}
-          </h2>
+          <h2 id="modal-title" className="modal__title">{title}</h2>
           <button
             type="button"
             className="modal__close"
@@ -98,9 +93,7 @@ function Modal({ open, title, children, onClose }) {
         </div>
         <div className="modal__body">{children}</div>
         <div className="modal__footer">
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Close
-          </button>
+          <button type="button" className="btn btn--ghost" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
@@ -111,6 +104,7 @@ function Modal({ open, title, children, onClose }) {
    Page
    =========================== */
 export default function StartupPage() {
+  const navigate = useNavigate();
   const startupName = "TechFlow";
 
   const investors = [
@@ -142,108 +136,49 @@ export default function StartupPage() {
   const [item, setItem] = useState(null);
   const [kind, setKind] = useState(""); // "investor" | "resource" | "business" | "bookmark"
 
-  const show = (k, obj) => {
-    setKind(k);
-    setItem(obj);
-    setOpen(true);
-  };
-  const hide = () => {
-    setOpen(false);
-    setItem(null);
-    setKind("");
-  };
+  const show = (k, obj) => { setKind(k); setItem(obj); setOpen(true); };
+  const hide = () => { setOpen(false); setItem(null); setKind(""); };
 
   const renderModalBody = () => {
     if (!item) return null;
     if (kind === "investor") {
       return (
         <div className="modal-grid">
-          <div>
-            <strong>Name</strong>
-            <div>{item.name}</div>
-          </div>
-          <div>
-            <strong>Type</strong>
-            <div>{item.type}</div>
-          </div>
-          <div>
-            <strong>Amount</strong>
-            <div>{item.amount}</div>
-          </div>
-          <div>
-            <strong>Status</strong>
-            <div>{item.status}</div>
-          </div>
+          <div><strong>Name</strong><div>{item.name}</div></div>
+          <div><strong>Type</strong><div>{item.type}</div></div>
+          <div><strong>Amount</strong><div>{item.amount}</div></div>
+          <div><strong>Status</strong><div>{item.status}</div></div>
         </div>
       );
     }
     if (kind === "resource") {
       return (
         <div className="modal-grid">
-          <div>
-            <strong>Name</strong>
-            <div>{item.name}</div>
-          </div>
-          <div>
-            <strong>Provider</strong>
-            <div>{item.provider}</div>
-          </div>
-          <div>
-            <strong>Category</strong>
-            <div>{item.category}</div>
-          </div>
-          <div>
-            <strong>Value</strong>
-            <div>{item.value}</div>
-          </div>
+          <div><strong>Name</strong><div>{item.name}</div></div>
+          <div><strong>Provider</strong><div>{item.provider}</div></div>
+          <div><strong>Category</strong><div>{item.category}</div></div>
+          <div><strong>Value</strong><div>{item.value}</div></div>
         </div>
       );
     }
     if (kind === "business") {
       return (
         <div className="modal-grid">
-          <div>
-            <strong>Name</strong>
-            <div>{item.name}</div>
-          </div>
-          <div>
-            <strong>Location</strong>
-            <div>{item.location}</div>
-          </div>
-          <div>
-            <strong>Industry</strong>
-            <div>{item.industry}</div>
-          </div>
-          <div>
-            <strong>Employees</strong>
-            <div>{item.employees}</div>
-          </div>
-          <div>
-            <strong>Funding</strong>
-            <div>{item.funding}</div>
-          </div>
+          <div><strong>Name</strong><div>{item.name}</div></div>
+          <div><strong>Location</strong><div>{item.location}</div></div>
+          <div><strong>Industry</strong><div>{item.industry}</div></div>
+          <div><strong>Employees</strong><div>{item.employees}</div></div>
+          <div><strong>Funding</strong><div>{item.funding}</div></div>
         </div>
       );
     }
     if (kind === "bookmark") {
       return (
         <div className="modal-grid">
-          <div>
-            <strong>Title</strong>
-            <div>{item.title}</div>
-          </div>
-          <div>
-            <strong>Type</strong>
-            <div>{item.type}</div>
-          </div>
-          <div>
-            <strong>Source</strong>
-            <div>{item.source}</div>
-          </div>
-          <div>
-            <strong>Date</strong>
-            <div>{item.date}</div>
-          </div>
+          <div><strong>Title</strong><div>{item.title}</div></div>
+          <div><strong>Type</strong><div>{item.type}</div></div>
+          <div><strong>Source</strong><div>{item.source}</div></div>
+          <div><strong>Date</strong><div>{item.date}</div></div>
         </div>
       );
     }
@@ -251,97 +186,111 @@ export default function StartupPage() {
   };
 
   return (
-    <div className="app">
+    <>
+      {/* Keep header OUTSIDE the scoped wrapper so its size stays consistent */}
       <Header />
-      <main id="main" className="pb-12" role="main">
-        <section className="hero">
-          <h2 className="hero__h2">Your Startup: {startupName}</h2>
-          <h3 className="hero__h3">Where do you want to start</h3>
-        </section>
 
-        {/* Primary panels */}
-        <section className="grid2" aria-label="Primary panels">
-          <Panel title="Saved Investors / Sponsors">
-            <div className="list" role="list">
-              {investors.map((it) => (
-                <ListItem
-                  key={it.name}
-                  title={it.name}
-                  subtitle={it.type}
-                  right={it.amount}
-                  badge={it.status}
-                  onClick={() => show("investor", it)}
-                />
-              ))}
-            </div>
-          </Panel>
+      <div className="startup-app">
+        <main id="main" className="pb-12" role="main">
+          <section className="hero">
+            <h2 className="hero__h2">Your Startup: {startupName}</h2>
+            <h3 className="hero__h3">Where do you want to start</h3>
+          </section>
 
-          <Panel title="Saved Resources / Services" rounded="44px">
-            <div className="list" role="list">
-              {resources.map((it) => (
-                <ListItem
-                  key={it.name}
-                  title={it.name}
-                  subtitle={`${it.provider} • ${it.category}`}
-                  right={it.value}
-                  onClick={() => show("resource", it)}
-                />
-              ))}
-            </div>
-          </Panel>
-        </section>
+          {/* Primary panels */}
+          <section className="grid2" aria-label="Primary panels">
+            <Panel title="Saved Investors / Sponsors">
+              <div className="list" role="list">
+                {investors.map((it) => (
+                  <ListItem
+                    key={it.name}
+                    title={it.name}
+                    subtitle={it.type}
+                    right={it.amount}
+                    badge={it.status}
+                    onClick={() => show("investor", it)}
+                  />
+                ))}
+              </div>
+            </Panel>
 
-        {/* Secondary panels */}
-        <section className="grid2" aria-label="Secondary panels">
-          <Panel title="Similar Businesses around You">
-            <div className="list" role="list">
-              {businesses.map((it) => (
-                <ListItem
-                  key={it.name}
-                  title={it.name}
-                  subtitle={`${it.location} • ${it.industry} • ${it.employees}`}
-                  right={it.funding}
-                  onClick={() => show("business", it)}
-                />
-              ))}
-            </div>
-          </Panel>
+            <Panel title="Saved Resources / Services" rounded="44px">
+              <div className="list" role="list">
+                {resources.map((it) => (
+                  <ListItem
+                    key={it.name}
+                    title={it.name}
+                    subtitle={`${it.provider} • ${it.category}`}
+                    right={it.value}
+                    onClick={() => show("resource", it)}
+                  />
+                ))}
+              </div>
+            </Panel>
+          </section>
 
-          <Panel title="Book Marked">
-            <div className="list" role="list">
-              {bookmarks.map((it) => (
-                <ListItem
-                  key={it.title}
-                  title={it.title}
-                  subtitle={`${it.type} • ${it.source}`}
-                  right={it.date}
-                  onClick={() => show("bookmark", it)}
-                />
-              ))}
-            </div>
-          </Panel>
-        </section>
+          {/* Secondary panels */}
+          <section className="grid2" aria-label="Secondary panels">
+            <Panel title="Similar Businesses around You">
+              <div className="list" role="list">
+                {businesses.map((it) => (
+                  <ListItem
+                    key={it.name}
+                    title={it.name}
+                    subtitle={`${it.location} • ${it.industry} • ${it.employees}`}
+                    right={it.funding}
+                    onClick={() => show("business", it)}
+                  />
+                ))}
+              </div>
+            </Panel>
 
-        {/* Page actions */}
-        <div className="actions">
-          <button type="button" className="btn" onClick={() => window.alert("Change Idea clicked")}>
-            Change Idea
-          </button>
-          <button type="button" className="btn" onClick={() => window.history.back()}>
-            Back
-          </button>
-        </div>
-      </main>
+            <Panel title="Book Marked">
+              <div className="list" role="list">
+                {bookmarks.map((it) => (
+                  <ListItem
+                    key={it.title}
+                    title={it.title}
+                    subtitle={`${it.type} • ${it.source}`}
+                    right={it.date}
+                    onClick={() => show("bookmark", it)}
+                  />
+                ))}
+              </div>
+            </Panel>
+          </section>
 
-      <Modal
-        open={open}
-        title={item ? (kind === "bookmark" ? item.title : item.name || "Details") : "Details"}
-        onClose={hide}
-      >
-        {renderModalBody()}
-      </Modal>
+          {/* Page actions */}
+          <div className="actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => navigate("/chatbot")}
+            >
+              Change Idea
+            </button>
 
+            <button
+              type="button"
+              className="btn"
+              onClick={() => window.history.back()}
+            >
+              Back
+            </button>
+          </div>
+        </main>
+
+        <Modal
+          open={open}
+          title={item ? (kind === "bookmark" ? item.title : item.name || "Details") : "Details"}
+          onClose={hide}
+        >
+          {renderModalBody()}
+        </Modal>
+      </div>
+
+      {/* Keep footer outside too */}
       <Footer />
-    </div>
+    </>
   );
 }
