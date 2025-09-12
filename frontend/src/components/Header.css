@@ -84,3 +84,63 @@
   margin: .5rem; padding: .5rem 1rem; border-radius: 8px;
   background: #111; color: #fff;
 }
+
+.header__right {
+  margin-left: 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.profile-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.profile-initial {
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 170px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.12);
+  padding: 6px;
+  z-index: 100;
+}
+
+.profile-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: #111;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.profile-item:hover { background: var(--muted); }
+
+/* red sign-out */
+.profile-item--danger {
+  color: #b91c1c;              /* red text */
+}
+.profile-item--danger:hover {
+  background: #fee2e2;         /* soft red hover */
+}

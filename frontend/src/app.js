@@ -9,6 +9,7 @@ import Competitors from "./pages/competitors.jsx";
 import Investors from "./pages/investors.jsx";
 import MyStartup from "./pages/mystartup.jsx";
 import ChatPage from "./pages/chatbot.jsx";
+import ProfilePage from "./pages/profile.jsx";
 
 export default function App() {
   return (
@@ -24,67 +25,9 @@ export default function App() {
       <Route path="/mystartup" element={<MyStartup />} />
       <Route path="/chatbot" element={<ChatPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/profile" element={<ProfilePage />} />
     </Routes>
   );
 }
-
-
-/*
-import ChatPage from "./pages/chatbot";
-
-function App() {
-  return <ChatPage />;
-}
-
-export default App;
-
-
-
-import Mystartup from "./pages/mystartup";  // Import Mystartup page
-
-function App() {
-  return <Mystartup />;  // Render the Mystartup page
-}
-
-export default App;
-
-
-import InvestorSignUpPage from "./pages/investor_signup";  // Import Mystartup page
-
-function App() {
-  return <InvestorSignUpPage />;  // Render the InvestorSignUp page
-}
-
-export default App;
-
-
-
-<<<<<<< Updated upstream
-import AdminDashboard from "./pages/admin";  // Import Mystartup page
-=======
-import ResourcesServicesPage from "./pages/resources";
->>>>>>> Stashed changes
-
-function App() {
-  return <AdminDashboard />;
-}
-
-<<<<<<< Updated upstream
-export default App;
-*/
-     
-=======
-export default App;
-
-import UserDashboard from "./pages/userdashboard";
-
-function App() {
-  return <UserDashboard />;
-}
-
-export default App;
-*/
-
->>>>>>> Stashed changes
 
 

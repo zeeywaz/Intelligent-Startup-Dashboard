@@ -1,0 +1,119 @@
+/* All classes prefixed with .ibot- to avoid collisions */
+
+/* Page wrapper with its own background (no body overrides) */
+.ibot-app{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  background: radial-gradient(1200px 800px at 50% 20%, #417A99 0%, #2E3444 70%);
+  color:#fff;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+}
+
+/* Header */
+.ibot-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 24px;
+}
+
+.ibot-logo{
+  margin:0;
+  background:none;
+  border:none;
+  color:#000;               /* black brand like your spec */
+  font-weight:800;
+  letter-spacing:.04em;
+  font-size:clamp(24px, 2.6vw, 40px);
+  cursor:pointer;
+}
+
+.ibot-icon-btn{
+  background:transparent;
+  border:0;
+  cursor:pointer;
+  color:#fff;
+}
+.ibot-user-icon{ width:44px; height:44px; }
+
+/* Main */
+.ibot-main{
+  flex:1;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  padding:24px 16px 80px; /* extra bottom padding so button doesn't overlap */
+  gap:24px;
+}
+
+.ibot-title{
+  margin:0;
+  font-weight:800;
+  line-height:1.25;
+  letter-spacing:.06em;
+  font-size:clamp(26px, 4vw, 44px);
+}
+
+/* Input area */
+.ibot-input-wrap{ width:min(100%, 1024px); }
+.ibot-input-inner{
+  display:flex; align-items:center; gap:12px;
+  background:#fff; border-radius:999px; padding:12px 16px;
+  box-shadow: 9px 11px 8px rgba(0,0,0,.25);
+}
+
+.ibot-addfiles-btn{ background:none; border:0; cursor:pointer; }
+.ibot-plus{ width:24px; height:24px; fill:#000; }
+
+.ibot-hidden-file{ display:none; }
+
+.ibot-input{
+  flex:1;
+  border:0; outline:0;
+  background:transparent;
+  color:#111;
+  font-weight:700; font-size:18px;
+}
+
+.ibot-submit-btn{ background:none; border:0; cursor:pointer; }
+.ibot-upload{ width:64px; height:58px; }
+.ibot-upload rect{ fill:#000; }
+
+/* Files list */
+.ibot-files-list{
+  list-style:none; margin:10px 0 0; padding:0;
+  text-align:left; color:#fff; font-size:.95rem;
+}
+.ibot-files-list li{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:8px; padding-top:4px;
+}
+.ibot-files-list button{
+  background:none; border:0; color:#ff6b6b; cursor:pointer; font-size:1rem;
+}
+
+/* Example */
+.ibot-example{
+  color:#D1D5DB;
+  font-size:clamp(16px, 2.2vw, 20px);
+  line-height:1.55;
+  max-width:960px;
+  margin:0;
+}
+.ibot-example-intro{ font-style:italic; }
+.ibot-example-quote{ display:block; font-style:italic; font-weight:700; }
+
+/* Proceed button (bottom-right) */
+.ibot-to-dash{
+  position:fixed; right:16px; bottom:16px;
+  padding:10px 14px;
+  background:#ffffff;
+  color:#111;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:10px;
+  box-shadow:0 8px 20px rgba(0,0,0,.18);
+  font-weight:700;
+  cursor:pointer;
+}
+.ibot-to-dash:hover{ transform: translateY(-1px); }

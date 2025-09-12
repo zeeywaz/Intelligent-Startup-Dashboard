@@ -2,6 +2,7 @@
 import React from "react";
 import "./footer.css";
 import { Mail, Phone, MapPin, Twitter, Instagram, Youtube, Linkedin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
@@ -9,7 +10,9 @@ export default function Footer() {
       <div className="footer-grid">
         {/* Logo / Left section */}
         <div>
-          <h1 className="logo">IdeaForge</h1>
+          <h1 className="logo">
+            IdeaForge
+          </h1>
 
           {/* Social Icons */}
           <div className="footer-socials">
@@ -24,10 +27,10 @@ export default function Footer() {
         <div className="footer-section left-align">
           <h2>Navigation</h2>
           <ul>
-            <li><a href="/#">Resources and Services</a></li>
-            <li><a href="/#">Other Business</a></li>
-            <li><a href="/#">Sponsors</a></li>
-            <li><a href="/#">My Startup</a></li>
+            <li><Link to="/resources">Resources and Services</Link></li>
+            <li><Link to="/competitors">Other Business</Link></li>
+            <li><Link to="/investors">Sponsors</Link></li>
+            <li><Link to="/mystartup">My Startup</Link></li>
           </ul>
         </div>
 
@@ -35,8 +38,8 @@ export default function Footer() {
         <div className="footer-section left-align">
           <h2>Explore</h2>
           <ul>
-            <li><a href="/#">Navigation</a></li>
-            <li><a href="/#">Analytics</a></li>
+            <li><Link to="/dashboard">Navigation</Link></li>
+            <li><Link to="/dashboard#analytics">Analytics</Link></li>
           </ul>
         </div>
 
@@ -44,9 +47,9 @@ export default function Footer() {
         <div className="footer-section left-align">
           <h2>Resources</h2>
           <ul>
-            <li><a href="/#">About Us</a></li>
-            <li><a href="/#">Contact</a></li>
-            <li><a href="/#">Help Us Improve</a></li>
+            <li><a href="/#about">About Us</a></li>
+            <li><a href="/#contact">Contact</a></li>
+            <li><a href="/#contact">Help Us Improve</a></li>
           </ul>
         </div>
       </div>
