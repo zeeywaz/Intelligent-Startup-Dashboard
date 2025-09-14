@@ -1,14 +1,11 @@
-from rest_framework.routers import DefaultRouter
-from .views import ItemViewSet
-
-router = DefaultRouter()
-router.register(r"items", ItemViewSet, basename="item")
-
-urlpatterns = router.urls
-
+# backend/api/urls.py
 from django.urls import path
-from .views import create_user
+from .views import register
+from .views import login_view
+from .views import logout_view  
 
 urlpatterns = [
-    path("users/", create_user, name="create_user"),
+    path("register/", register, name="api-register"),
+    path("login/", login_view, name="login"),
+    path("logout/", logout_view, name="logout"),
 ]

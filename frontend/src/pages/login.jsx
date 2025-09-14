@@ -1,31 +1,46 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import "../styles/login.css";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
-  const navigate = useNavigate();
+  const [err, setErr] = useState("");
 
-  // Change this if your dashboard uses a different route, e.g. "/dashboard"
-  const DASHBOARD_PATH = "/userdashboard";
+  const update = (k) => (e) => setForm((s) => ({ ...s, [k]: e.target.value }));
 
-  const update = (key) => (e) =>
-    setForm((s) => ({ ...s, [key]: e.target.value }));
+  const canSubmit = useMemo(() => {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+    return emailOk && form.password.trim().length >= 6;
+  }, [form]);
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    // Accept anything for now; plug in real auth later
-    navigate(DASHBOARD_PATH, { replace: true });
+    setErr("");
+    if (!canSubmit) return;
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // keep session cookie
+        body: JSON.stringify({
+          email: form.email.trim(),
+          password: form.password,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
+      navigate("/userdashboard");
+    } catch (e2) {
+      setErr(e2.message || "Invalid credentials or server unavailable.");
+    }
   };
 
   return (
     <div className="auth-app">
-      {/* tiny brand */}
-      <Link to="/" className="auth-brand" aria-label="IdeaForge home">
-        ideaForge
-      </Link>
-
+      <Link to="/" className="auth-brand" aria-label="IdeaForge home">ideaForge</Link>
       <main id="main" className="auth-main" role="main">
         <section className="auth-card" aria-label="Login">
           <header className="auth-head">
@@ -34,58 +49,34 @@ export default function LoginPage() {
           </header>
 
           <form className="auth-form" onSubmit={onSubmit} noValidate>
-            {/* Email */}
             <div className="auth-field">
-              <label htmlFor="email" className="sr-only">Email</label>
-              <input
-                id="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="Email"
-                className="auth-input"
-                value={form.email}
-                onChange={update("email")}
-              />
+              <input id="email" type="email" inputMode="email" autoComplete="email"
+                     placeholder="Email" className="auth-input"
+                     value={form.email} onChange={update("email")} required />
             </div>
 
-            {/* Password */}
             <div className="auth-field auth-field--password">
-              <label htmlFor="password" className="sr-only">Password</label>
-              <input
-                id="password"
-                type={showPwd ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="Password"
-                className="auth-input"
-                value={form.password}
-                onChange={update("password")}
-              />
-              <button
-                type="button"
-                className="auth-toggle"
-                onClick={() => setShowPwd((v) => !v)}
-                aria-pressed={showPwd}
-                aria-label={showPwd ? "Hide password" : "Show password"}
-              >
+              <input id="password" type={showPwd ? "text" : "password"}
+                     autoComplete="current-password" placeholder="Password" className="auth-input"
+                     value={form.password} onChange={update("password")} required minLength={6}/>
+              <button type="button" className="auth-toggle"
+                      onClick={() => setShowPwd((v) => !v)}
+                      aria-pressed={showPwd}>
                 {showPwd ? "Hide" : "Show"}
               </button>
             </div>
 
             <div className="auth-links">
-              <Link to="/forgot" className="auth-link">Forgot Password?</Link>
+              <a href="/forgot" className="auth-link">Forgot Password?</a>
             </div>
 
-            <button type="submit" className="auth-btn">
-              Login
-            </button>
+            {err && <p className="auth-error" role="alert">{err}</p>}
+
+            <button type="submit" className="auth-btn" disabled={!canSubmit}>Login</button>
           </form>
 
           <p className="auth-meta">
-            Not a user?{" "}
-            <Link to="/signup" className="auth-link">
-              Sign up for a free account here
-            </Link>
+            Not a user? <Link to="/signup" className="auth-link">Sign up</Link>
           </p>
         </section>
       </main>

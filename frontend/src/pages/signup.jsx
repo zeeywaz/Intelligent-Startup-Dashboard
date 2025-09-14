@@ -2,7 +2,10 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/signup.css";
 
+const API_BASE = "http://127.0.0.1:8000";
+
 export default function SignUpPage() {
+  const nav = useNavigate();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -12,8 +15,8 @@ export default function SignUpPage() {
     confirm: "",
     birthday: "",
   });
-
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
 
   const update = (key) => (e) =>
     setForm((s) => ({ ...s, [key]: e.target.value }));
@@ -22,17 +25,49 @@ export default function SignUpPage() {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
     const unameOk = form.username.trim().length >= 3;
     const namesOk = form.firstName.trim() && form.lastName.trim();
-    const pwdOk =
-      form.password.length >= 6 && form.password === form.confirm;
+    const pwdOk = form.password.length >= 6 && form.password === form.confirm;
     return emailOk && unameOk && !!namesOk && pwdOk;
   }, [form]);
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    if (!valid) return;
-    // Later hook this to API
-    alert(`Registering ${form.username}`);
-    navigate("/chatbot"); // ✅ go to chatbot page
+    setErr("");
+    if (!valid || loading) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/api/register/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          username: form.username,
+          email: form.email,
+          password: form.password,
+          birthday: form.birthday,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        // Basic error surfacing
+        const firstErr =
+          typeof data === "object" && data
+            ? Object.values(data)[0]
+            : "Registration failed.";
+        throw new Error(
+          Array.isArray(firstErr) ? firstErr.join(" ") : String(firstErr)
+        );
+      }
+
+      // Success → go to chatbot
+      nav("/chatbot", { replace: true });
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,17 +80,15 @@ export default function SignUpPage() {
         <section className="reg-card" aria-label="Create account">
           <header className="reg-head">
             <h1 className="reg-title">Get started now!</h1>
-            <p className="reg-subtitle">
-              Start building your dream startup!
-            </p>
+            <p className="reg-subtitle">Start building your dream startup!</p>
           </header>
+
+          {err ? <p style={{ color: "crimson", textAlign: "center" }}>{err}</p> : null}
 
           <form className="reg-form" onSubmit={onSubmit} noValidate>
             <div className="reg-grid">
               <div className="reg-field">
-                <label htmlFor="fn" className="sr-only">
-                  First Name
-                </label>
+                <label htmlFor="fn" className="sr-only">First Name</label>
                 <input
                   id="fn"
                   className="reg-input"
@@ -67,9 +100,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="reg-field">
-                <label htmlFor="ln" className="sr-only">
-                  Last Name
-                </label>
+                <label htmlFor="ln" className="sr-only">Last Name</label>
                 <input
                   id="ln"
                   className="reg-input"
@@ -81,9 +112,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="reg-field">
-                <label htmlFor="un" className="sr-only">
-                  Username
-                </label>
+                <label htmlFor="un" className="sr-only">Username</label>
                 <input
                   id="un"
                   className="reg-input"
@@ -97,9 +126,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="reg-field">
-                <label htmlFor="em" className="sr-only">
-                  Email
-                </label>
+                <label htmlFor="em" className="sr-only">Email</label>
                 <input
                   id="em"
                   type="email"
@@ -114,9 +141,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="reg-field">
-                <label htmlFor="cp" className="sr-only">
-                  Confirm password
-                </label>
+                <label htmlFor="cp" className="sr-only">Confirm password</label>
                 <input
                   id="cp"
                   type="password"
@@ -131,9 +156,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="reg-field">
-                <label htmlFor="pw" className="sr-only">
-                  Password
-                </label>
+                <label htmlFor="pw" className="sr-only">Password</label>
                 <input
                   id="pw"
                   type="password"
@@ -149,9 +172,7 @@ export default function SignUpPage() {
             </div>
 
             <div className="reg-field reg-field--wide">
-              <label htmlFor="bd" className="sr-only">
-                Birthday
-              </label>
+              <label htmlFor="bd" className="sr-only">Birthday</label>
               <input
                 id="bd"
                 className="reg-input"
@@ -162,17 +183,14 @@ export default function SignUpPage() {
               />
             </div>
 
-            <button type="submit" className="reg-btn" disabled={!valid}>
-              Register
+            <button type="submit" className="reg-btn" disabled={!valid || loading}>
+              {loading ? "Registering..." : "Register"}
             </button>
           </form>
 
           <div className="reg-meta">
             <p>
-              Already a user?{" "}
-              <a href="/login" className="reg-link">
-                Log in here
-              </a>
+              Already a user? <a href="/login" className="reg-link">Log in here</a>
             </p>
             <p className="reg-fine">
               Are you an investor looking for start-ups?{" "}
