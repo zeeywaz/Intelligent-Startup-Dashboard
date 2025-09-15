@@ -1,68 +1,110 @@
-/* Namespace everything under .dashboard-app so it won't conflict with Home */
-.dashboard-app .container {
+/* ===== theme (match investor palette) ===== */
+:root{
+  --brand:#2a5684;        /* icon + accent */
+  --card:#e8efff;         /* light tile background */
+  --bg-start:#eef4ff;
+  --bg-end:#c7d8f6;
+  --panel:#ffffff;
+  --ink:#0f172a;
+  --sub:#475569;
+  --shadow:0 18px 35px rgba(31,42,68,.12);
+}
+
+/* page background + container stays the same */
+.dashboard-app{
+  background: linear-gradient(180deg, var(--bg-start), var(--bg-end));
   min-height: 100vh;
+}
+.dashboard-app .container{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 72px;
   display: flex;
   flex-direction: column;
-  align-items: center;          /* center children horizontally */
-  justify-content: flex-start;
-  gap: 2rem;
-  padding: 2rem 1rem;
-  background: linear-gradient(to bottom, #ffffff, #6791c4);
+  gap: 22px;
 }
 
-/* Welcome block */
-.dashboard-app .dash-welcome h2 {
+/* --- welcome: LEFT aligned --- */
+.dash-welcome{
+  text-align:left;                 /* <- left */
+  margin-top: 6px;
+}
+.dash-welcome h2{
   font-size: 3rem;
-  font-weight: 800;
-  margin: 1rem 0;
+  font-weight: 900;
+  letter-spacing:.2px;
+  color: var(--ink);
+  margin: 0;
+}
+.dash-welcome .dash-sub{
+  margin-top: 6px;
+  font-size: 1.05rem;
+  color: var(--sub);
 }
 
-/* Cards grid (centered, capped width) */
-.dashboard-app .cards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
-  gap: 1rem;
-  width: min(1200px, 100%);
-  margin: 0 auto;
+/* --- cards grid (unchanged layout) --- */
+.cards{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 26px;
+  margin-top: 6px;
 }
-@media (max-width: 1024px) {
-  .dashboard-app .cards { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 1024px){ .cards{ grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px){ .cards{ grid-template-columns: 1fr; } }
+
+/* --- tile skin now matches investor dashboard --- */
+.cards .tile{
+  background: var(--card);           /* light blue like investor page */
+  border-radius: 18px;
+  box-shadow: 6px 8px 0 rgba(0,0,0,.10);
+  padding: 22px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height: 132px;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
 }
-@media (max-width: 600px) {
-  .dashboard-app .cards { grid-template-columns: 1fr; }
+.cards .tile:hover{
+  transform: translateY(-4px);
+  box-shadow: 10px 12px 0 rgba(0,0,0,.14);
+  filter: saturate(1.03);
+}
+/* icon color matches investor */
+.cards .tile svg{
+  width: 40px; height: 40px;
+  color: var(--brand);
 }
 
-/* Charts container: centered, capped width */
-.dashboard-app .charts-box {
-  display: flex;
-  gap: 2rem;
-  align-items: flex-start;
-  justify-content: space-between;
+/* --- analytics panels (unchanged) --- */
+.charts-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 6px;
+}
+@media (max-width: 1024px){ .charts-grid{ grid-template-columns: 1fr; } }
 
-  width: min(1200px, 100%);  /* cap width */
-  margin: 0 auto 6rem;       /* center horizontally */
-  padding: 2rem 3rem;
-
-  background: #f9f9f9;
+.panel{
+  background: var(--panel);
   border-radius: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow);
+  padding: 18px 16px 10px;
+}
+.panel h3{
+  margin: 2px 10px 6px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+.panel-body{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding: 6px 6px 12px;
 }
 
-/* Each column in charts box */
-.dashboard-app .chart-col {
-  text-align: center;
-}
-
-/* Chart headings */
-.dashboard-app .chart-col h3 {
-  font-size: 1.6rem;
-  margin-bottom: 1.5rem;
-}
-
-/* Optional: make charts stack on small screens */
-@media (max-width: 1024px) {
-  .dashboard-app .charts-box {
-    flex-direction: column;
-    align-items: center;
-  }
+/* recharts text */
+.recharts-default-legend, .recharts-tooltip-wrapper{
+  font-size: .9rem;
+  color: #334155;
 }

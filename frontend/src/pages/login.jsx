@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/login.css";
+import { API_BASE, getCookie } from "../lib/api";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,10 +22,13 @@ export default function LoginPage() {
     if (!canSubmit) return;
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/login/", {
+      const res = await fetch(`${API_BASE}/api/login/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // keep session cookie
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        credentials: "include",
         body: JSON.stringify({
           email: form.email.trim(),
           password: form.password,
@@ -32,7 +36,7 @@ export default function LoginPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
-      navigate("/userdashboard");
+      navigate(data?.next || "/userdashboard");
     } catch (e2) {
       setErr(e2.message || "Invalid credentials or server unavailable.");
     }

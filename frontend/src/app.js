@@ -10,6 +10,10 @@ import Investors from "./pages/investors.jsx";
 import MyStartup from "./pages/mystartup.jsx";
 import ChatPage from "./pages/chatbot.jsx";
 import ProfilePage from "./pages/profile.jsx";
+import InvestorsPage from "./pages/investors.jsx";
+import InvestorDashboard from "./pages/investordashboard.jsx";
+import { ensureCsrf } from "./lib/api";
+
 
 export default function App() {
   return (
@@ -26,8 +30,12 @@ export default function App() {
       <Route path="/chatbot" element={<ChatPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/investorspage" element={<InvestorsPage />} />
+      <Route path="/investordashboard" element={<InvestorDashboard />} />
     </Routes>
   );
 }
+
+
 
 

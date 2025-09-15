@@ -10,7 +10,7 @@ class RegisterSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=6)
-    birthday = serializers.CharField(required=False, allow_blank=True)
+    
 
     def validate(self, attrs):
         if User.objects.filter(username__iexact=attrs["username"]).exists():

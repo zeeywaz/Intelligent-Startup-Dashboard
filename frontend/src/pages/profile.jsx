@@ -1,8 +1,15 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "../styles/profile.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
-import { Pencil, Camera, Trash } from "lucide-react";
+import { Pencil, Camera, Trash, Lock } from "lucide-react";
+import { API_BASE } from "../lib/api";
+
+/* small helper to read csrftoken cookie */
+function getCSRFCookie() {
+  const m = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+  return m ? decodeURIComponent(m[2]) : "";
+}
 
 /* ---------- Reusable input ---------- */
 function TextField({ id, label, type = "text", value, onChange, readOnly }) {
@@ -22,7 +29,7 @@ function TextField({ id, label, type = "text", value, onChange, readOnly }) {
   );
 }
 
-/* ---------- Avatar uploader ---------- */
+/* ---------- Avatar uploader (client-side preview only) ---------- */
 function Avatar({ src, onPick }) {
   const fileRef = useRef(null);
   return (
@@ -52,6 +59,100 @@ function Avatar({ src, onPick }) {
   );
 }
 
+/* ---------- Password Modal ---------- */
+function PasswordModal({ open, onClose, onSuccess }) {
+  const [p1, setP1] = useState("");
+  const [p2, setP2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (open) {
+      setP1(""); setP2(""); setErr("");
+      setTimeout(() => dialogRef.current?.focus(), 0);
+    }
+  }, [open]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setErr("");
+
+    try {
+      setBusy(true);
+      const res = await fetch(`${API_BASE}/api/profile/change-password/`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCSRFCookie(),
+        },
+        body: JSON.stringify({ newPassword: p1, confirmPassword: p2 }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      onSuccess(j?.message || "Password updated.");
+      onClose();
+    } catch (e2) {
+      setErr(e2.message || "Couldn't change password.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <div className="prof-modal__backdrop" onMouseDown={onClose}>
+      <div
+        className="prof-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pwd-title"
+        onMouseDown={(e) => e.stopPropagation()}
+        tabIndex={-1}
+        ref={dialogRef}
+      >
+        <h3 id="pwd-title" className="prof-modal__title">
+          Change Password
+        </h3>
+
+        <form onSubmit={submit} className="prof-modal__form">
+          <label className="prof-label" htmlFor="np1">New password</label>
+          <input
+            id="np1"
+            className="prof-input"
+            type="password"
+            minLength={6}
+            value={p1}
+            onChange={(e) => setP1(e.target.value)}
+            required
+          />
+          <label className="prof-label" htmlFor="np2">Confirm new password</label>
+          <input
+            id="np2"
+            className="prof-input"
+            type="password"
+            minLength={6}
+            value={p2}
+            onChange={(e) => setP2(e.target.value)}
+            required
+          />
+
+          {err && <p className="prof-error" role="alert">{err}</p>}
+
+          <div className="prof-modal__actions">
+            <button type="button" className="prof-btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="prof-btn prof-btn--primary" disabled={busy}>
+              <Lock size={16} aria-hidden /> {busy ? "Updating..." : "Update Password"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Page ---------- */
 export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
@@ -59,21 +160,69 @@ export default function ProfilePage() {
     "https://placehold.co/320x320/7091E6/FFFFFF?text=%F0%9F%90%95"
   );
   const [form, setForm] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "johndoe@gmail.com",
-    password: "**************",
-    username: "johndoe88",
-    birthday: "02/10/1999",
+    firstName: "",
+    lastName: "",
+    email: "",
+    username: "",
   });
+  const [statusMsg, setStatusMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  const [pwdOpen, setPwdOpen] = useState(false);
 
   const update = (key) => (e) => setForm((s) => ({ ...s, [key]: e.target.value }));
 
-  const onEditToggle = () => setEditing((v) => !v);
+  // Load current user
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/me/`, { credentials: "include" });
+        const j = await res.json();
+        if (j?.authenticated) {
+          const u = j.user || {};
+          setForm({
+            firstName: u.firstName || "",
+            lastName:  u.lastName  || "",
+            email:     u.email     || "",
+            username:  u.username  || "",
+          });
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, []);
+
+  const onEditToggle = () => {
+    setStatusMsg("");
+    setErr("");
+    setEditing((v) => !v);
+  };
+
+  const onSave = async () => {
+    setErr(""); setStatusMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/api/profile/`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCSRFCookie(),
+        },
+        body: JSON.stringify(form),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      setStatusMsg("Profile saved successfully.");
+      setEditing(false);
+    } catch (e) {
+      setErr(e.message || "Could not save profile.");
+    }
+  };
 
   const onDelete = () => {
     if (window.confirm("Delete your account? This cannot be undone.")) {
-      // TODO: wire to API
+      // TODO: implement delete endpoint if you actually want this
       alert("Account deletion requested.");
     }
   };
@@ -92,15 +241,23 @@ export default function ProfilePage() {
           {/* Right column: card */}
           <div className="prof-card">
             <div className="prof-card__actions">
-              <button
-                type="button"
-                className="prof-btn prof-btn--primary prof-edit-btn"
-                onClick={onEditToggle}
-                aria-pressed={editing}
-              >
-                <span>{editing ? "Done" : "Edit"}</span>
-                <Pencil size={16} aria-hidden />
-              </button>
+              {editing ? (
+                <>
+                  <button type="button" className="prof-btn" onClick={onEditToggle}>Cancel</button>
+                  <button type="button" className="prof-btn prof-btn--primary" onClick={onSave}>
+                    Save
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="prof-btn prof-btn--primary prof-edit-btn"
+                  onClick={onEditToggle}
+                >
+                  <span>Edit</span>
+                  <Pencil size={16} aria-hidden />
+                </button>
+              )}
             </div>
 
             <div className="prof-grid">
@@ -120,21 +277,26 @@ export default function ProfilePage() {
                 readOnly={!editing}
               />
               <TextField
-                id="pwd" label="Password" type="password"
-                value={form.password} onChange={update("password")}
-                readOnly={!editing}
-              />
-              <TextField
                 id="un" label="Username"
                 value={form.username} onChange={update("username")}
                 readOnly={!editing}
               />
-              <TextField
-                id="bd" label="Birthday"
-                value={form.birthday} onChange={update("birthday")}
-                readOnly={!editing}
-              />
             </div>
+
+            <div className="prof-line" />
+
+            <div className="prof-actions-row">
+              <button
+                type="button"
+                className="prof-btn prof-btn--ghost"
+                onClick={() => setPwdOpen(true)}
+              >
+                <Lock size={16} aria-hidden /> Change Password
+              </button>
+            </div>
+
+            {statusMsg && <p className="prof-ok">{statusMsg}</p>}
+            {err && <p className="prof-error" role="alert">{err}</p>}
           </div>
         </section>
 
@@ -148,6 +310,13 @@ export default function ProfilePage() {
       </main>
 
       <Footer />
+
+      {/* Password modal */}
+      <PasswordModal
+        open={pwdOpen}
+        onClose={() => setPwdOpen(false)}
+        onSuccess={(msg) => setStatusMsg(msg)}
+      />
     </div>
   );
 }

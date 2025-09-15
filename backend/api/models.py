@@ -1,24 +1,82 @@
-
-
+# backend/api/models.py
+from django.conf import settings
 from django.db import models
-from django.contrib.auth import get_user_model
 
-User = get_user_model()
+# --- Investor verification ---
 
 class InvestorProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="investor_profile")
-    company = models.CharField(max_length=120, blank=True)
-    phone = models.CharField(max_length=40, blank=True)
-    role = models.CharField(max_length=80, blank=True)
-    verify_type = models.CharField(max_length=40, blank=True)  # ownership | financial
+    id = models.BigAutoField(primary_key=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_column="user_id",
+        related_name="investor_profile",
+    )
+    company = models.CharField(max_length=120, default="", blank=True)  # NOT NULL in DB
+    phone = models.CharField(max_length=40, default="", blank=True)     # NOT NULL in DB
+    role = models.CharField(max_length=80, default="", blank=True)      # NOT NULL in DB
+    verify_type = models.CharField(max_length=40, default="", blank=True)  # NOT NULL in DB
 
-    def __str__(self):
-        return f"InvestorProfile({self.user.username})"
+    class Meta:
+        db_table = "api_investorprofile"
+        managed = False
+
+
+# at top
+import os
+from uuid import uuid4
+
+# ...
+
+def investor_doc_path(instance, filename):
+    # keep only extension, randomize filename, ensure total path << 100 chars
+    ext = os.path.splitext(filename)[1].lower()[:10]  # like ".png" / ".pdf"
+    return f"investor_docs/{uuid4().hex}{ext}"
 
 class InvestorVerificationDoc(models.Model):
-    profile = models.ForeignKey(InvestorProfile, on_delete=models.CASCADE, related_name="docs")
-    file = models.FileField(upload_to="investor_docs/")
+    id = models.BigAutoField(primary_key=True)
+    profile = models.ForeignKey(
+        InvestorProfile, on_delete=models.CASCADE,
+        db_column="profile_id", related_name="docs"
+    )
+    file = models.FileField(upload_to=investor_doc_path, max_length=100)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = "api_investorverificationdoc"
+        managed = False
+
+
+# --- Roles ---
+
+class Role(models.Model):
+    role_id = models.IntegerField(primary_key=True, db_column="role_id")
+    role_name = models.CharField(max_length=50, db_column="role_name", unique=True)
+
+    class Meta:
+        db_table = "role"
+        managed = False
+
     def __str__(self):
-        return f"Doc({self.profile.user.username}: {self.file.name})"
+        return self.role_name
+
+
+class UserRole(models.Model):
+    user_role_id = models.AutoField(primary_key=True, db_column="user_role_id")
+    auth_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_column="auth_user_id",
+        related_name="user_roles",
+    )
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.CASCADE,
+        db_column="role_id",
+        related_name="user_roles",
+    )
+
+    class Meta:
+        db_table = "user_role"
+        managed = False
+        unique_together = (("auth_user", "role"),)

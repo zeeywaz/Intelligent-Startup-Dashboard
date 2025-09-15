@@ -1,0 +1,132 @@
+:root{
+  --id-primary:#2a5684;
+  --id-deep:#1f2a44;
+  --bg-start:#eef4ff;
+  --bg-end:#c7d8f6;
+  --id-card:#e8efff;
+  --id-shadow:0 14px 24px rgba(29,38,60,.12);
+}
+
+.id-hero{
+  text-align:center;
+  padding:26px 16px 8px;
+}
+.id-hero h1{
+  font-size:2.1rem;
+  font-weight:800;
+  letter-spacing:.3px;
+  margin:0;
+}
+.id-hero p{
+  font-size:1.35rem;
+  margin:.35rem 0 0;
+  color:#111827;
+}
+
+.id-welcome{
+  max-width:1100px;
+  margin:18px auto 6px;
+  padding:0 16px;
+  font-size:1.8rem;
+  font-weight:700;
+}
+
+.id-cards{
+  max-width:900px;
+  margin:18px auto 10px;
+  padding:0 16px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(210px, 1fr));
+  gap:28px;
+  justify-content:center;
+}
+.id-card{
+  background:var(--id-card);
+  border:none;
+  border-radius:18px;
+  padding:26px 18px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+  box-shadow:6px 8px 0 rgba(0,0,0,.10);
+  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.id-card:hover{
+  transform:translateY(-4px);
+  box-shadow:10px 12px 0 rgba(0,0,0,.14);
+  filter:saturate(1.05);
+}
+.id-card__icon{
+  width:38px;height:38px;
+  color:var(--id-primary);
+}
+.id-card__label{
+  text-align:center;
+  font-weight:600;
+  color:var(--id-deep);
+}
+
+/* Panels */
+.id-panels{
+  max-width:1100px;
+  margin:22px auto 84px;
+  padding:0 16px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+}
+.id-panel{
+  background:#fff;
+  border-radius:20px;
+  box-shadow:var(--id-shadow);
+  padding:22px 20px;
+}
+.id-panel h3{
+  margin:0 0 10px;
+  font-size:1.1rem;
+  font-weight:800;
+}
+.id-donut{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* investor list (fits into the same .panel aesthetic) */
+.id-list{
+  margin:12px 0 0;
+  padding:0;
+  list-style:none;
+  display:grid;
+  gap:14px;
+}
+.id-list__item{
+  display:grid;
+  grid-template-columns:48px 1fr;
+  align-items:center;
+  gap:12px;
+  background:#f5f6fb;
+  border-radius:14px;
+  padding:12px 14px;
+}
+.id-avatar{
+  width:42px;height:42px;border-radius:50%;
+  background:linear-gradient(135deg,#9bbcf7,#e5ecff);
+}
+.id-quote{ font-style:italic; color:#475569; }
+.id-title{ font-weight:700; margin-top:2px; }
+.id-desc{ font-size:.9rem; color:#6b7280; margin-top:2px; }
+
+/* Responsive */
+@media (max-width: 960px){
+  .id-panels{ grid-template-columns:1fr; }
+}
+@media (max-width: 680px){
+  .id-cards{ grid-template-columns:1fr; }
+  .id-hero h1{ font-size:1.6rem; }
+  .id-hero p{ font-size:1.1rem; }
+  .id-welcome{ font-size:1.4rem; }
+}
+

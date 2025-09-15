@@ -1,3 +1,5 @@
+import React, { useEffect, useState } from "react";
+
 import Card from "../components/Card";
 import Header from "../components/Header";
 import Footer from "../components/footer";
@@ -8,7 +10,26 @@ import {
   Line, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 
+import { API_BASE } from "../lib/api";
+
+
 export default function UserDashboard() {
+  const [name, setName] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/me/`, { credentials: "include" });
+        const j = await r.json().catch(() => ({}));
+        const uname = (j?.user?.username || j?.user?.firstName || "").trim();
+        if (uname) localStorage.setItem("if_name", uname);
+        setName(uname || localStorage.getItem("if_name") || "");
+      } catch {
+        setName(localStorage.getItem("if_name") || "");
+      }
+    })();
+  }, []);
+
   const pieData = [
     { name: "Niche 1", value: 400 },
     { name: "Niche 2", value: 300 },
@@ -16,7 +37,7 @@ export default function UserDashboard() {
     { name: "Niche 4", value: 100 },
     { name: "Niche 5", value: 100 },
   ];
-  const COLORS = ["#2a5684ff", "#c1dfff", "#8699c4", "#667ba5ff", "#a9b8d9"];
+  const COLORS = ["#2a5684", "#c1dfff", "#8699c4", "#667ba5", "#a9b8d9"];
   const lineData = [
     { month: "Jan", thisMonth: 400, lastMonth: 350 },
     { month: "Feb", thisMonth: 300, lastMonth: 280 },
@@ -30,12 +51,14 @@ export default function UserDashboard() {
       <Header />
       <div className="dashboard-app">
         <div className="container">
+          {/* Welcome LEFT, username */}
           <div className="dash-welcome">
-            <h2>Welcome, Adam 👋</h2>
+            <h2>Welcome, {name || "there"} <span aria-hidden>👋</span></h2>
+            <p className="dash-sub">Business Insight — Get ahead of your competition</p>
           </div>
 
-          {/* Cards → navigation */}
-          <div className="cards">
+          {/* Cards row using your Card component */}
+          <div className="ud-cards" style={{ marginTop: 8, marginBottom: 8 }}>
             <Card icon={Boxes} label="Resource & Services" to="/resources" />
             <Card icon={Store} label="Other Business & Competitors" to="/competitors" />
             <Card icon={Wallet} label="Sponsors and Investors" to="/investors" />
@@ -43,30 +66,34 @@ export default function UserDashboard() {
           </div>
 
           {/* Charts */}
-          <div className="charts-box">
-            <div className="chart-col">
+          <div className="charts-grid">
+            <section className="panel">
               <h3>Popular Niche For The Month</h3>
-              <PieChart width={400} height={400}>
-                <Pie data={pieData} cx="50%" cy="50%" outerRadius={140} innerRadius={70} dataKey="value">
-                  {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip />
-                <Legend wrapperStyle={{ paddingTop: 30 }} />
-              </PieChart>
-            </div>
+              <div className="panel-body">
+                <PieChart width={420} height={320}>
+                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={120} innerRadius={65} dataKey="value">
+                    {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ paddingTop: 18 }} />
+                </PieChart>
+              </div>
+            </section>
 
-            <div className="chart-col">
+            <section className="panel">
               <h3>Analytics of Monthly Growth Of Niche</h3>
-              <LineChart width={600} height={400} data={lineData}>
-                <CartesianGrid stroke="#ccc" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="thisMonth" stroke="#8884d8" strokeWidth={2} />
-                <Line type="monotone" dataKey="lastMonth"  stroke="#82ca9d" strokeWidth={2} />
-              </LineChart>
-            </div>
+              <div className="panel-body">
+                <LineChart width={560} height={320} data={lineData}>
+                  <CartesianGrid stroke="#e5e7eb" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="thisMonth" stroke="#6d7dfc" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="lastMonth"  stroke="#7dd3a1" strokeWidth={2} dot={false} />
+                </LineChart>
+              </div>
+            </section>
           </div>
         </div>
       </div>
