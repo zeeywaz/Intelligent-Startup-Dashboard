@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import InvestorProfile
+from .models import InvestorProfile, Resource
 
 User = get_user_model()
 
@@ -10,7 +10,6 @@ class RegisterSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=6)
-    
 
     def validate(self, attrs):
         if User.objects.filter(username__iexact=attrs["username"]).exists():
@@ -41,3 +40,8 @@ class InvestorRegisterSerializer(RegisterSerializer):
         user = super().create(validated)
         InvestorProfile.objects.create(user=user, company=company, phone=phone, role=role)
         return user
+
+class ResourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resource
+        fields = ("resource_id", "type", "name", "location", "website", "description", "geo_data")
