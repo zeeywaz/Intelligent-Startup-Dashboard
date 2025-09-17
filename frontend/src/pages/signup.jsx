@@ -3,6 +3,15 @@ import { useNavigate } from "react-router-dom";
 import "../styles/signup.css";
 import { API_BASE, getCookie } from "../lib/api";
 
+const PWD_RULES = [
+  { id: "len",    test: (s) => s.length >= 8,                     label: "At least 8 characters" },
+  { id: "up",     test: (s) => /[A-Z]/.test(s),                   label: "One uppercase letter (A–Z)" },
+  { id: "low",    test: (s) => /[a-z]/.test(s),                   label: "One lowercase letter (a–z)" },
+  { id: "dig",    test: (s) => /\d/.test(s),                      label: "One number (0–9)" },
+  { id: "spec",   test: (s) => /[~!@#$%^&*()_\-+={}\[\]|\\:;\"'<>,.?/`]/.test(s), label: "One special character" },
+  { id: "space",  test: (s) => !/\s/.test(s),                     label: "No spaces" },
+];
+
 export default function SignUpPage() {
   const nav = useNavigate();
   const [form, setForm] = useState({
@@ -18,13 +27,19 @@ export default function SignUpPage() {
 
   const update = (key) => (e) => setForm((s) => ({ ...s, [key]: e.target.value }));
 
+  const pwdChecks = useMemo(
+    () => PWD_RULES.map((r) => ({ id: r.id, ok: r.test(form.password), label: r.label })),
+    [form.password]
+  );
+  const pwdOk = pwdChecks.every((c) => c.ok);
+
   const valid = useMemo(() => {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
     const unameOk = form.username.trim().length >= 3;
     const namesOk = form.firstName.trim() && form.lastName.trim();
-    const pwdOk = form.password.length >= 6 && form.password === form.confirm;
-    return emailOk && unameOk && !!namesOk && pwdOk;
-  }, [form]);
+    const matchOk = form.password === form.confirm;
+    return emailOk && unameOk && !!namesOk && pwdOk && matchOk;
+  }, [form, pwdOk]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -51,7 +66,9 @@ export default function SignUpPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const firstErr = typeof data === "object" && data ? Object.values(data)[0] : "Registration failed.";
+        const firstErr =
+          (typeof data === "object" && data && (data.error || Object.values(data)[0])) ||
+          "Registration failed.";
         throw new Error(Array.isArray(firstErr) ? firstErr.join(" ") : String(firstErr));
       }
 
@@ -104,19 +121,32 @@ export default function SignUpPage() {
               </div>
 
               <div className="reg-field">
-                <label htmlFor="cp" className="sr-only">Confirm password</label>
-                <input id="cp" type="password" autoComplete="new-password"
-                       className="reg-input" placeholder="Confirm password"
-                       value={form.confirm} onChange={update("confirm")} required minLength={6} />
+                <label htmlFor="pw" className="sr-only">Password</label>
+                <input id="pw" type="password" autoComplete="new-password"
+                       aria-describedby="pwd-help"
+                       className="reg-input" placeholder="Password"
+                       value={form.password} onChange={update("password")} required />
               </div>
 
               <div className="reg-field">
-                <label htmlFor="pw" className="sr-only">Password</label>
-                <input id="pw" type="password" autoComplete="new-password"
-                       className="reg-input" placeholder="Password"
-                       value={form.password} onChange={update("password")} required minLength={6} />
+                <label htmlFor="cp" className="sr-only">Confirm password</label>
+                <input id="cp" type="password" autoComplete="new-password"
+                       className="reg-input" placeholder="Confirm password"
+                       value={form.confirm} onChange={update("confirm")} required />
               </div>
             </div>
+
+            {/* Password rules checklist */}
+            <ul id="pwd-help" aria-live="polite" style={{margin:"6px 0 0", paddingLeft: "18px", fontSize: ".9rem"}}>
+              {pwdChecks.map((c) => (
+                <li key={c.id} style={{color: c.ok ? "green" : "#b91c1c"}}>
+                  {c.ok ? "✓" : "•"} {c.label}
+                </li>
+              ))}
+              <li style={{color: form.password && form.confirm && form.password === form.confirm ? "green" : "#b91c1c"}}>
+                {form.password && form.confirm && form.password === form.confirm ? "✓" : "•"} Passwords match
+              </li>
+            </ul>
 
             <button type="submit" className="reg-btn" disabled={!valid || loading}>
               {loading ? "Registering..." : "Register"}

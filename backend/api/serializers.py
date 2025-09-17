@@ -4,6 +4,7 @@ from .models import InvestorProfile, Resource
 
 User = get_user_model()
 
+# -------- Registration (unchanged) --------
 class RegisterSerializer(serializers.Serializer):
     firstName = serializers.CharField(max_length=150)
     lastName = serializers.CharField(max_length=150)
@@ -28,6 +29,7 @@ class RegisterSerializer(serializers.Serializer):
         )
         return user
 
+
 class InvestorRegisterSerializer(RegisterSerializer):
     company = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True)
@@ -41,6 +43,44 @@ class InvestorRegisterSerializer(RegisterSerializer):
         InvestorProfile.objects.create(user=user, company=company, phone=phone, role=role)
         return user
 
+
+# -------- Profile update / view --------
+class ProfileSerializer(serializers.ModelSerializer):
+    # front-end uses these exact keys (see profile.jsx)
+    firstName = serializers.CharField(source="first_name", max_length=150, required=True)
+    lastName = serializers.CharField(source="last_name", max_length=150, required=True)
+    email = serializers.EmailField(required=True)
+    username = serializers.CharField(max_length=150, required=True)
+
+    class Meta:
+        model = User
+        fields = ("firstName", "lastName", "email", "username")
+
+    def validate_email(self, value):
+        user = self.instance
+        if User.objects.filter(email__iexact=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("Email already registered.")
+        return value
+
+    def validate_username(self, value):
+        user = self.instance
+        if User.objects.filter(username__iexact=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("Username already taken.")
+        return value
+
+
+# -------- Password change --------
+class PasswordChangeSerializer(serializers.Serializer):
+    newPassword = serializers.CharField(min_length=6)
+    confirmPassword = serializers.CharField(min_length=6)
+
+    def validate(self, attrs):
+        if attrs["newPassword"] != attrs["confirmPassword"]:
+            raise serializers.ValidationError({"confirmPassword": "Passwords do not match."})
+        return attrs
+
+
+# -------- Resources (unchanged shape, now using resource_id field) --------
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource

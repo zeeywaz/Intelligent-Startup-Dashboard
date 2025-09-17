@@ -21,13 +21,11 @@
 
 /* left */
 .header__left { display: flex; align-items: center; gap: .75rem; }
-.site-logo {
-  margin: 0; font-weight: 800; color: var(--brand);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
-  font-size: clamp(1.25rem, .8rem + 2vw, 2rem); letter-spacing: .2px;
-}
-.site-logo__link { color: inherit; text-decoration: none; }
+.site-logo { margin: 0; }
+.site-logo__link { display:inline-flex; align-items:center; text-decoration: none; }
+.site-logo__img { display:block; height: 36px; width: auto; }
 
+/* menu button */
 .menu-btn {
   display: inline-grid; place-items: center;
   width: 44px; height: 44px; border-radius: 12px;
@@ -38,9 +36,7 @@
 .menu-btn:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
 
 /* right cluster */
-.header__right {
-  display: flex; align-items: center; gap: 14px;
-}
+.header__right { display: flex; align-items: center; gap: 14px; }
 
 /* right-side links */
 .nav-right { display: none; gap: 1rem; align-items: center; }
@@ -89,17 +85,11 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.notif-empty {
-  display: grid; place-items: center;
-  gap: 8px; padding: 18px 12px; color: #6b7280;
-}
+.notif-empty { display: grid; place-items: center; gap: 8px; padding: 18px 12px; color: #6b7280; }
 .notif-empty svg { opacity: .5; }
 
 .notif-list { list-style: none; margin: 0; padding: 0; }
-.notif-item {
-  padding: 10px 8px; border-radius: 10px;
-  border: 1px solid transparent;
-}
+.notif-item { padding: 10px 8px; border-radius: 10px; border: 1px solid transparent; }
 .notif-item + .notif-item { margin-top: 6px; }
 .notif-item--unread { background: #f8fbff; border-color: #e7eefc; }
 .notif-title { font-weight: 700; color: var(--ink); }
@@ -155,15 +145,13 @@
 /* desktop layout */
 @media (min-width: 768px) {
   .menu-btn { display: none; }
-  .nav-right { display: flex; }
+  .nav-right { display: inline-flex; }
 }
 
-/* a11y */
+/* a11y helper */
 .skip-link {
   position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden;
 }
 .skip-link:focus {
-  position: static; width: auto; height: auto;
-  margin: .5rem; padding: .5rem 1rem; border-radius: 8px;
-  background: #111; color: #fff;
+  position: static; width: auto; height: auto; padding: .25rem .5rem; background: #111; color: #fff;
 }

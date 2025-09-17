@@ -9,6 +9,15 @@ const MAX_FILES = 3;
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPT = ".pdf,.png,.jpg,.jpeg";
 
+const PWD_RULES = [
+  { id: "len",    test: (s) => s.length >= 8,                     label: "At least 8 characters" },
+  { id: "up",     test: (s) => /[A-Z]/.test(s),                   label: "One uppercase letter (A–Z)" },
+  { id: "low",    test: (s) => /[a-z]/.test(s),                   label: "One lowercase letter (a–z)" },
+  { id: "dig",    test: (s) => /\d/.test(s),                      label: "One number (0–9)" },
+  { id: "spec",   test: (s) => /[~!@#$%^&*()_\-+={}\[\]|\\:;\"'<>,.?/`]/.test(s), label: "One special character" },
+  { id: "space",  test: (s) => !/\s/.test(s),                     label: "No spaces" },
+];
+
 export default function InvestorSignUpPage() {
   const navigate = useNavigate();
 
@@ -34,15 +43,21 @@ export default function InvestorSignUpPage() {
       [key]: e.target.type === "checkbox" ? e.target.checked : e.target.value,
     }));
 
+  const pwdChecks = useMemo(
+    () => PWD_RULES.map((r) => ({ id: r.id, ok: r.test(form.password), label: r.label })),
+    [form.password]
+  );
+  const pwdOk = pwdChecks.every((c) => c.ok);
+
   const valid = useMemo(() => {
     const emailOk = EMAIL_RE.test(form.email.trim());
     const unameOk = form.username.trim().length >= 3;
     const namesOk = form.firstName.trim() && form.lastName.trim();
-    const pwdOk = form.password.length >= 6 && form.password === form.confirm;
+    const matchOk = form.password === form.confirm;
     const docsOk =
       files.length > 0 && files.length <= MAX_FILES && files.every((f) => f.size <= MAX_BYTES);
-    return emailOk && unameOk && !!namesOk && pwdOk && form.consent && docsOk;
-  }, [form, files]);
+    return emailOk && unameOk && !!namesOk && pwdOk && matchOk && form.consent && docsOk;
+  }, [form, files, pwdOk]);
 
   const onPick = (fileList) => {
     const incoming = Array.from(fileList ?? []).slice(0, MAX_FILES - files.length);
@@ -139,19 +154,31 @@ export default function InvestorSignUpPage() {
               </div>
 
               <div className="regv-field">
-                <label htmlFor="cp" className="sr-only">Confirm password</label>
-                <input id="cp" type="password" autoComplete="new-password"
-                       className="regv-input" placeholder="Confirm password"
-                       value={form.confirm} onChange={update("confirm")} required minLength={6} />
-              </div>
-
-              <div className="regv-field">
                 <label htmlFor="pw" className="sr-only">Password</label>
                 <input id="pw" type="password" autoComplete="new-password"
                        className="regv-input" placeholder="Password"
-                       value={form.password} onChange={update("password")} required minLength={6} />
+                       value={form.password} onChange={update("password")} required />
+              </div>
+
+              <div className="regv-field">
+                <label htmlFor="cp" className="sr-only">Confirm password</label>
+                <input id="cp" type="password" autoComplete="new-password"
+                       className="regv-input" placeholder="Confirm password"
+                       value={form.confirm} onChange={update("confirm")} required />
               </div>
             </div>
+
+            {/* Password rules checklist */}
+            <ul aria-live="polite" style={{margin:"6px 0 0", paddingLeft: "18px", fontSize: ".9rem"}}>
+              {pwdChecks.map((c) => (
+                <li key={c.id} style={{color: c.ok ? "green" : "#b91c1c"}}>
+                  {c.ok ? "✓" : "•"} {c.label}
+                </li>
+              ))}
+              <li style={{color: form.password && form.confirm && form.password === form.confirm ? "green" : "#b91c1c"}}>
+                {form.password && form.confirm && form.password === form.confirm ? "✓" : "•"} Passwords match
+              </li>
+            </ul>
 
             {/* Verification selector */}
             <fieldset className="regv-verify">
@@ -231,7 +258,7 @@ export default function InvestorSignUpPage() {
 
           <div className="regv-meta">
             <p>Already a user? <a href="/login" className="regv-link">Log in here</a></p>
-            <p className="regv-fine">Uploads are encrypted in transit; avoid passwords or unrelated sensitive data in attachments.</p>
+            <p className="regv-fine">Password must meet the rules above.</p>
           </div>
         </section>
       </main>
