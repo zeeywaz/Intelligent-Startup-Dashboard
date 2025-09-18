@@ -1,6 +1,11 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+
+from .models import InvestorProfile
+from .models import BusinessCategory, Competitor
+
 from .models import InvestorProfile, Resource
+
 
 User = get_user_model()
 
@@ -44,6 +49,28 @@ class InvestorRegisterSerializer(RegisterSerializer):
         return user
 
 
+# --- Competitors / Categories ---
+
+from .models import BusinessCategory, Competitor  # top already imports InvestorProfile; this extends it
+
+class BusinessCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessCategory
+        fields = ["id", "name"]
+
+class CompetitorSerializer(serializers.ModelSerializer):
+    category = BusinessCategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        source="category",
+        queryset=BusinessCategory.objects.all(),
+        write_only=True
+    )
+
+    class Meta:
+        model = Competitor
+        fields = ["id", "name", "strength", "website", "description", "category", "category_id"]
+
+
 # -------- Profile update / view --------
 class ProfileSerializer(serializers.ModelSerializer):
     # front-end uses these exact keys (see profile.jsx)
@@ -85,3 +112,4 @@ class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = ("resource_id", "type", "name", "location", "website", "description", "geo_data")
+

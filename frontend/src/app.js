@@ -15,11 +15,13 @@ import ProfilePage from "./pages/profile.jsx";
 import InvestorDashboard from "./pages/investordashboard.jsx";
 import AdminUser from "./pages/admin_user.jsx";
 import AdminDashboard from "./pages/admindashboard.jsx";
+import About from "./pages/About.jsx";
+import Contact from "./pages/Contact.jsx";
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<UserDashboard />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/investor_signup" element={<InvestorSignUp />} />
@@ -38,6 +40,10 @@ export default function App() {
       <Route path="/investordashboard" element={<InvestorDashboard />} />
       <Route path="/admin_user" element={<AdminUser />} />
       <Route path="/admindashboard" element={<AdminDashboard />} />
+
+      {/* NEW routes */}
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

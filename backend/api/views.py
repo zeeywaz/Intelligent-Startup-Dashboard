@@ -2,19 +2,31 @@ from django.contrib.auth import get_user_model, authenticate, login, logout, upd
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.db.models import Q
 
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q
+from rest_framework import viewsets, filters
+from rest_framework.permissions import AllowAny
 
 from .serializers import (
     ResourceSerializer,
     ProfileSerializer,
     PasswordChangeSerializer,
+    BusinessCategorySerializer,
+    CompetitorSerializer,
 )
-from .models import InvestorProfile, InvestorVerificationDoc, Role, UserRole, Resource
+from .models import (
+    InvestorProfile,
+    InvestorVerificationDoc,
+    Role,
+    UserRole,
+    Resource,
+    BusinessCategory,
+    Competitor,
+)
 
 User = get_user_model()
 
@@ -24,7 +36,7 @@ User = get_user_model()
 def csrf(request):
     return Response({"csrfToken": get_token(request)}, status=200)
 
-# ----------------- Auth (existing) -----------------
+# ----------------- Auth -----------------
 @api_view(["POST"])
 @parser_classes([JSONParser])
 def register(request):
@@ -98,13 +110,11 @@ def profile_view(request):
         s = ProfileSerializer(instance=request.user)
         return Response(s.data, status=200)
 
-    # PATCH
     s = ProfileSerializer(instance=request.user, data=request.data, partial=True)
     if not s.is_valid():
         return Response({"error": s.errors}, status=400)
     s.save()
     return Response(s.data, status=200)
-
 
 @api_view(["POST"])
 @parser_classes([JSONParser])
@@ -120,11 +130,10 @@ def change_password(request):
     user = request.user
     user.set_password(new_pw)
     user.save(update_fields=["password"])
-    # keep the session alive after password change
     update_session_auth_hash(request, user)
     return Response({"message": "Password updated."}, status=200)
 
-# ----------------- Resources (existing) -----------------
+# ----------------- Resources -----------------
 class ResourcePage(PageNumberPagination):
     page_size = 20
     page_size_query_param = "limit"
@@ -140,12 +149,44 @@ def resources_list(request):
 
     q = (request.GET.get("q") or "").strip()
     if q:
-        qs = qs.filter(Q(name__icontains=q) | Q(description__icontains=q) | Q(location__icontains=q))
+        qs = qs.filter(
+            Q(name__icontains=q) |
+            Q(description__icontains=q) |
+            Q(location__icontains=q)
+        )
 
     paginator = ResourcePage()
     page = paginator.paginate_queryset(qs, request)
     ser = ResourceSerializer(page, many=True)
     return paginator.get_paginated_response(ser.data)
 
+# ----------------- Categories / Competitors -----------------
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = BusinessCategory.objects.all()
+    serializer_class = BusinessCategorySerializer
+    permission_classes = [AllowAny]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name"]
+
+class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Competitor.objects.select_related("category").all()
+    serializer_class = CompetitorSerializer
+    permission_classes = [AllowAny]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "description", "strength", "category__name"]
+    ordering_fields = ["name"]
+    ordering = ["name"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        cat = self.request.query_params.get("category")
+        if cat:
+            if str(cat).isdigit():
+                qs = qs.filter(category_id=int(cat))
+            else:
+                qs = qs.filter(category__name__icontains=cat)
+        return qs
+
+# ----------------- Root -----------------
 def root_ok(_request):
     return JsonResponse({"status": "ok", "app": "IdeaForge API"})

@@ -1,19 +1,18 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 
+router = DefaultRouter()
+router.register(r"categories", views.CategoryViewSet, basename="category")
+router.register(r"competitors", views.CompetitorViewSet, basename="competitor")
+
 urlpatterns = [
-    # auth / misc
-    path("csrf/", views.csrf, name="csrf"),
-    path("register/", views.register, name="register"),
-    path("investor-register/", views.investor_register, name="investor_register"),
-    path("login/", views.login_view, name="login"),
-    path("logout/", views.logout_view, name="logout"),
-    path("me/", views.me, name="me"),
-
-    # profile
-    path("profile/", views.profile_view, name="profile_view"),
-    path("profile/change-password/", views.change_password, name="change_password"),
-
-    # resources
-    path("resources/", views.resources_list, name="resources_list"),
+    path("csrf/", views.csrf),
+    path("login/", views.login_view),
+    path("logout/", views.logout_view),
+    path("me/", views.me),
+    path("profile/", views.profile_view),
+    path("profile/change-password/", views.change_password),
+    path("resources/", views.resources_list),
+    path("", include(router.urls)),
 ]

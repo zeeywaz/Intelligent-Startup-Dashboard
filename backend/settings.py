@@ -30,7 +30,6 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASSWORD", "zeidh123"),# default password
         "HOST": os.getenv("DB_HOST", "localhost"),
         "PORT": os.getenv("DB_PORT", "5432"),
-
         },
     }
 
