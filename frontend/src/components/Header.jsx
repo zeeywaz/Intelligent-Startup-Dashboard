@@ -123,8 +123,8 @@ export default function Header() {
         {/* Right side */}
         <div className="header__right">
           <nav className="nav-right" aria-label="Primary">
-            <a href="/#about" className="nav__link">About Us</a>
-            <a href="/#contact" className="nav__link">Contact</a>
+            <Link to="/about" className="nav__link">About Us</Link>
+            <Link to="/contact" className="nav__link">Contact</Link>
           </nav>
 
           {/* Notifications */}

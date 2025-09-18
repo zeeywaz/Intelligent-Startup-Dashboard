@@ -13,11 +13,14 @@ import MyStartup from "./pages/mystartup.jsx";
 import ChatPage from "./pages/chatbot.jsx";
 import ProfilePage from "./pages/profile.jsx";
 import InvestorDashboard from "./pages/investordashboard.jsx";
+import About from "./pages/About.jsx";
+import Contact from "./pages/Contact.jsx";
+
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<UserDashboard />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/investor_signup" element={<InvestorSignUp />} />
@@ -34,6 +37,10 @@ export default function App() {
       <Route path="/chatbot" element={<ChatPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/investordashboard" element={<InvestorDashboard />} />
+
+      {/* NEW routes */}
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

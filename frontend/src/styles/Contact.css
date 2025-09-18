@@ -1,0 +1,102 @@
+/* Full page gradient background */
+.contact-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #f7f7ff, #e6e1f9);
+}
+
+/* Contact card */
+.contact-card {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 16px;
+  max-width: 700px;
+  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Hero text */
+.contact-card h1 {
+  text-align: center;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1c1c1c;
+}
+
+.contact-card p {
+  text-align: center;
+  color: #555;
+  font-size: 16px;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+/* Form */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.contact-form label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 16px;
+  background: #fafafa;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: #6c63ff;
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 6px rgba(108, 99, 255, 0.4);
+}
+
+/* Button */
+.contact-form button {
+  background: linear-gradient(135deg, #6c63ff, #4834d4);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.contact-form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(72, 52, 212, 0.25);
+}
+
+/* Success message */
+.contact-success {
+  text-align: center;
+  padding: 40px;
+  background: #f9f9ff;
+  border: 1px solid #e0e0f7;
+  border-radius: 14px;
+}
+
+.contact-success h2 {
+  font-size: 28px;
+  color: #4834d4;
+  margin-bottom: 12px;
+}

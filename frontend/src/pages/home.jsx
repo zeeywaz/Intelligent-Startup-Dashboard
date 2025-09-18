@@ -47,8 +47,12 @@ function Header({ className }) {
 
           {/* Desktop nav */}
           <ul className="nav md:flex hidden" role="list">
-            <li><a href="#about" className="nav__link">About Us</a></li>
-            <li><a href="#contact" className="nav__link">Contact</a></li>
+            <li>
+              <Link to="/about" className="nav_link">About Us</Link>
+            </li>
+            <li>
+              <Link to="/contact" className="nav_link">Contact</Link>
+            </li>
           </ul>
 
           {/* Auth */}
