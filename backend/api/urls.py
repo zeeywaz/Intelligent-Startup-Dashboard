@@ -1,6 +1,10 @@
-# backend/api/urls.py
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
+
+router = DefaultRouter()
+router.register("categories", views.CategoryViewSet, basename="category")
+router.register("competitors", views.CompetitorViewSet, basename="competitor")
 
 urlpatterns = [
     # bootstrap / health
@@ -15,6 +19,9 @@ urlpatterns = [
     path("me/", views.me, name="me"),
 
     # profile
-    path("profile/", views.profile_update, name="profile_update"),  # PATCH/PUT
+    path("profile/", views.profile_update, name="profile_update"),
     path("profile/change-password/", views.change_password, name="change_password"),
+
+    # competitors & categories
+    path("", include(router.urls)),
 ]

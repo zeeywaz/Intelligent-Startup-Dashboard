@@ -65,9 +65,9 @@ TEMPLATES = [
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "ideaforge_dev",
-        "USER": "postgres",
-        "PASSWORD": "zeidh123",
+        "NAME": "IdeaForge",
+        "USER": "nabeel_naushad",
+        "PASSWORD": "Nabeel123",
         "HOST": "localhost",
         "PORT": "5432",
     }

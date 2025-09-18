@@ -327,6 +327,39 @@ def change_password(request):
 # --------------------------------------------------------------------------
 # Root
 # --------------------------------------------------------------------------
+# --- Competitors / Categories API ---
+
+from rest_framework import viewsets, filters
+from rest_framework.permissions import AllowAny
+from .models import BusinessCategory, Competitor
+from .serializers import BusinessCategorySerializer, CompetitorSerializer
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = BusinessCategory.objects.all()
+    serializer_class = BusinessCategorySerializer
+    permission_classes = [AllowAny]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name"]
+
+class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Competitor.objects.select_related("category").all()
+    serializer_class = CompetitorSerializer
+    permission_classes = [AllowAny]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "description", "strength", "category__name"]
+    ordering_fields = ["name"]
+    ordering = ["name"]
+
+    # Optional filter: ?category=<id or name>
+    def get_queryset(self):
+        qs = super().get_queryset()
+        cat = self.request.query_params.get("category")
+        if cat:
+            if str(cat).isdigit():
+                qs = qs.filter(category_id=int(cat))
+            else:
+                qs = qs.filter(category__name__icontains=cat)
+        return qs
 
 def root_ok(_request):
     return JsonResponse({"status": "ok", "app": "IdeaForge API"})

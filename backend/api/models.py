@@ -80,3 +80,32 @@ class UserRole(models.Model):
         db_table = "user_role"
         managed = False
         unique_together = (("auth_user", "role"),)
+
+# --- Competitors / Categories (maps to existing Postgres tables) ---
+
+class BusinessCategory(models.Model):
+    id = models.AutoField(primary_key=True, db_column="category_id")
+    name = models.CharField(max_length=120)
+
+    class Meta:
+        db_table = "business_category"
+        managed = False  # table already exists
+
+
+class Competitor(models.Model):
+    id = models.AutoField(primary_key=True, db_column="competitor_id")
+    category = models.ForeignKey(
+        BusinessCategory,
+        models.DO_NOTHING,
+        db_column="category_id",
+        related_name="competitors",
+    )
+    name = models.CharField(max_length=160)
+    strength = models.TextField(blank=True)
+    website = models.CharField(max_length=255, blank=True)  # change to URLField if you want
+    description = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "competitor"
+        managed = False
+        ordering = ["name"]

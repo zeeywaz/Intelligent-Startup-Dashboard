@@ -25,12 +25,11 @@ MIDDLEWARE = [
 DATABASES = {
     "default": {
         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-        "NAME": os.getenv("DB_NAME", "ideaforge_dev"),         # default DB name
-        "USER": os.getenv("DB_USER", "postgres"),    # default username
-        "PASSWORD": os.getenv("DB_PASSWORD", "zeidh123"),# default password
+        "NAME": os.getenv("DB_NAME", "IdeaForge"),         # default DB name
+        "USER": os.getenv("DB_USER", "nabeel_naushad"),    # default username
+        "PASSWORD": os.getenv("DB_PASSWORD", "Nabeel123"),# default password
         "HOST": os.getenv("DB_HOST", "localhost"),
         "PORT": os.getenv("DB_PORT", "5432"),
-
         },
     }
 
