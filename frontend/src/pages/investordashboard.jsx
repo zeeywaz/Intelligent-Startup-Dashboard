@@ -5,7 +5,7 @@ import Footer from "../components/footer";
 import Card from "../components/Card";
 import { Store, BrainCircuit, Wallet } from "lucide-react";
 import { PieChart, Pie, Tooltip, Cell, Legend } from "recharts";
-import "../styles/userdashboard.css";      // 👈 reuse the same theme
+import "../styles/investor_dashboard.css";      // 👈 reuse the same theme
 // (Optionally keep investor-specific css for the right list only)
 // import "../styles/investor_dashboard.css";
 import { API_BASE } from "../lib/api";

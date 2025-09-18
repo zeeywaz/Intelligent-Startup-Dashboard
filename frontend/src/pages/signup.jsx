@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "../styles/signup.css";
 import { API_BASE, getCookie } from "../lib/api";
 
@@ -82,7 +82,15 @@ export default function SignUpPage() {
 
   return (
     <div className="reg-app">
-      <a href="/" className="reg-brand" aria-label="IdeaForge home">ideaForge</a>
+      <Link to="/" className="auth-brand" aria-label="IdeaForge home">
+  <img
+    src="/logo-black.png"   // or /logo-white.png depending on background
+    alt="IdeaForge"
+    className="auth-logo"
+    height={40}
+  />
+</Link>
+
       <main id="main" className="reg-main" role="main">
         <section className="reg-card" aria-label="Create account">
           <header className="reg-head">

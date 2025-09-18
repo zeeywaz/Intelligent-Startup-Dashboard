@@ -44,7 +44,15 @@ export default function LoginPage() {
 
   return (
     <div className="auth-app">
-      <Link to="/" className="auth-brand" aria-label="IdeaForge home">ideaForge</Link>
+      <Link to="/" className="auth-brand" aria-label="IdeaForge home">
+  <img
+    src="/logo-black.png"   // or /logo-white.png depending on background
+    alt="IdeaForge"
+    className="auth-logo"
+    height={40}
+  />
+</Link>
+
       <main id="main" className="auth-main" role="main">
         <section className="auth-card" aria-label="Login">
           <header className="auth-head">

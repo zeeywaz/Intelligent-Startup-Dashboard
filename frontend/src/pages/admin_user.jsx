@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
-import "../styles/admin.css";
+import "../styles/admin_user.css";
 
 /* Small UI helpers */
 function Badge({ kind = "pending", children }) {
@@ -31,7 +31,7 @@ function Modal({ open, title, onClose, children }) {
   );
 }
 
-export default function AdminDashboard() {
+export default function AdminUser() {
   /* ---- Sample data (add your real API later) ---- */
   const [pending, setPending] = useState([
     {

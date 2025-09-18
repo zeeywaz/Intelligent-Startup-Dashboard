@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "../styles/investor_signup.css";
 import { API_BASE, getCookie } from "../lib/api";
 
@@ -116,7 +116,15 @@ export default function InvestorSignUpPage() {
 
   return (
     <div className="regv-app">
-      <a href="/" className="regv-brand" aria-label="IdeaForge home">ideaForge</a>
+      <Link to="/" className="auth-brand" aria-label="IdeaForge home">
+  <img
+    src="/logo-black.png"   // or /logo-white.png depending on background
+    alt="IdeaForge"
+    className="auth-logo"
+    height={40}
+  />
+</Link>
+
 
       <main id="main" className="regv-main" role="main">
         <section className="regv-card" aria-label="Create account with verification">
