@@ -1,6 +1,7 @@
-# backend/api/models.py
 from django.conf import settings
 from django.db import models
+import os
+from uuid import uuid4
 
 # --- Investor verification ---
 
@@ -12,25 +13,18 @@ class InvestorProfile(models.Model):
         db_column="user_id",
         related_name="investor_profile",
     )
-    company = models.CharField(max_length=120, default="", blank=True)  # NOT NULL in DB
-    phone = models.CharField(max_length=40, default="", blank=True)     # NOT NULL in DB
-    role = models.CharField(max_length=80, default="", blank=True)      # NOT NULL in DB
-    verify_type = models.CharField(max_length=40, default="", blank=True)  # NOT NULL in DB
+    company = models.CharField(max_length=120, default="", blank=True)
+    phone = models.CharField(max_length=40, default="", blank=True)
+    role = models.CharField(max_length=80, default="", blank=True)
+    verify_type = models.CharField(max_length=40, default="", blank=True)
 
     class Meta:
         db_table = "api_investorprofile"
         managed = False
 
 
-# at top
-import os
-from uuid import uuid4
-
-# ...
-
 def investor_doc_path(instance, filename):
-    # keep only extension, randomize filename, ensure total path << 100 chars
-    ext = os.path.splitext(filename)[1].lower()[:10]  # like ".png" / ".pdf"
+    ext = os.path.splitext(filename)[1].lower()[:10]
     return f"investor_docs/{uuid4().hex}{ext}"
 
 class InvestorVerificationDoc(models.Model):
@@ -81,6 +75,7 @@ class UserRole(models.Model):
         managed = False
         unique_together = (("auth_user", "role"),)
 
+<<<<<<< HEAD
 # --- Competitors / Categories (maps to existing Postgres tables) ---
 
 class BusinessCategory(models.Model):
@@ -107,5 +102,23 @@ class Competitor(models.Model):
 
     class Meta:
         db_table = "competitor"
+=======
+
+# --- Resources (matches table `resource`) ---
+
+class Resource(models.Model):
+    resource_id = models.AutoField(primary_key=True, db_column="resource_id")
+    category_id = models.IntegerField(db_column="category_id")
+    name = models.CharField(max_length=255, db_column="name")
+    description = models.TextField(blank=True, default="", db_column="description")
+    website = models.CharField(max_length=255, blank=True, default="", db_column="website")
+    location = models.CharField(max_length=255, blank=True, default="", db_column="location")
+    # DB type is `point`; we read it as text like "(lon,lat)"
+    geo_data = models.CharField(max_length=128, blank=True, default="", db_column="geo_data")
+    type = models.CharField(max_length=100, db_index=True, db_column="type")  # WAREHOUSE/...
+
+    class Meta:
+        db_table = "resource"   # ← actual populated table
+>>>>>>> 518b9efcf52a9f71913b40bdc9887d09f48b172e
         managed = False
         ordering = ["name"]

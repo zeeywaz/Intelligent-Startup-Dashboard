@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import "../styles/profile.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
-import { Pencil, Camera, Trash, Lock } from "lucide-react";
+import { Pencil, Camera, Trash, Lock, Delete } from "lucide-react";
 import { API_BASE } from "../lib/api";
 
 /* small helper to read csrftoken cookie */
@@ -224,6 +224,7 @@ export default function ProfilePage() {
     if (window.confirm("Delete your account? This cannot be undone.")) {
       // TODO: implement delete endpoint if you actually want this
       alert("Account deletion requested.");
+      
     }
   };
 

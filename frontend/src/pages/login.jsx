@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   const canSubmit = useMemo(() => {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
-    return emailOk && form.password.trim().length >= 6;
+    return emailOk && form.password.trim().length >= 1;
   }, [form]);
 
   const onSubmit = async (e) => {
@@ -35,10 +35,10 @@ export default function LoginPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error("Incorrect email or password.");
       navigate(data?.next || "/userdashboard");
     } catch (e2) {
-      setErr(e2.message || "Invalid credentials or server unavailable.");
+      setErr(e2.message || "Incorrect email or password.");
     }
   };
 
@@ -62,7 +62,7 @@ export default function LoginPage() {
             <div className="auth-field auth-field--password">
               <input id="password" type={showPwd ? "text" : "password"}
                      autoComplete="current-password" placeholder="Password" className="auth-input"
-                     value={form.password} onChange={update("password")} required minLength={6}/>
+                     value={form.password} onChange={update("password")} required />
               <button type="button" className="auth-toggle"
                       onClick={() => setShowPwd((v) => !v)}
                       aria-pressed={showPwd}>

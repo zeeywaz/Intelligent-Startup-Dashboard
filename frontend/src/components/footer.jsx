@@ -10,9 +10,15 @@ export default function Footer() {
       <div className="footer-grid">
         {/* Logo / Left section */}
         <div>
-          <h1 className="logo">
-            IdeaForge
-          </h1>
+          <Link to="/userdashboard" aria-label="IdeaForge Home" className="footer-logo-link">
+            <img
+              src="/logo-white.png"
+              alt="IdeaForge"
+              className="footer-logo"
+              height={40}
+              width={200}
+            />
+          </Link>
 
           {/* Social Icons */}
           <div className="footer-socials">
@@ -38,8 +44,8 @@ export default function Footer() {
         <div className="footer-section left-align">
           <h2>Explore</h2>
           <ul>
-            <li><Link to="/dashboard">Navigation</Link></li>
-            <li><Link to="/dashboard#analytics">Analytics</Link></li>
+            <li><Link to="/userdashboard">Navigation</Link></li>
+            <li><a href="/userdashboard#analytics">Analytics</a></li>
           </ul>
         </div>
 
@@ -68,8 +74,7 @@ export default function Footer() {
         </p>
         <p>
           <MapPin size={18} className="icon" />
-          <span>Location:</span>&nbsp;
-          123 Sample St. Colombo
+          <span>Location:</span>&nbsp; 123 Sample St. Colombo
         </p>
       </div>
 

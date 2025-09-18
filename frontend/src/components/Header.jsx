@@ -5,18 +5,17 @@ import { Menu, X, Bell, BellDot, Mail } from "lucide-react";
 import { API_BASE } from "../lib/api";
 
 export default function Header() {
-  const [open, setOpen] = useState(false);              // mobile nav
+  const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const [userInitial, setUserInitial] = useState("?");  // initial in the circle
-  const [userName, setUserName] = useState("");         // for tooltip if you want
-  const [notifications, setNotifications] = useState([]); // [{id, title, body, created_at, read}]
+  const [userInitial, setUserInitial] = useState("?");
+  const [userName, setUserName] = useState("");
+  const [notifications, setNotifications] = useState([]);
 
   const profileRef = useRef(null);
   const notifRef = useRef(null);
 
-  // Fetch minimal session info → initial for profile button
   useEffect(() => {
     (async () => {
       try {
@@ -36,23 +35,19 @@ export default function Header() {
     })();
   }, []);
 
-  // (Optional) Fetch notifications; if you don’t have this endpoint yet, keep as stub
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/notifications/`, { credentials: "include" });
         if (!res.ok) throw new Error();
         const j = await res.json();
-        // Expect j = [{id, title, body, created_at, read}, ...]
         setNotifications(Array.isArray(j) ? j : []);
       } catch {
-        // Fallback: no notifications
         setNotifications([]);
       }
     })();
   }, []);
 
-  // Close menus on ESC
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -65,7 +60,6 @@ export default function Header() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Auto-close mobile on resize
   useEffect(() => {
     const onResize = () => {
       if (window.innerWidth >= 768) setOpen(false);
@@ -74,7 +68,6 @@ export default function Header() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Click outside to close popovers
   useEffect(() => {
     const onDown = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -90,9 +83,10 @@ export default function Header() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const signOut = () => {
-    try { localStorage.removeItem("token"); } catch {}
-    // If you wired a backend logout: await fetch(`${API_BASE}/api/logout/`, {method:"POST", credentials:"include"});
+  const signOut = async () => {
+    try {
+      await fetch(`${API_BASE}/api/logout/`, { method: "POST", credentials: "include" });
+    } catch {}
     window.location.assign("/login");
   };
 
@@ -101,7 +95,7 @@ export default function Header() {
       <a className="skip-link" href="#main">Skip to content</a>
 
       <div className="header__row">
-        {/* Left: brand + burger */}
+        {/* Left: burger + logo */}
         <div className="header__left">
           <button
             className="menu-btn"
@@ -114,11 +108,19 @@ export default function Header() {
           </button>
 
           <h1 className="site-logo">
-            <Link to="/userdashboard" className="site-logo__link">IdeaForge</Link>
+            <Link to="/userdashboard" className="site-logo__link" aria-label="IdeaForge Home">
+              <img
+                src="/logo-black.png"
+                alt="IdeaForge"
+                className="site-logo__img"
+                height={36}
+                width={180}
+              />
+            </Link>
           </h1>
         </div>
 
-        {/* Right: About / Contact + bell + profile */}
+        {/* Right side */}
         <div className="header__right">
           <nav className="nav-right" aria-label="Primary">
             <a href="/#about" className="nav__link">About Us</a>
@@ -165,7 +167,7 @@ export default function Header() {
             )}
           </div>
 
-          {/* Profile */}
+          {/* Profile menu */}
           <div className="profile-wrap" ref={profileRef}>
             <button
               className="profile-btn"
@@ -202,15 +204,21 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile dropdown sheet (same links) */}
+      {/* Mobile sheet */}
       <nav
         id="mobile-nav"
         className={`nav-mobile ${open ? "nav-mobile--open" : ""}`}
         aria-label="Mobile"
       >
-        <a href="/#about" className="nav-mobile__link" onClick={() => setOpen(false)}>About Us</a>
-        <a href="/#contact" className="nav-mobile__link" onClick={() => setOpen(false)}>Contact</a>
-        <Link to="/profile" className="nav-mobile__link" onClick={() => setOpen(false)}>Profile</Link>
+        <a className="nav-mobile__link" href="/#about" onClick={() => setOpen(false)}>
+          About Us
+        </a>
+        <a className="nav-mobile__link" href="/#contact" onClick={() => setOpen(false)}>
+          Contact
+        </a>
+        <Link className="nav-mobile__link" to="/resources" onClick={() => setOpen(false)}>
+          Resources
+        </Link>
       </nav>
     </header>
   );
