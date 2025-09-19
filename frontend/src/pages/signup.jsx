@@ -72,7 +72,7 @@ export default function SignUpPage() {
         throw new Error(Array.isArray(firstErr) ? firstErr.join(" ") : String(firstErr));
       }
 
-      nav(data?.next || "/userdashboard", { replace: true });
+      nav(data?.next || "/chatbot", { replace: true });
     } catch (e2) {
       setErr(e2.message || "Something went wrong.");
     } finally {

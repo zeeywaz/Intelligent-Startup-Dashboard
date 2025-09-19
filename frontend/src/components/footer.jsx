@@ -1,16 +1,49 @@
 // Footer.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./footer.css";
 import { Mail, Phone, MapPin, Twitter, Instagram, Youtube, Linkedin } from "lucide-react";
 import { Link } from "react-router-dom";
+import { API_BASE } from "../lib/api";
 
 export default function Footer() {
+  // role-aware destinations (same logic as Header)
+  const [homePath, setHomePath] = useState("/");
+  const [roles, setRoles] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/me/`, { credentials: "include" });
+        const j = await r.json();
+        if (j?.authenticated) {
+          const rs = j.roles || [];
+          setRoles(rs);
+          const computed =
+            rs.includes("Investor") ? "/investordashboard" :
+            rs.includes("Admin")    ? "/admindashboard"    :
+                                      "/userdashboard";
+          setHomePath(j.next || computed);
+        } else {
+          setRoles([]);
+          setHomePath("/");
+        }
+      } catch {
+        setRoles([]);
+        setHomePath("/");
+      }
+    })();
+  }, []);
+
+  // show analytics only on the entrepreneur dashboard (where charts exist)
+  const showAnalytics = roles.length === 0 || (!roles.includes("Admin") && !roles.includes("Investor"));
+  const analyticsHref = "/userdashboard#analytics";
+
   return (
     <footer className="footer">
       <div className="footer-grid">
         {/* Logo / Left section */}
         <div>
-          <Link to="/userdashboard" aria-label="IdeaForge Home" className="footer-logo-link">
+          <Link to={homePath} aria-label="IdeaForge Home" className="footer-logo-link">
             <img
               src="/logo-white.png"
               alt="IdeaForge"
@@ -22,10 +55,10 @@ export default function Footer() {
 
           {/* Social Icons */}
           <div className="footer-socials">
-            <a href="/#" aria-label="Twitter"><Twitter size={20} /></a>
-            <a href="/#" aria-label="Instagram"><Instagram size={20} /></a>
-            <a href="/#" aria-label="YouTube"><Youtube size={20} /></a>
-            <a href="/#" aria-label="LinkedIn"><Linkedin size={20} /></a>
+            <a href="https://twitter.com/" target="_blank" rel="noreferrer" aria-label="Twitter"><Twitter size={20} /></a>
+            <a href="https://instagram.com/" target="_blank" rel="noreferrer" aria-label="Instagram"><Instagram size={20} /></a>
+            <a href="https://youtube.com/" target="_blank" rel="noreferrer" aria-label="YouTube"><Youtube size={20} /></a>
+            <a href="https://linkedin.com/" target="_blank" rel="noreferrer" aria-label="LinkedIn"><Linkedin size={20} /></a>
           </div>
         </div>
 
@@ -44,8 +77,10 @@ export default function Footer() {
         <div className="footer-section left-align">
           <h2>Explore</h2>
           <ul>
-            <li><Link to="/userdashboard">Navigation</Link></li>
-            <li><a href="/userdashboard#analytics">Analytics</a></li>
+            <li><Link to={homePath}>Navigation</Link></li>
+            {showAnalytics && (
+              <li><a href={analyticsHref}>Analytics</a></li>
+            )}
           </ul>
         </div>
 
@@ -53,9 +88,9 @@ export default function Footer() {
         <div className="footer-section left-align">
           <h2>Resources</h2>
           <ul>
-            <li><a href="/#about">About Us</a></li>
-            <li><a href="/#contact">Contact</a></li>
-            <li><a href="/#contact">Help Us Improve</a></li>
+            <li><a href="/about">About Us</a></li>
+            <li><a href="/contact">Contact</a></li>
+            <li><a href="/contact">Help Us Improve</a></li>
           </ul>
         </div>
       </div>

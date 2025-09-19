@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import "../styles/profile.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
-import { Pencil, Camera, Trash, Lock, Delete } from "lucide-react";
+import { Pencil, Camera, Trash, Lock } from "lucide-react";
 import { API_BASE } from "../lib/api";
 
-/* small helper to read csrftoken cookie */
+/* ---------- small helper to read csrftoken cookie ---------- */
 function getCSRFCookie() {
   const m = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
   return m ? decodeURIComponent(m[2]) : "";
@@ -169,6 +169,7 @@ export default function ProfilePage() {
   const [err, setErr] = useState("");
 
   const [pwdOpen, setPwdOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const update = (key) => (e) => setForm((s) => ({ ...s, [key]: e.target.value }));
 
@@ -187,7 +188,7 @@ export default function ProfilePage() {
             username:  u.username  || "",
           });
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     })();
@@ -220,11 +221,36 @@ export default function ProfilePage() {
     }
   };
 
-  const onDelete = () => {
-    if (window.confirm("Delete your account? This cannot be undone.")) {
-      // TODO: implement delete endpoint if you actually want this
-      alert("Account deletion requested.");
-      
+  const onDelete = async () => {
+    if (!window.confirm("Delete your account? This cannot be undone.")) return;
+
+    try {
+      setDeleting(true);
+      setErr(""); setStatusMsg("");
+
+      const res = await fetch(`${API_BASE}/api/account/`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCSRFCookie() },
+      });
+
+      if (res.status === 204) {
+        setStatusMsg("Your account has been deleted.");
+        // Redirect after a brief pause
+        setTimeout(() => {
+          // Clear any local session/UI and go to landing or login
+          window.location.href = "/";
+        }, 800);
+      } else if (res.status === 401) {
+        setErr("Please log in to delete your account.");
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setErr(j?.error || `Delete failed (HTTP ${res.status}).`);
+      }
+    } catch (e) {
+      setErr(e.message || "Network error while deleting account.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -303,8 +329,13 @@ export default function ProfilePage() {
 
         {/* Danger zone */}
         <div className="prof-danger">
-          <button type="button" className="prof-btn prof-btn--danger" onClick={onDelete}>
-            <span>Delete Account</span>
+          <button
+            type="button"
+            className="prof-btn prof-btn--danger"
+            onClick={onDelete}
+            disabled={deleting}
+          >
+            <span>{deleting ? "Deleting…" : "Delete Account"}</span>
             <Trash size={18} aria-hidden />
           </button>
         </div>

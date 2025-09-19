@@ -1,15 +1,16 @@
 from django.contrib.auth import get_user_model, authenticate, login, logout, update_session_auth_hash
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.db.models import Q
 
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes, authentication_classes
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import viewsets, filters
 from rest_framework.permissions import AllowAny
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
 from .serializers import (
     ResourceSerializer,
@@ -17,6 +18,8 @@ from .serializers import (
     PasswordChangeSerializer,
     BusinessCategorySerializer,
     CompetitorSerializer,
+    RegisterSerializer,
+    InvestorRegisterSerializer,
 )
 from .models import (
     InvestorProfile,
@@ -30,6 +33,9 @@ from .models import (
 
 User = get_user_model()
 
+
+
+
 # ----------------- CSRF -----------------
 @api_view(["GET"])
 @ensure_csrf_cookie
@@ -37,15 +43,79 @@ def csrf(request):
     return Response({"csrfToken": get_token(request)}, status=200)
 
 # ----------------- Auth -----------------
-@api_view(["POST"])
-@parser_classes([JSONParser])
-def register(request):
-    return Response({"error": "register endpoint not wired in this snippet"}, status=501)
+from rest_framework.decorators import permission_classes  # already used later
 
 @api_view(["POST"])
-@parser_classes([MultiPartParser, FormParser])
+@permission_classes([AllowAny])
+@parser_classes([JSONParser])
+def register(request):
+    """
+    Sign up a regular user, attach default 'User' role if present, and log them in.
+    Expected JSON: { firstName, lastName, username, email, password }
+    """
+    ser = RegisterSerializer(data=request.data)
+    if not ser.is_valid():
+        return Response({"error": ser.errors}, status=400)
+
+    user = ser.save()
+
+    # optional: attach default role "User" if exists in your DB
+    try:
+        role = Role.objects.get(role_name__iexact="User")
+        UserRole.objects.get_or_create(auth_user=user, role=role)
+    except Role.DoesNotExist:
+        pass
+
+    # auto-login after registration (useful for your UX)
+    login(request, user)
+
+    return Response({
+        "message": "Registration successful",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "firstName": user.first_name,
+            "lastName": user.last_name,
+        },
+        "next": "/chatbot",
+    }, status=201)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@parser_classes([JSONParser, MultiPartParser, FormParser])
 def investor_register(request):
-    return Response({"error": "investor_register endpoint not wired in this snippet"}, status=501)
+    """
+    Investor registration. Accepts same fields as RegisterSerializer, plus:
+      company, phone, role (string)
+    """
+    ser = InvestorRegisterSerializer(data=request.data)
+    if not ser.is_valid():
+        return Response({"error": ser.errors}, status=400)
+
+    user = ser.save()
+
+    # optional: attach "Investor" role if present
+    try:
+        inv_role = Role.objects.get(role_name__iexact="Investor")
+        UserRole.objects.get_or_create(auth_user=user, role=inv_role)
+    except Role.DoesNotExist:
+        pass
+
+    login(request, user)
+
+    return Response({
+        "message": "Registration successful",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "firstName": user.first_name,
+            "lastName": user.last_name,
+        },
+        "next": "/investordashboard",
+    }, status=201)
 
 @api_view(["POST"])
 @parser_classes([JSONParser])
@@ -190,3 +260,51 @@ class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
 # ----------------- Root -----------------
 def root_ok(_request):
     return JsonResponse({"status": "ok", "app": "IdeaForge API"})
+
+
+
+
+
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import authentication_classes, permission_classes
+
+# keep session auth, but disable CSRF check for THIS endpoint only
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  # disable CSRF validation here
+
+@csrf_exempt
+@api_view(["POST"])
+@authentication_classes([CsrfExemptSessionAuthentication, BasicAuthentication])
+@permission_classes([AllowAny])
+@parser_classes([JSONParser])
+def classify_idea(request):
+    text = (request.data.get("text") or "").strip()
+    top_k = int(request.data.get("top_k") or 3)
+    if not text:
+        return Response({"error": "text is required"}, status=400)
+    try:
+        from .ml_predictor import predict
+        out = predict(text, top_k=top_k, ensure_min_suggs=3)
+        return Response({"input": text, **out}, status=200)
+    except Exception as e:
+        return Response({"error": f"{type(e).__name__}: {e}"}, status=500)
+
+
+from rest_framework.permissions import IsAuthenticated
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_account(request):
+    """
+    Permanently delete the currently authenticated user.
+    Uses DB FK ON DELETE CASCADE to clean related rows.
+    Requires CSRF (do NOT exempt in production).
+    """
+    user = request.user
+    # Optionally: you can do extra cleanup here before delete()
+    user.delete()
+    # After deletion, the session is invalid, but return 204 to the client.
+    return Response(status=204)

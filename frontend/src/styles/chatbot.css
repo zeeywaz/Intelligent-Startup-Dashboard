@@ -1,119 +1,150 @@
-/* All classes prefixed with .ibot- to avoid collisions */
-
-/* Page wrapper with its own background (no body overrides) */
+/* ---------- Page shell ---------- */
 .ibot-app{
   min-height:100vh;
   display:flex;
   flex-direction:column;
-  background: radial-gradient(1200px 800px at 50% 20%, #417A99 0%, #2E3444 70%);
-  color:#fff;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+  background: radial-gradient(1200px 800px at 50% 18%, #3f7997 0%, #243141 70%);
+  color:#eef3f8;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Header */
-.ibot-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:16px 24px;
+/* Top-left logo */
+.ibot-logo-left{
+  position:fixed; left:18px; top:14px; z-index:10;
 }
+.auth-logo{ height:32px; opacity:.95; }
 
-.ibot-logo{
-  margin:0;
-  background:none;
-  border:none;
-  color:#000;               /* black brand like your spec */
-  font-weight:800;
-  letter-spacing:.04em;
-  font-size:clamp(24px, 2.6vw, 40px);
-  cursor:pointer;
-}
-
-.ibot-icon-btn{
-  background:transparent;
-  border:0;
-  cursor:pointer;
-  color:#fff;
-}
-.ibot-user-icon{ width:44px; height:44px; }
-
-/* Main */
+/* ---------- Main ---------- */
 .ibot-main{
-  flex:1;
-  display:grid;
-  place-items:center;
-  text-align:center;
-  padding:24px 16px 80px; /* extra bottom padding so button doesn't overlap */
-  gap:24px;
+  flex:1; display:flex; align-items:center; justify-content:flex-start;
+  flex-direction:column; padding:92px 16px 96px; gap:18px;
 }
 
+/* Title */
 .ibot-title{
-  margin:0;
-  font-weight:800;
-  line-height:1.25;
-  letter-spacing:.06em;
-  font-size:clamp(26px, 4vw, 44px);
+  text-align:center; margin:0 0 6px;
+  font-weight:900; letter-spacing:.02em;
+  line-height:1.1;
+  font-size:clamp(28px, 3.6vw, 44px);
+  color:#ffffff;
+  text-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+.ibot-title span{
+  display:block; margin-top:6px;
+  font-weight:800; opacity:.92; font-size:clamp(18px,2vw,22px);
 }
 
-/* Input area */
-.ibot-input-wrap{ width:min(100%, 1024px); }
+/* ---------- Input bar ---------- */
+.ibot-input-wrap{ width:min(1080px,94vw); }
 .ibot-input-inner{
   display:flex; align-items:center; gap:12px;
-  background:#fff; border-radius:999px; padding:12px 16px;
-  box-shadow: 9px 11px 8px rgba(0,0,0,.25);
+  background:#0f172a; border-radius:16px; padding:10px 12px;
+  border:1px solid #1f2a44;
+  box-shadow:0 12px 30px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
 }
-
 .ibot-addfiles-btn{ background:none; border:0; cursor:pointer; }
-.ibot-plus{ width:24px; height:24px; fill:#000; }
-
+.ibot-plus{ width:22px; height:22px; fill:#c5d2e6; }
 .ibot-hidden-file{ display:none; }
 
 .ibot-input{
-  flex:1;
-  border:0; outline:0;
-  background:transparent;
-  color:#111;
-  font-weight:700; font-size:18px;
+  flex:1; background:transparent; border:0; outline:0;
+  color:#e8f0ff; font-size:16.5px; font-weight:600;
+}
+.ibot-input::placeholder{ color:#a9b7cd; font-weight:600; }
+
+.ibot-submit-btn{ background:#0b1021; border:1px solid #1e2944; border-radius:12px; padding:8px 10px; cursor:pointer; }
+.ibot-submit-btn:hover{ background:#0d142a; }
+.ibot-send{ fill:#eaf2ff; width:20px; height:20px; display:block; }
+
+/* Busy state */
+.ibot-input-inner.busy{ opacity:.85; }
+
+/* ---------- Chat thread ---------- */
+.ibot-chat{
+  width:min(980px,94vw);
+  margin:6px auto 0;
+  display:flex; flex-direction:column; gap:14px;
 }
 
-.ibot-submit-btn{ background:none; border:0; cursor:pointer; }
-.ibot-upload{ width:64px; height:58px; }
-.ibot-upload rect{ fill:#000; }
+/* Bubbles */
+.ibot-bubble-row{ display:flex; gap:10px; }
+.ibot-bubble-row.user{ justify-content:flex-end; }
+.ibot-bubble-row.assistant{ justify-content:flex-start; }
 
-/* Files list */
-.ibot-files-list{
-  list-style:none; margin:10px 0 0; padding:0;
-  text-align:left; color:#fff; font-size:.95rem;
-}
-.ibot-files-list li{
-  display:flex; justify-content:space-between; align-items:center;
-  gap:8px; padding-top:4px;
-}
-.ibot-files-list button{
-  background:none; border:0; color:#ff6b6b; cursor:pointer; font-size:1rem;
+.ibot-avatar{
+  width:28px; height:28px; border-radius:8px; object-fit:contain;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.35));
+  margin-top:3px;
 }
 
-/* Example */
+.ibot-bubble{
+  max-width:780px; padding:14px 16px; border-radius:16px;
+  background:linear-gradient(180deg, #0e1628, #0b1323);
+  border:1px solid #1e2a44;
+  color:#f3f7ff; line-height:1.6; font-size:16px;
+  box-shadow:0 14px 34px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.04);
+  white-space:pre-wrap; overflow:hidden;
+}
+
+/* Card inside assistant message */
+.ibot-card{
+  display:flex; flex-direction:column; gap:12px;
+}
+.ibot-kv{ display:flex; gap:10px; align-items:center; }
+.ibot-kv b{ min-width:128px; font-weight:800; color:#fff; }
+.ibot-kv span{ color:#d7e2f3; }
+
+.ibot-suggs{ margin-top:4px; padding:10px 12px; border-radius:12px;
+  background:linear-gradient(180deg, #0f1a30, #0e172a);
+  border:1px solid #223154;
+}
+.ibot-suggs-title{ font-weight:800; margin-bottom:6px; color:#fff; }
+.ibot-suggs ul{ margin:0; padding-left:18px; display:grid; gap:6px; }
+.ibot-suggs li{ color:#e7f0ff; }
+
+/* Typing indicator and skeleton */
+.ibot-dots{ display:inline-flex; gap:4px; align-items:center; }
+.ibot-dots span{ display:inline-block; width:6px; height:6px; border-radius:50%;
+  background:#cfe0ff; opacity:.35; animation:ibotDot 1.2s infinite ease-in-out;
+}
+.ibot-dots span:nth-child(2){ animation-delay:.15s; }
+.ibot-dots span:nth-child(3){ animation-delay:.3s; }
+@keyframes ibotDot{
+  0%,80%,100%{ transform:translateY(0); opacity:.35;}
+  40%{ transform:translateY(-4px); opacity:1;}
+}
+
+.ibot-thinking{ padding:4px 4px 6px 38px; }
+.ibot-skel{
+  height:16px; width:56%; border-radius:7px;
+  background:linear-gradient(90deg,#ffffff14,#ffffff2b,#ffffff14);
+  animation:ibotSkel 1.2s infinite linear; background-size:200%;
+}
+.ibot-skel.short{ width:38%; margin-top:8px; }
+@keyframes ibotSkel{ to{ background-position:-200% 0; } }
+
+/* Example line */
 .ibot-example{
-  color:#D1D5DB;
-  font-size:clamp(16px, 2.2vw, 20px);
-  line-height:1.55;
-  max-width:960px;
-  margin:0;
+  color:#cbd7ea; opacity:.85; text-align:center;
+  font-size:clamp(14px,1.9vw,16px);
+  margin-top:6px;
 }
-.ibot-example-intro{ font-style:italic; }
-.ibot-example-quote{ display:block; font-style:italic; font-weight:700; }
+.ibot-example-intro{ font-weight:700; }
 
-/* Proceed button (bottom-right) */
+/* Proceed button */
 .ibot-to-dash{
-  position:fixed; right:16px; bottom:16px;
-  padding:10px 14px;
-  background:#ffffff;
-  color:#111;
-  border:1px solid rgba(0,0,0,.08);
-  border-radius:10px;
-  box-shadow:0 8px 20px rgba(0,0,0,.18);
-  font-weight:700;
-  cursor:pointer;
+  position:fixed; right:18px; bottom:18px;
+  padding:10px 14px; background:#ffffff; color:#0b1222;
+  border:1px solid rgba(0,0,0,.06); border-radius:12px;
+  box-shadow:0 14px 28px rgba(0,0,0,.22);
+  font-weight:800; cursor:pointer;
 }
 .ibot-to-dash:hover{ transform: translateY(-1px); }
+
+/* ---------- Small screens ---------- */
+@media (max-width:700px){
+  .ibot-title{ font-size:26px; }
+  .ibot-title span{ font-size:16px; }
+  .ibot-bubble{ font-size:15px; }
+  .ibot-kv b{ min-width:110px; }
+}

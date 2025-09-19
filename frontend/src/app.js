@@ -21,7 +21,7 @@ import Contact from "./pages/Contact.jsx";
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<UserDashboard />} />
+      <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/investor_signup" element={<InvestorSignUp />} />

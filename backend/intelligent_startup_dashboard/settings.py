@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # Your apps
     "backend.api",
     "backend.healthcheck",
+    
 ]
 
 # --- middleware (keep cors near the top, before CommonMiddleware) ---

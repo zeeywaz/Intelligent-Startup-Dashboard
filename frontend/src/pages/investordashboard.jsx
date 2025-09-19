@@ -52,9 +52,9 @@ export default function InvestorDashboard() {
 
           {/* Same cards row + your shared Card component */}
           <div className="ud-cards" style={{ marginTop: 8, marginBottom: 8 }}>
-            <Card icon={Store} label="Businesses / Startups" to="/startups" />
-            <Card icon={BrainCircuit} label="My Interests" to="/interests" />
-            <Card icon={Wallet} label="Sponsors / Investors" to="/investors" />
+            <Card icon={Store} label="Business & Startups" to="/competitors" />
+            <Card icon={Wallet} label=" Sponsors and Investors" to="/investors" />
+            <Card icon={BrainCircuit} label="My interest" to="/interests" />
           </div>
 
           {/* Same panel grid */}

@@ -119,3 +119,25 @@ class Resource(models.Model):
         db_table = "resource"   # ← actual populated table
         managed = False
         ordering = ["name"]
+
+
+
+from django.db import models
+
+class BusinessIdea(models.Model):
+    idea_id = models.AutoField(primary_key=True)
+    user_id = models.IntegerField(null=True, blank=True)
+    category_id = models.IntegerField(null=True, blank=True)  # optional: after ML you can map to your categories table
+    title = models.CharField(max_length=255, blank=True)
+    description = models.TextField()
+    target_audience = models.TextField(blank=True)
+    location_scope = models.CharField(max_length=64, blank=True)      # maps your enum; keep as char if enum already exists
+    business_type = models.CharField(max_length=64, blank=True)       # maps your enum; keep as char if enum already exists
+    submission_date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "business_idea"
+        managed = False  # table already exists; Django won’t try to create it
+
+    def __str__(self):
+        return f"{self.idea_id} - {self.title or self.description[:40]}"

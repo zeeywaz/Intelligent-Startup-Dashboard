@@ -1,21 +1,113 @@
+// src/pages/chatbot.jsx
 import React, { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "../styles/chatbot.css";
+
+const API_BASE =
+  import.meta?.env?.VITE_API_BASE ||
+  process.env.REACT_APP_API_BASE ||
+  "http://127.0.0.1:8000";
+
+/* typing indicator */
+function Typing() {
+  return (
+    <div className="ibot-dots" aria-label="Thinking">
+      <span>.</span><span>.</span><span>.</span>
+    </div>
+  );
+}
+
+/* chat bubble */
+function Bubble({ role = "assistant", children }) {
+  const isUser = role === "user";
+  return (
+    <div className={`ibot-bubble-row ${isUser ? "user" : "assistant"}`}>
+      {!isUser && (
+        <img
+          src="/logo-white.png"
+          alt="IdeaForge"
+          className="ibot-avatar"
+          width={28}
+          height={28}
+        />
+      )}
+      <div className="ibot-bubble" dangerouslySetInnerHTML={{ __html: children }} />
+    </div>
+  );
+}
 
 export default function ChatPage() {
   const [idea, setIdea] = useState("");
-  const [files, setFiles] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "Tell me your startup idea (e.g., “I want to start a clothing store in Colombo”). I’ll infer a category and suggest concrete next steps.",
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
+  const [errorText, setErrorText] = useState("");
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  const submitIdea = () => {
+  const submitIdea = async () => {
     const trimmed = idea.trim();
-    if (!trimmed && files.length === 0) return;
-    // Hook up to your API later if needed
-    console.log("Idea:", trimmed, "Files:", files.map(f => f.name));
-    alert(`Idea submitted: "${trimmed || "(no text)"}"`);
+    if (!trimmed) return;
+
+    // push user message
+    setMessages((m) => [...m, { role: "user", content: trimmed }]);
     setIdea("");
-    setFiles([]);
+    setErrorText("");
+    setLoading(true);
+
+    try {
+      const r = await fetch(`${API_BASE}/api/ml/classify/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: trimmed, top_k: 3 }),
+        credentials: "include",
+      });
+      const data = await r.json().catch(() => ({}));
+
+      if (!r.ok) {
+        const msg = data?.error || `HTTP ${r.status}`;
+        setErrorText(msg);
+        setMessages((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content:
+              "Hmm, I couldn’t process that just now. Please try again in a moment.",
+          },
+        ]);
+      } else {
+        const cat = data?.predictions?.[0]?.category || "—";
+        const loc = data?.predicted_location;
+        const suggs = (data?.suggestions || []).slice(0, 6);
+
+        // render a single assistant card (no sub-categories/scores)
+        const html = `
+          <div class="ibot-card">
+            <div class="ibot-kv"><b>Category</b><span>${cat}</span></div>
+            ${loc ? `<div class="ibot-kv"><b>Likely location</b><span>${loc}</span></div>` : ""}
+            <div class="ibot-suggs">
+              <div class="ibot-suggs-title">Suggested next moves</div>
+              <ul>${suggs.map((s) => `<li>${s}</li>`).join("")}</ul>
+            </div>
+          </div>
+        `;
+        setMessages((m) => [...m, { role: "assistant", content: html }]);
+      }
+    } catch (e) {
+      console.error(e);
+      setErrorText("Network error");
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: "Network error. Please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onEnter = (e) => {
@@ -28,56 +120,40 @@ export default function ChatPage() {
   const openFilePicker = () => fileInputRef.current?.click();
   const onFilesSelected = (e) => {
     const selected = Array.from(e.target.files || []);
-    setFiles((prev) => [...prev, ...selected]);
+    // (files not used for now; kept for future)
+    console.log("selected files:", selected.map((f) => f.name).join(", "));
   };
-  const removeFile = (idx) =>
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
 
   return (
     <div className="ibot-app">
-      {/* Header */}
-      <header className="ibot-header">
-        <button
-          className="ibot-logo"
-          onClick={() => navigate("/userdashboard")}
-          aria-label="Go to dashboard"
-        >
-          IdeaForge
-        </button>
 
-        <button type="button" className="ibot-icon-btn" aria-label="Profile">
-          <svg viewBox="0 0 55 55" className="ibot-user-icon" aria-hidden="true">
-            <path
-              d="M45.833 48.125V43.542c0-2.431-.965-4.762-2.684-6.481-1.719-1.719-4.05-2.684-6.482-2.684H18.333c-2.431 0-4.763.965-6.482 2.684-1.719 1.719-2.684 4.05-2.684 6.481v4.583M36.667 16.042c0 5.063-4.104 9.167-9.167 9.167-5.063 0-9.167-4.104-9.167-9.167 0-5.063 4.104-9.167 9.167-9.167 5.063 0 9.167 4.104 9.167 9.167Z"
-              stroke="currentColor"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          </svg>
-        </button>
-      </header>
+      {/* Left logo → dashboard */}
+      <div className="ibot-logo-left">
+        <Link to="/userdashboard" className="auth-brand" aria-label="IdeaForge User Dashboard">
+          <img src="/logo-white.png" alt="IdeaForge" className="auth-logo" height={40} />
+        </Link>
+      </div>
 
-      {/* Main */}
       <main className="ibot-main">
-        <h2 className="ibot-title">
-          Welcome to Idea-Forge <br /> Where Ideas Turn Into Reality
-        </h2>
+        <h1 className="ibot-title">
+          Welcome to Idea-Forge
+          <span>Where Ideas Turn Into Reality</span>
+        </h1>
 
+        {/* input bar */}
         <div className="ibot-input-wrap" role="group" aria-label="Submit your idea">
-          <div className="ibot-input-inner">
+          <div className={`ibot-input-inner ${loading ? "busy" : ""}`}>
             <button
               type="button"
               className="ibot-addfiles-btn"
               onClick={openFilePicker}
               aria-label="Add files"
+              title="Attach files"
             >
               <svg viewBox="0 0 43 44" className="ibot-plus">
                 <path d="M19.7 23.83H8.96V20.17h10.74V9.17h3.58v11h10.75v3.67H22.54v11h-3.58v-11Z" />
               </svg>
             </button>
-
             <input
               ref={fileInputRef}
               type="file"
@@ -89,68 +165,61 @@ export default function ChatPage() {
             <input
               type="text"
               className="ibot-input"
-              placeholder="Briefly describe your idea"
+              placeholder="Briefly describe your idea…"
               value={idea}
               onChange={(e) => setIdea(e.target.value)}
               onKeyDown={onEnter}
               aria-label="Enter your idea"
+              disabled={loading}
             />
 
             <button
               type="button"
               className="ibot-submit-btn"
               onClick={submitIdea}
-              disabled={!idea.trim() && files.length === 0}
+              disabled={loading || !idea.trim()}
               aria-label="Submit idea"
+              title="Submit"
             >
-              <svg viewBox="0 0 65 60" className="ibot-upload">
-                <rect width="65" height="60" rx="30" />
-                <path
-                  d="M43.33 30 32.5 20 21.67 30M32.5 20v20M59.58 30c0 13.81-12.12 25-27.08 25S5.42 43.81 5.42 30 17.54 5 32.5 5 59.58 16.19 59.58 30Z"
-                  stroke="white"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              </svg>
+              {loading ? (
+                <Typing />
+              ) : (
+                <svg viewBox="0 0 24 24" className="ibot-send">
+                  <path d="M3.4 20.6 22 12 3.4 3.4 3 10l12 2-12 2z" />
+                </svg>
+              )}
             </button>
           </div>
-
-          {files.length > 0 && (
-            <ul className="ibot-files-list">
-              {files.map((f, i) => (
-                <li key={`${f.name}-${i}`}>
-                  {f.name}
-                  <button
-                    type="button"
-                    onClick={() => removeFile(i)}
-                    aria-label={`Remove ${f.name}`}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
 
+        {/* chat thread */}
+        <section className="ibot-chat" aria-live="polite">
+          {messages.map((m, i) => (
+            <Bubble key={i} role={m.role}>
+              {m.content
+                .replaceAll("&", "&amp;")
+                .replaceAll("<br>", "\n")}
+            </Bubble>
+          ))}
+
+          {loading && (
+            <div className="ibot-thinking">
+              <div className="ibot-skel" />
+              <div className="ibot-skel short" />
+              <Typing />
+            </div>
+          )}
+
+          {errorText && <div className="ibot-error">{errorText}</div>}
+        </section>
+
         <p className="ibot-example">
-          <span className="ibot-example-intro">Example prompt:</span>
-          <br />
-          <span className="ibot-example-quote">
-            “I would like to start a clothing business in Colombo. Initially I want
-            to start it as an online business and then expand to a physical store as we grow.”
-          </span>
+          <span className="ibot-example-intro">Example:</span>{" "}
+          “I want to start a clothing business in Colombo. I’ll begin online and expand to a physical store.”
         </p>
       </main>
 
-      {/* Proceed (bottom-right) */}
-      <button
-        type="button"
-        className="ibot-to-dash"
-        onClick={() => navigate("/userdashboard")}
-      >
+      <button type="button" className="ibot-to-dash" onClick={() => navigate("/userdashboard")}>
         Proceed to Dashboard →
       </button>
     </div>

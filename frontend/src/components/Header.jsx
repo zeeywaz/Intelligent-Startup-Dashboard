@@ -13,6 +13,9 @@ export default function Header() {
   const [userName, setUserName] = useState("");
   const [notifications, setNotifications] = useState([]);
 
+  // NEW: dynamic home path for the logo
+  const [homePath, setHomePath] = useState("/");
+
   const profileRef = useRef(null);
   const notifRef = useRef(null);
 
@@ -26,11 +29,21 @@ export default function Header() {
           const ini = (firstName?.[0] || username?.[0] || "?").toUpperCase();
           setUserInitial(ini);
           setUserName(username || "");
+
+          // decide where the logo should send the user
+          const roles = j.roles || [];
+          const computed =
+            roles.includes("Investor") ? "/investordashboard" :
+            roles.includes("Admin")    ? "/admindashboard"    :
+                                         "/userdashboard";
+          setHomePath(j.next || computed);
         } else {
           setUserInitial("?");
+          setHomePath("/"); // not logged in -> marketing/home
         }
       } catch {
         setUserInitial("?");
+        setHomePath("/"); // safe fallback
       }
     })();
   }, []);
@@ -108,7 +121,8 @@ export default function Header() {
           </button>
 
           <h1 className="site-logo">
-            <Link to="/userdashboard" className="site-logo__link" aria-label="IdeaForge Home">
+            {/* use dynamic homePath instead of hardcoding /userdashboard */}
+            <Link to={homePath} className="site-logo__link" aria-label="IdeaForge Home">
               <img
                 src="/logo-black.png"
                 alt="IdeaForge"

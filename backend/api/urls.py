@@ -14,5 +14,15 @@ urlpatterns = [
     path("profile/", views.profile_view),
     path("profile/change-password/", views.change_password),
     path("resources/", views.resources_list),
+    path("register/", views.register, name="api-register"),
+    path("register/investor/", views.investor_register, name="api-register-investor"),
+    
+    path("account/", views.delete_account, name="api-delete-account"),
+
+
+    
+    path("ml/classify/", views.classify_idea, name="ml-classify"),
+
+
     path("", include(router.urls)),
 ]
