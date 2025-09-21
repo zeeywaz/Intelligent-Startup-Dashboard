@@ -4,6 +4,32 @@ import "../styles/mystartup.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
 
+// Centralize your API base (align with the chatbot page)
+const API_BASE =
+  import.meta?.env?.VITE_API_BASE ||
+  process.env.REACT_APP_API_BASE ||
+  "http://127.0.0.1:8000";
+
+/* ===========================
+   Small helpers
+   =========================== */
+function normalizeToArray(data) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.results)) return data.results;
+  return [];
+}
+function useDots(isRunning) {
+  const [dots, setDots] = useState("");
+  useEffect(() => {
+    if (!isRunning) return setDots("");
+    const t = setInterval(() => {
+      setDots((d) => (d.length >= 3 ? "" : d + "."));
+    }, 350);
+    return () => clearInterval(t);
+  }, [isRunning]);
+  return dots;
+}
+
 /* ===========================
    Panel
    =========================== */
@@ -101,34 +127,95 @@ function Modal({ open, title, children, onClose }) {
 }
 
 /* ===========================
+   Tiny Loader (GPT-ish thinking)
+   =========================== */
+function Thinking({ label = "Thinking" }) {
+  const dots = useDots(true);
+  return <p className="thinking">{label}{dots}</p>;
+}
+
+/* ===========================
    Page
    =========================== */
 export default function StartupPage() {
   const navigate = useNavigate();
   const startupName = "TechFlow";
 
-  const investors = [
-    { name: "Venture Capital Partners", type: "VC Fund", amount: "$2M", status: "Interested" },
-    { name: "Angel Investor Group", type: "Angel", amount: "$500K", status: "Meeting Scheduled" },
-    { name: "Innovation Fund", type: "Corporate VC", amount: "$1.5M", status: "Under Review" },
-  ];
+  // data
+  const [investors, setInvestors] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [competitors, setCompetitors] = useState([]);
 
-  const resources = [
-    { name: "AWS Cloud Credits", provider: "Amazon", value: "$10K", category: "Infrastructure" },
-    { name: "Legal Services Package", provider: "StartupLaw", value: "$5K", category: "Legal" },
-    { name: "Marketing Automation", provider: "HubSpot", value: "$3K", category: "Marketing" },
-  ];
+  // loading + error
+  const [loadingInv, setLoadingInv] = useState(false);
+  const [loadingRes, setLoadingRes] = useState(false);
+  const [loadingComp, setLoadingComp] = useState(false);
+  const [errInv, setErrInv] = useState("");
+  const [errRes, setErrRes] = useState("");
+  const [errComp, setErrComp] = useState("");
+
+  // fetch: competitors
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingComp(true);
+        setErrComp("");
+        const res = await fetch(`${API_BASE}/api/competitors/`, { credentials: "include" });
+        const data = await res.json();
+        setCompetitors(normalizeToArray(data));
+      } catch (e) {
+        console.error("Fetch error (competitors):", e);
+        setErrComp("Failed to load competitors.");
+        setCompetitors([]);
+      } finally {
+        setLoadingComp(false);
+      }
+    })();
+  }, []);
+
+  // fetch: investors (if you have this endpoint; else it stays empty gracefully)
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingInv(true);
+        setErrInv("");
+        const res = await fetch(`${API_BASE}/api/investors/`, { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setInvestors(normalizeToArray(data));
+      } catch (e) {
+        console.warn("Fetch error (investors):", e.message || e);
+        setErrInv("No investor endpoint or failed to load.");
+        setInvestors([]);
+      } finally {
+        setLoadingInv(false);
+      }
+    })();
+  }, []);
+
+  // fetch: resources
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingRes(true);
+        setErrRes("");
+        const res = await fetch(`${API_BASE}/api/resources/?limit=50`, { credentials: "include" });
+        const data = await res.json();
+        setResources(normalizeToArray(data));
+      } catch (e) {
+        console.error("Fetch error (resources):", e);
+        setErrRes("Failed to load resources.");
+        setResources([]);
+      } finally {
+        setLoadingRes(false);
+      }
+    })();
+  }, []);
 
   const bookmarks = [
     { title: "How to Scale Your Startup", type: "Article", source: "TechCrunch", date: "2 days ago" },
     { title: "Fundraising Best Practices", type: "Video", source: "Y Combinator", date: "1 week ago" },
     { title: "Product-Market Fit Guide", type: "Whitepaper", source: "First Round", date: "3 days ago" },
-  ];
-
-  const businesses = [
-    { name: "FlowTech Solutions", location: "San Francisco", industry: "SaaS", employees: "50-100", funding: "Series A" },
-    { name: "DataStream Inc", location: "Austin", industry: "Analytics", employees: "25-50", funding: "Seed" },
-    { name: "CloudBridge", location: "Seattle", industry: "Infrastructure", employees: "100-200", funding: "Series B" },
   ];
 
   // Modal state
@@ -141,13 +228,15 @@ export default function StartupPage() {
 
   const renderModalBody = () => {
     if (!item) return null;
+
+    // Match your serializers/models
     if (kind === "investor") {
       return (
         <div className="modal-grid">
-          <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Type</strong><div>{item.type}</div></div>
-          <div><strong>Amount</strong><div>{item.amount}</div></div>
-          <div><strong>Status</strong><div>{item.status}</div></div>
+          <div><strong>Name</strong><div>{item.investor_name || item.name}</div></div>
+          <div><strong>Company</strong><div>{item.company_name || item.company || "—"}</div></div>
+          <div><strong>Credit Score</strong><div>{item.credit_score ?? "—"}</div></div>
+          <div><strong>Status</strong><div>{item.verification_status || "—"}</div></div>
         </div>
       );
     }
@@ -155,9 +244,10 @@ export default function StartupPage() {
       return (
         <div className="modal-grid">
           <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Provider</strong><div>{item.provider}</div></div>
-          <div><strong>Category</strong><div>{item.category}</div></div>
-          <div><strong>Value</strong><div>{item.value}</div></div>
+          <div><strong>Type</strong><div>{item.type || "—"}</div></div>
+          <div><strong>Location</strong><div>{item.location || "—"}</div></div>
+          <div><strong>Website</strong><div>{item.website ? <a href={item.website} target="_blank" rel="noreferrer">{item.website}</a> : "—"}</div></div>
+          <div><strong>Description</strong><div>{item.description || "—"}</div></div>
         </div>
       );
     }
@@ -165,10 +255,10 @@ export default function StartupPage() {
       return (
         <div className="modal-grid">
           <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Location</strong><div>{item.location}</div></div>
-          <div><strong>Industry</strong><div>{item.industry}</div></div>
-          <div><strong>Employees</strong><div>{item.employees}</div></div>
-          <div><strong>Funding</strong><div>{item.funding}</div></div>
+          <div><strong>Strength</strong><div>{item.strength || "—"}</div></div>
+          <div><strong>Website</strong><div>{item.website ? <a href={item.website} target="_blank" rel="noreferrer">{item.website}</a> : "—"}</div></div>
+          <div><strong>Description</strong><div>{item.description || "—"}</div></div>
+          <div><strong>Category</strong><div>{item?.category?.name || "—"}</div></div>
         </div>
       );
     }
@@ -199,53 +289,74 @@ export default function StartupPage() {
 
           {/* Primary panels */}
           <section className="grid2" aria-label="Primary panels">
-            <Panel title="Saved Investors / Sponsors">
-              <div className="list" role="list">
-                {investors.map((it) => (
-                  <ListItem
-                    key={it.name}
-                    title={it.name}
-                    subtitle={it.type}
-                    right={it.amount}
-                    badge={it.status}
-                    onClick={() => show("investor", it)}
-                  />
-                ))}
-              </div>
+            <Panel title="Recommended Investors">
+              {loadingInv && <Thinking label="Finding investors" />}
+              {errInv && <p className="err">{errInv}</p>}
+              {!loadingInv && !errInv && investors.length === 0 && (
+                <p className="muted">No investors to show.</p>
+              )}
+              {!loadingInv && !errInv && investors.length > 0 && (
+                <div className="list" role="list">
+                  {investors.map((it) => (
+                    <ListItem
+                      key={it.investor_id || it.id || it.investor_name}
+                      title={it.investor_name || it.name}
+                      subtitle={it.company_name || it.company || ""}
+                      right={typeof it.credit_score !== "undefined" ? `Score: ${it.credit_score}` : ""}
+                      badge={it.verification_status}
+                      onClick={() => show("investor", it)}
+                    />
+                  ))}
+                </div>
+              )}
             </Panel>
 
-            <Panel title="Saved Resources / Services" rounded="44px">
-              <div className="list" role="list">
-                {resources.map((it) => (
-                  <ListItem
-                    key={it.name}
-                    title={it.name}
-                    subtitle={`${it.provider} • ${it.category}`}
-                    right={it.value}
-                    onClick={() => show("resource", it)}
-                  />
-                ))}
-              </div>
+            <Panel title="Recommended Resources & Services" rounded="44px">
+              {loadingRes && <Thinking label="Gathering resources" />}
+              {errRes && <p className="err">{errRes}</p>}
+              {!loadingRes && !errRes && resources.length === 0 && (
+                <p className="muted">No resources found.</p>
+              )}
+              {!loadingRes && !errRes && resources.length > 0 && (
+                <div className="list scrollable" role="list">
+                  {resources.map((it) => (
+                    <ListItem
+                      key={it.resource_id || it.name}
+                      title={it.name}
+                      subtitle={[it.type, it.location].filter(Boolean).join(" • ")}
+                      right={it.website}
+                      onClick={() => show("resource", it)}
+                    />
+                  ))}
+                </div>
+              )}
             </Panel>
           </section>
 
           {/* Secondary panels */}
           <section className="grid2" aria-label="Secondary panels">
-            <Panel title="Similar Businesses around You">
-              <div className="list" role="list">
-                {businesses.map((it) => (
-                  <ListItem
-                    key={it.name}
-                    title={it.name}
-                    subtitle={`${it.location} • ${it.industry} • ${it.employees}`}
-                    right={it.funding}
-                    onClick={() => show("business", it)}
-                  />
-                ))}
-              </div>
+            <Panel title="Similar Businesses around You" rounded="30px">
+              {loadingComp && <Thinking label="Scanning similar businesses" />}
+              {errComp && <p className="err">{errComp}</p>}
+              {!loadingComp && !errComp && competitors.length === 0 && (
+                <p className="muted">No competitors listed yet.</p>
+              )}
+              {!loadingComp && !errComp && competitors.length > 0 && (
+                <div className="list scrollable" role="list">
+                  {competitors.map((it) => (
+                    <ListItem
+                      key={it.id || it.name}
+                      title={it.name}
+                      subtitle={[it.description, it.strength].filter(Boolean).join(" • ")}
+                      right={it.website}
+                      onClick={() => show("business", it)}
+                    />
+                  ))}
+                </div>
+              )}
             </Panel>
 
-            <Panel title="Book Marked">
+            <Panel title="Bookmarked">
               <div className="list" role="list">
                 {bookmarks.map((it) => (
                   <ListItem
@@ -282,7 +393,11 @@ export default function StartupPage() {
 
         <Modal
           open={open}
-          title={item ? (kind === "bookmark" ? item.title : item.name || "Details") : "Details"}
+          title={
+            item
+              ? (kind === "bookmark" ? item.title : item.name || item.investor_name || "Details")
+              : "Details"
+          }
           onClose={hide}
         >
           {renderModalBody()}

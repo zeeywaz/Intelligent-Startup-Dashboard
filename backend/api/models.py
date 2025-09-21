@@ -141,3 +141,8 @@ class BusinessIdea(models.Model):
 
     def __str__(self):
         return f"{self.idea_id} - {self.title or self.description[:40]}"
+    
+    
+    
+    
+    

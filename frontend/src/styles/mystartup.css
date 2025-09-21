@@ -182,3 +182,23 @@
 
 /* Utilities */
 .pb-12 { padding-bottom: 3rem; }
+
+.scrollable {
+  max-height: 300px; /* adjust height as needed */
+  overflow-y: auto;  /* vertical scroll */
+  padding-right: 10px; /* optional: space for scrollbar */
+}
+
+/* Optional: nice scrollbar styling for modern browsers */
+.scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.3);
+  border-radius: 3px;
+}
+
+.scrollable::-webkit-scrollbar-track {
+  background-color: transparent;
+}

@@ -308,3 +308,6 @@ def delete_account(request):
     user.delete()
     # After deletion, the session is invalid, but return 204 to the client.
     return Response(status=204)
+
+
+

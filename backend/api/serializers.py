@@ -144,3 +144,6 @@ class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Resource
         fields = ("resource_id", "type", "name", "location", "website", "description", "geo_data")
+
+
+
