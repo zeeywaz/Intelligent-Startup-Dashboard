@@ -6,20 +6,26 @@ from uuid import uuid4
 # --- Investor verification ---
 
 class InvestorProfile(models.Model):
-    id = models.BigAutoField(primary_key=True)
+    investor_id = models.BigAutoField(primary_key=True)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         db_column="user_id",
-        related_name="investor_profile",
+        related_name="investor_profile"
     )
-    company = models.CharField(max_length=120, default="", blank=True)
+    investor_name = models.CharField(max_length=150, default="", blank=True)
+    company_name = models.CharField(max_length=150, default="", blank=True)
+    credit_score = models.IntegerField(default=0)
+    verification_status = models.CharField(
+        max_length=20,
+        choices=[("approved", "Approved"), ("pending", "Pending"), ("rejected", "Rejected")],
+        default="pending",
+    )
+    email_address = models.EmailField(default="", blank=True)
     phone = models.CharField(max_length=40, default="", blank=True)
-    role = models.CharField(max_length=80, default="", blank=True)
-    verify_type = models.CharField(max_length=40, default="", blank=True)
 
     class Meta:
-        db_table = "api_investorprofile"
+        db_table = "investor_details"
         managed = False
 
 

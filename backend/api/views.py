@@ -29,6 +29,7 @@ from .models import (
     Resource,
     BusinessCategory,
     Competitor,
+    InvestorProfile,
 )
 
 User = get_user_model()
@@ -80,6 +81,7 @@ def register(request):
         },
         "next": "/chatbot",
     }, status=201)
+
 
 
 @api_view(["POST"])

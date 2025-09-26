@@ -26,6 +26,8 @@ export default function InvestorSignUpPage() {
     lastName: "",
     username: "",
     email: "",
+    phone: "",         // ✅ added
+    companyName: "",   // ✅ added
     password: "",
     confirm: "",
     verifyType: "ownership",
@@ -53,10 +55,22 @@ export default function InvestorSignUpPage() {
     const emailOk = EMAIL_RE.test(form.email.trim());
     const unameOk = form.username.trim().length >= 3;
     const namesOk = form.firstName.trim() && form.lastName.trim();
+    const phoneOk = form.phone.trim().length >= 7; // ✅ basic phone check
+    const companyOk = form.companyName.trim().length >= 2;
     const matchOk = form.password === form.confirm;
     const docsOk =
       files.length > 0 && files.length <= MAX_FILES && files.every((f) => f.size <= MAX_BYTES);
-    return emailOk && unameOk && !!namesOk && pwdOk && matchOk && form.consent && docsOk;
+    return (
+      emailOk &&
+      unameOk &&
+      !!namesOk &&
+      phoneOk &&
+      companyOk &&
+      pwdOk &&
+      matchOk &&
+      form.consent &&
+      docsOk
+    );
   }, [form, files, pwdOk]);
 
   const onPick = (fileList) => {
@@ -93,11 +107,13 @@ export default function InvestorSignUpPage() {
       data.append("lastName", form.lastName.trim());
       data.append("username", form.username.trim());
       data.append("email", form.email.trim());
+      data.append("phone", form.phone.trim());          // ✅ added
+      data.append("company_name", form.companyName.trim()); // ✅ added
       data.append("password", form.password);
       data.append("verifyType", form.verifyType);
       files.forEach((f) => data.append("docs", f.file, f.name));
 
-      const res = await fetch(`${API_BASE}/api/investor/register/`, {
+      const res = await fetch(`${API_BASE}/api/register/investor/`, {
         method: "POST",
         credentials: "include",
         headers: { "X-CSRFToken": getCookie("csrftoken") },
@@ -117,14 +133,13 @@ export default function InvestorSignUpPage() {
   return (
     <div className="regv-app">
       <Link to="/" className="auth-brand" aria-label="IdeaForge home">
-  <img
-    src="/logo-black.png"   // or /logo-white.png depending on background
-    alt="IdeaForge"
-    className="auth-logo"
-    height={40}
-  />
-</Link>
-
+        <img
+          src="/logo-black.png"
+          alt="IdeaForge"
+          className="auth-logo"
+          height={40}
+        />
+      </Link>
 
       <main id="main" className="regv-main" role="main">
         <section className="regv-card" aria-label="Create account with verification">
@@ -159,6 +174,21 @@ export default function InvestorSignUpPage() {
                 <input id="em" type="email" inputMode="email" autoComplete="email"
                        className="regv-input" placeholder="Email" value={form.email}
                        onChange={update("email")} required />
+              </div>
+
+              {/* ✅ New: Phone */}
+              <div className="regv-field">
+                <label htmlFor="ph" className="sr-only">Phone</label>
+                <input id="ph" type="tel" inputMode="tel"
+                       className="regv-input" placeholder="Phone Number"
+                       value={form.phone} onChange={update("phone")} required />
+              </div>
+
+              {/* ✅ New: Company Name */}
+              <div className="regv-field">
+                <label htmlFor="cn" className="sr-only">Company Name</label>
+                <input id="cn" className="regv-input" placeholder="Company Name"
+                       value={form.companyName} onChange={update("companyName")} required />
               </div>
 
               <div className="regv-field">

@@ -17,6 +17,7 @@ urlpatterns = [
     path("register/", views.register, name="api-register"),
     path("register/investor/", views.investor_register, name="api-register-investor"),
     
+    
     path("account/", views.delete_account, name="api-delete-account"),
 
 

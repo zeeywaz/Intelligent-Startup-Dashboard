@@ -60,18 +60,25 @@ class RegisterSerializer(serializers.Serializer):
 
 
 class InvestorRegisterSerializer(RegisterSerializer):
-    company = serializers.CharField(required=False, allow_blank=True)
-    phone   = serializers.CharField(required=False, allow_blank=True)
-    role    = serializers.CharField(required=False, allow_blank=True)
+    company_name = serializers.CharField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
 
     def create(self, validated):
-        company = (validated.pop("company", "") or "").strip()
-        phone   = (validated.pop("phone", "") or "").strip()
-        role    = (validated.pop("role", "") or "").strip()
-        user = super().create(validated)
-        InvestorProfile.objects.create(user=user, company=company, phone=phone, role=role)
-        return user
+        company_name = validated.pop("company_name", "")
+        phone        = validated.pop("phone", "")
 
+        user = super().create(validated)
+
+        InvestorProfile.objects.create(
+            user=user,
+            investor_name=f"{validated.get('firstName', '')} {validated.get('lastName', '')}",
+            company_name=company_name,
+            email_address=validated.get("email", ""),
+            phone=phone,
+            credit_score=None,
+            verification_status="pending",
+        )
+        return user
 
 # =========================
 # Profile
