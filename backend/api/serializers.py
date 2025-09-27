@@ -201,3 +201,33 @@ class IdeaCreateSerializer(serializers.Serializer):
             business_type=(validated.get("business_type") or None),
         )
         return idea
+
+
+# add this
+# add this
+class InvestorSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    firstName = serializers.CharField(source="user.first_name", read_only=True)
+    lastName  = serializers.CharField(source="user.last_name", read_only=True)
+    email     = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = InvestorProfile
+        fields = [
+            "id", "user_id", "firstName", "lastName", "email",
+            "company", "phone", "role", "verify_type"
+        ]
+
+
+# backend/api/serializers.py
+from rest_framework import serializers
+from .models import ChatMessage
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = [
+            "id", "user", "message", "response", "category", "location",
+            "narrative", "suggestions", "risks", "roadmap", "kpis", "created_at"
+        ]
+        read_only_fields = ["id", "user", "created_at"]

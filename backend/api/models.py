@@ -169,3 +169,48 @@ class Notification(models.Model):
     class Meta:
         db_table = "notification"
         managed = False
+
+
+# models.py
+class InvestorInterest(models.Model):
+    investor = models.ForeignKey(
+        InvestorProfile,
+        on_delete=models.CASCADE,
+        db_column="investor_id",
+        related_name="interests"
+    )
+    category = models.ForeignKey(
+        BusinessCategory,
+        on_delete=models.CASCADE,
+        db_column="category_id",
+        related_name="investor_interests"
+    )
+
+    class Meta:
+        db_table = "investor_interest"
+        managed = False
+        unique_together = (("investor", "category"),)
+
+
+# backend/api/models.py
+from django.db import models
+from django.contrib.auth.models import User
+
+class ChatMessage(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    response = models.TextField()
+    category = models.CharField(max_length=200, blank=True, null=True)
+    location = models.CharField(max_length=200, blank=True, null=True)
+    narrative = models.TextField(blank=True, null=True)
+
+    # ✅ All JSON fields
+    suggestions = models.JSONField(blank=True, null=True, default=list)
+    risks = models.JSONField(blank=True, null=True, default=list)
+    roadmap = models.JSONField(blank=True, null=True, default=list)
+    kpis = models.JSONField(blank=True, null=True, default=list)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username}: {self.message[:50]}"

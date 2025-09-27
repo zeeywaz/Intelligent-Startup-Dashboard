@@ -14,6 +14,18 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+from .models import Resource, Competitor, BusinessIdea, InvestorProfile
+from .serializers import (
+    ResourceSerializer,
+    CompetitorSerializer,
+    BusinessIdeaReadSerializer,
+    InvestorSerializer,
+)
+from django.shortcuts import get_object_or_404
+
+from rest_framework import permissions
+
+
 from .serializers import (
     ResourceSerializer,
     ProfileSerializer,
@@ -190,18 +202,14 @@ class ResourcePage(PageNumberPagination):
     max_page_size = 100
 
 @api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
 def resources_list(request):
+    location = request.query_params.get("location")
     qs = Resource.objects.all()
-    t = (request.GET.get("type") or "").upper().strip()
-    if t:
-        qs = qs.filter(type=t)
-    q = (request.GET.get("q") or "").strip()
-    if q:
-        qs = qs.filter(Q(name__icontains=q) | Q(description__icontains=q) | Q(location__icontains=q))
-    paginator = ResourcePage()
-    page = paginator.paginate_queryset(qs, request)
-    ser = ResourceSerializer(page, many=True)
-    return paginator.get_paginated_response(ser.data)
+    if location:
+        qs = qs.filter(location__iexact=location)
+    serializer = ResourceSerializer(qs, many=True)
+    return Response(serializer.data)
 
 # ----------------- Categories / Competitors -----------------
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -317,3 +325,84 @@ def idea_create(request):
 def my_ideas(request):
     qs = BusinessIdea.objects.filter(user_id=request.user.id).order_by("-submission_date")
     return Response(BusinessIdeaReadSerializer(qs, many=True).data, status=200)
+
+
+
+from .serializers import InvestorSerializer
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def mystartup_data(request, idea_id):
+    idea = get_object_or_404(BusinessIdea, pk=idea_id, user_id=request.user.id)
+
+    # location-based resources
+    resources = Resource.objects.filter(location__iexact=idea.location)
+
+    # competitors in same category
+    competitors = Competitor.objects.filter(category_id=idea.category_id)
+
+    # all investors (you can later filter by category/location if needed)
+    investors = InvestorProfile.objects.all()
+
+    return Response({
+        "idea": BusinessIdeaReadSerializer(idea).data,
+        "resources": ResourceSerializer(resources, many=True).data,
+        "competitors": CompetitorSerializer(competitors, many=True).data,
+        "investors": InvestorSerializer(investors, many=True).data,
+    })
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import ChatMessage
+from .serializers import ChatMessageSerializer
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def chat_history(request):
+    chats = ChatMessage.objects.filter(user=request.user).order_by("created_at")
+    serializer = ChatMessageSerializer(chats, many=True)
+    return Response(serializer.data)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def chat_message(request):
+    message = request.data.get("message")
+    response = request.data.get("response")  # coming from frontend/AI
+
+    if not message:
+        return Response({"error": "Message required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    chat_msg = ChatMessage.objects.create(
+        user=request.user, message=message, response=response or ""
+    )
+    serializer = ChatMessageSerializer(chat_msg)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+
+# backend/api/views.py
+from rest_framework import generics, permissions
+from .models import ChatMessage
+from .serializers import ChatMessageSerializer
+
+class ChatMessageListCreateView(generics.ListCreateAPIView):
+    serializer_class = ChatMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ChatMessage.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ChatHistoryView(generics.ListAPIView):
+    serializer_class = ChatMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ChatMessage.objects.filter(user=self.request.user).order_by("created_at")

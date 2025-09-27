@@ -1,7 +1,7 @@
 # backend/api/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from . import views 
 
 router = DefaultRouter()
 router.register(r"categories", views.CategoryViewSet, basename="category")
@@ -29,5 +29,11 @@ urlpatterns = [
 
     # ideas
     path("ideas/", views.idea_create, name="api-ideas-create"),     # POST (dev: CSRF off)
-    path("ideas/mine/", views.my_ideas, name="api-ideas-mine"),     # GET (auth)
+    path("ideas/mine/", views.my_ideas, name="api-ideas-mine"),     
+    
+    path("mystartup/<int:idea_id>/", views.mystartup_data, name="api-mystartup"),
+
+    path("chat/message/", views.ChatMessageListCreateView.as_view(), name="chat-message"),
+    path("chat/history/", views.ChatMessageListCreateView.as_view(), name="chat-history"),
+
 ]
