@@ -1,0 +1,11 @@
+{
+  "backend": {
+    "type": "tfidf_svd",
+    "info": "use featurizer pipeline from featurizer_cls.joblib"
+  },
+  "ann": {
+    "type": "hnswlib",
+    "path": "artifacts_n\\neighbors.index"
+  },
+  "embedder_dim": 512
+}

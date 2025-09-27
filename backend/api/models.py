@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 import os
 from uuid import uuid4
+from django.contrib.auth.models import User
+
 
 # --- Investor verification ---
 
@@ -122,27 +124,48 @@ class Resource(models.Model):
 
 
 
-from django.db import models
-
 class BusinessIdea(models.Model):
     idea_id = models.AutoField(primary_key=True)
-    user_id = models.IntegerField(null=True, blank=True)
-    category_id = models.IntegerField(null=True, blank=True)  # optional: after ML you can map to your categories table
-    title = models.CharField(max_length=255, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user_id")
+    category = models.ForeignKey("BusinessCategory", on_delete=models.CASCADE, db_column="category_id")
+    title = models.CharField(max_length=255)
     description = models.TextField()
-    target_audience = models.TextField(blank=True)
-    location_scope = models.CharField(max_length=64, blank=True)      # maps your enum; keep as char if enum already exists
-    business_type = models.CharField(max_length=64, blank=True)       # maps your enum; keep as char if enum already exists
+    target_audience = models.TextField(blank=True, null=True)
+    location = models.CharField(max_length=64)  # district_enum
+    business_type = models.CharField(max_length=64)  # business_type_enum
     submission_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "business_idea"
-        managed = False  # table already exists; Django won’t try to create it
+        managed = False
 
-    def __str__(self):
-        return f"{self.idea_id} - {self.title or self.description[:40]}"
-    
-    
-    
-    
-    
+
+
+
+class InvestorDetails(models.Model):
+    investor_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user_id")
+    investor_name = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255, blank=True, null=True)
+    credit_score = models.IntegerField(blank=True, null=True)
+    verification_status = models.CharField(max_length=64, default="pending")
+    email_address = models.CharField(max_length=255, unique=True)
+    phone = models.CharField(max_length=40)
+
+    class Meta:
+        db_table = "investor_details"
+        managed = False
+
+
+class Notification(models.Model):
+    notification_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user_id")
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    type = models.CharField(max_length=64, blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+    created_date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "notification"
+        managed = False

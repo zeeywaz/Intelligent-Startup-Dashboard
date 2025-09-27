@@ -1,3 +1,4 @@
+# backend/api/serializers.py
 from django.contrib.auth import get_user_model, password_validation
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
@@ -7,13 +8,12 @@ from .models import (
     BusinessCategory,
     Competitor,
     Resource,
+    BusinessIdea,
 )
 
 User = get_user_model()
 
-# =========================
-# Registration
-# =========================
+# ---------- Registration ----------
 class RegisterSerializer(serializers.Serializer):
     firstName = serializers.CharField(max_length=150)
     lastName  = serializers.CharField(max_length=150)
@@ -22,11 +22,9 @@ class RegisterSerializer(serializers.Serializer):
     password  = serializers.CharField(write_only=True, trim_whitespace=False)
 
     def validate(self, attrs):
-        first = attrs.get("firstName", "").strip()
-        last  = attrs.get("lastName", "").strip()
-        uname = attrs.get("username", "").strip()
+        uname = (attrs.get("username") or "").strip()
         email = (attrs.get("email") or "").strip().lower()
-        pwd   = attrs.get("password")
+        pwd   = attrs.get("password") or ""
 
         if not uname:
             raise serializers.ValidationError({"username": "Username is required."})
@@ -43,10 +41,8 @@ class RegisterSerializer(serializers.Serializer):
         except DjangoValidationError as e:
             raise serializers.ValidationError({"password": list(e.messages)})
 
-        attrs["firstName"] = first
-        attrs["lastName"]  = last
-        attrs["username"]  = uname
-        attrs["email"]     = email
+        attrs["username"] = uname
+        attrs["email"]    = email
         return attrs
 
     def create(self, validated):
@@ -54,8 +50,8 @@ class RegisterSerializer(serializers.Serializer):
             username   = validated["username"],
             email      = validated["email"],
             password   = validated["password"],
-            first_name = validated["firstName"],
-            last_name  = validated["lastName"],
+            first_name = validated.get("firstName", "").strip(),
+            last_name  = validated.get("lastName", "").strip(),
         )
 
 
@@ -72,15 +68,10 @@ class InvestorRegisterSerializer(RegisterSerializer):
         InvestorProfile.objects.create(user=user, company=company, phone=phone, role=role)
         return user
 
-
-# =========================
-# Profile
-# =========================
+# ---------- Profile ----------
 class ProfileSerializer(serializers.ModelSerializer):
-    firstName = serializers.CharField(source="first_name", max_length=150, required=True)
-    lastName  = serializers.CharField(source="last_name",  max_length=150, required=True)
-    email     = serializers.EmailField(required=True)
-    username  = serializers.CharField(max_length=150, required=True)
+    firstName = serializers.CharField(source="first_name")
+    lastName  = serializers.CharField(source="last_name")
 
     class Meta:
         model  = User
@@ -108,17 +99,13 @@ class PasswordChangeSerializer(serializers.Serializer):
     def validate(self, attrs):
         if attrs["newPassword"] != attrs["confirmPassword"]:
             raise serializers.ValidationError({"confirmPassword": "Passwords do not match."})
-        # Optional: enforce Django validators here too
         try:
             password_validation.validate_password(attrs["newPassword"])
         except DjangoValidationError as e:
             raise serializers.ValidationError({"newPassword": list(e.messages)})
         return attrs
 
-
-# =========================
-# Categories / Competitors
-# =========================
+# ---------- Categories / Competitors ----------
 class BusinessCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model  = BusinessCategory
@@ -129,21 +116,88 @@ class CompetitorSerializer(serializers.ModelSerializer):
     category_id = serializers.PrimaryKeyRelatedField(
         source="category",
         queryset=BusinessCategory.objects.all(),
-        write_only=True
+        write_only=True,
     )
 
     class Meta:
         model  = Competitor
         fields = ["id", "name", "strength", "website", "description", "category", "category_id"]
 
-
-# =========================
-# Resources
-# =========================
+# ---------- Resources ----------
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Resource
         fields = ("resource_id", "type", "name", "location", "website", "description", "geo_data")
 
+# ---------- Ideas ----------
+class BusinessIdeaReadSerializer(serializers.ModelSerializer):
+    category = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BusinessIdea
+        fields = [
+            "idea_id",
+            "user_id",
+            "category",          # string
+            "title",
+            "description",
+            "target_audience",
+            "location",
+            "business_type",
+            "submission_date",
+        ]
+
+    def get_category(self, obj):
+        try:
+            if hasattr(obj, "category") and obj.category:
+                return obj.category.name
+            cat = BusinessCategory.objects.filter(pk=obj.category_id).only("name").first()
+            return cat.name if cat else None
+        except Exception:
+            return None
 
 
+# backend/api/serializers.py  (idea parts)
+
+from rest_framework import serializers
+from .models import BusinessIdea, BusinessCategory
+
+class IdeaCreateSerializer(serializers.Serializer):
+    # payload from the chatbot
+    text = serializers.CharField()
+    category = serializers.CharField()  # e.g., "Retail", "Food", etc.
+    title = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    target_audience = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    location = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    business_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    def create(self, validated):
+        req = self.context.get("request")
+        user = getattr(req, "user", None)
+        if not (user and user.is_authenticated):
+            # 400 with the array you saw earlier
+            raise serializers.ValidationError(["Authentication required."])
+
+        # upsert category by case-insensitive name
+        cat_name = (validated.get("category") or "").strip()
+        if not cat_name:
+            raise serializers.ValidationError({"category": ["This field is required."]})
+
+        cat = BusinessCategory.objects.filter(name__iexact=cat_name).first()
+        if not cat:
+            cat = BusinessCategory.objects.create(name=cat_name)
+
+        title = (validated.get("title") or validated.get("text") or "")[:255]
+        description = validated.get("description") or validated.get("text") or ""
+
+        idea = BusinessIdea.objects.create(
+            user_id=user.id,          # model uses integer user_id column
+            category_id=cat.id,       # use .id (not category_id)
+            title=title,
+            description=description,
+            target_audience=validated.get("target_audience") or "",
+            location=(validated.get("location") or None),
+            business_type=(validated.get("business_type") or None),
+        )
+        return idea

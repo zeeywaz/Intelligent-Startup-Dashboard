@@ -1,16 +1,18 @@
+# backend/api/views.py
 from django.contrib.auth import get_user_model, authenticate, login, logout, update_session_auth_hash
 from django.http import JsonResponse
-from django.middleware.csrf import get_token
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.db.models import Q
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.middleware.csrf import get_token
 
-from rest_framework.decorators import api_view, parser_classes, permission_classes, authentication_classes
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import (
+    api_view, permission_classes, authentication_classes, parser_classes
+)
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
-from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from rest_framework import viewsets, filters
-from rest_framework.permissions import AllowAny
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .serializers import (
     ResourceSerializer,
@@ -20,132 +22,114 @@ from .serializers import (
     CompetitorSerializer,
     RegisterSerializer,
     InvestorRegisterSerializer,
+    IdeaCreateSerializer,
+    BusinessIdeaReadSerializer,
 )
 from .models import (
     InvestorProfile,
-    InvestorVerificationDoc,
     Role,
     UserRole,
     Resource,
     BusinessCategory,
     Competitor,
+    BusinessIdea,
 )
+
+from . import ml_runtime
 
 User = get_user_model()
 
-
-
-
 # ----------------- CSRF -----------------
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
+
 @api_view(["GET"])
+@permission_classes([AllowAny])
 @ensure_csrf_cookie
 def csrf(request):
-    return Response({"csrfToken": get_token(request)}, status=200)
+    return Response({"csrftoken": get_token(request)}, status=200)
+
 
 # ----------------- Auth -----------------
-from rest_framework.decorators import permission_classes  # already used later
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @parser_classes([JSONParser])
 def register(request):
-    """
-    Sign up a regular user, attach default 'User' role if present, and log them in.
-    Expected JSON: { firstName, lastName, username, email, password }
-    """
     ser = RegisterSerializer(data=request.data)
     if not ser.is_valid():
         return Response({"error": ser.errors}, status=400)
-
     user = ser.save()
-
-    # optional: attach default role "User" if exists in your DB
+    # attach default "User" role if present
     try:
         role = Role.objects.get(role_name__iexact="User")
         UserRole.objects.get_or_create(auth_user=user, role=role)
     except Role.DoesNotExist:
         pass
-
-    # auto-login after registration (useful for your UX)
     login(request, user)
-
     return Response({
         "message": "Registration successful",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "firstName": user.first_name,
-            "lastName": user.last_name,
-        },
+        "user": {"id": user.id, "username": user.username, "email": user.email,
+                 "firstName": user.first_name, "lastName": user.last_name},
         "next": "/chatbot",
     }, status=201)
-
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @parser_classes([JSONParser, MultiPartParser, FormParser])
 def investor_register(request):
-    """
-    Investor registration. Accepts same fields as RegisterSerializer, plus:
-      company, phone, role (string)
-    """
     ser = InvestorRegisterSerializer(data=request.data)
     if not ser.is_valid():
         return Response({"error": ser.errors}, status=400)
-
     user = ser.save()
-
-    # optional: attach "Investor" role if present
     try:
         inv_role = Role.objects.get(role_name__iexact="Investor")
         UserRole.objects.get_or_create(auth_user=user, role=inv_role)
     except Role.DoesNotExist:
         pass
-
     login(request, user)
-
     return Response({
         "message": "Registration successful",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "firstName": user.first_name,
-            "lastName": user.last_name,
-        },
+        "user": {"id": user.id, "username": user.username, "email": user.email,
+                 "firstName": user.first_name, "lastName": user.last_name},
         "next": "/investordashboard",
     }, status=201)
 
-@api_view(["POST"])
-@parser_classes([JSONParser])
+# views.py
+from django.contrib.auth import authenticate, login, get_user_model
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+User = get_user_model()
+
+@csrf_exempt
 def login_view(request):
-    email = (request.data.get("email") or "").strip().lower()
-    password = request.data.get("password") or ""
-    if not email or not password:
-        return Response({"error": "Email and password required."}, status=400)
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
     try:
-        user_obj = User.objects.get(email__iexact=email)
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return JsonResponse({"detail": "Email and password are required"}, status=400)
+
+    try:
+        user = User.objects.get(email=email)
     except User.DoesNotExist:
-        return Response({"error": "Invalid credentials."}, status=401)
+        return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
-    user = authenticate(request, username=user_obj.username, password=password)
-    if user is None:
-        return Response({"error": "Invalid credentials."}, status=401)
+    user = authenticate(request, username=user.username, password=password)
+    if user is not None:
+        login(request, user)
+        return JsonResponse({"detail": "Login successful"})
+    else:
+        return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
-    login(request, user)
-    roles = list(
-        UserRole.objects.select_related("role")
-        .filter(auth_user=user)
-        .values_list("role__role_name", flat=True)
-    )
-    next_path = "/investordashboard" if "Investor" in roles else ("/admindashboard" if "Admin" in roles else "/userdashboard")
-    return Response(
-        {"message": "Login successful",
-         "user": {"id": user.id, "username": user.username, "email": user.email,
-                  "firstName": user.first_name, "lastName": user.last_name},
-         "roles": roles, "next": next_path}, status=200)
 
 @api_view(["POST"])
 def logout_view(request):
@@ -163,11 +147,12 @@ def me(request):
         .values_list("role__role_name", flat=True)
     )
     next_path = "/investordashboard" if "Investor" in roles else ("/admindashboard" if "Admin" in roles else "/userdashboard")
-    return Response(
-        {"authenticated": True,
-         "user": {"id": u.id, "username": u.username, "email": u.email,
-                  "firstName": u.first_name, "lastName": u.last_name},
-         "roles": roles, "next": next_path}, status=200)
+    return Response({
+        "authenticated": True,
+        "user": {"id": u.id, "username": u.username, "email": u.email,
+                 "firstName": u.first_name, "lastName": u.last_name},
+        "roles": roles, "next": next_path
+    }, status=200)
 
 # ----------------- Profile -----------------
 @api_view(["GET", "PATCH"])
@@ -175,11 +160,8 @@ def me(request):
 def profile_view(request):
     if not request.user.is_authenticated:
         return Response({"error": "Authentication required."}, status=401)
-
     if request.method == "GET":
-        s = ProfileSerializer(instance=request.user)
-        return Response(s.data, status=200)
-
+        return Response(ProfileSerializer(instance=request.user).data, status=200)
     s = ProfileSerializer(instance=request.user, data=request.data, partial=True)
     if not s.is_valid():
         return Response({"error": s.errors}, status=400)
@@ -191,11 +173,9 @@ def profile_view(request):
 def change_password(request):
     if not request.user.is_authenticated:
         return Response({"error": "Authentication required."}, status=401)
-
     s = PasswordChangeSerializer(data=request.data)
     if not s.is_valid():
         return Response({"error": s.errors}, status=400)
-
     new_pw = s.validated_data["newPassword"]
     user = request.user
     user.set_password(new_pw)
@@ -212,19 +192,12 @@ class ResourcePage(PageNumberPagination):
 @api_view(["GET"])
 def resources_list(request):
     qs = Resource.objects.all()
-
     t = (request.GET.get("type") or "").upper().strip()
     if t:
         qs = qs.filter(type=t)
-
     q = (request.GET.get("q") or "").strip()
     if q:
-        qs = qs.filter(
-            Q(name__icontains=q) |
-            Q(description__icontains=q) |
-            Q(location__icontains=q)
-        )
-
+        qs = qs.filter(Q(name__icontains=q) | Q(description__icontains=q) | Q(location__icontains=q))
     paginator = ResourcePage()
     page = paginator.paginate_queryset(qs, request)
     ser = ResourceSerializer(page, many=True)
@@ -261,53 +234,86 @@ class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
 def root_ok(_request):
     return JsonResponse({"status": "ok", "app": "IdeaForge API"})
 
-
-
-
-
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-from rest_framework.permissions import AllowAny
-from rest_framework.decorators import authentication_classes, permission_classes
-
-# keep session auth, but disable CSRF check for THIS endpoint only
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  # disable CSRF validation here
-
-@csrf_exempt
-@api_view(["POST"])
-@authentication_classes([CsrfExemptSessionAuthentication, BasicAuthentication])
-@permission_classes([AllowAny])
-@parser_classes([JSONParser])
-def classify_idea(request):
-    text = (request.data.get("text") or "").strip()
-    top_k = int(request.data.get("top_k") or 3)
-    if not text:
-        return Response({"error": "text is required"}, status=400)
-    try:
-        from .ml_predictor import predict
-        out = predict(text, top_k=top_k, ensure_min_suggs=3)
-        return Response({"input": text, **out}, status=200)
-    except Exception as e:
-        return Response({"error": f"{type(e).__name__}: {e}"}, status=500)
-
-
-from rest_framework.permissions import IsAuthenticated
-
+# ----------------- Account deletion -----------------
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_account(request):
-    """
-    Permanently delete the currently authenticated user.
-    Uses DB FK ON DELETE CASCADE to clean related rows.
-    Requires CSRF (do NOT exempt in production).
-    """
     user = request.user
-    # Optionally: you can do extra cleanup here before delete()
     user.delete()
-    # After deletion, the session is invalid, but return 204 to the client.
     return Response(status=204)
 
+# ----------------- ML -----------------
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def ml_info(request):
+    status_obj = ml_runtime.status()
+    code = 200 if status_obj.get("ready") or status_obj.get("error") is None else 500
+    return Response(status_obj, status=code)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])  # no session needed for classify
+def ml_classify(request):
+    payload = request.data or {}
+    with_advice = bool(payload.get("with_advice", False))
+    include_neighbors = bool(payload.get("include_neighbors", False))
+    top_k = int(payload.get("top_k", 5))
+
+    if "text" in payload and isinstance(payload["text"], str):
+        t = payload["text"]
+        preds = ml_runtime.predict([t])
+        out = {"input": t, "predictions": preds}
+        if with_advice:
+            out["advice"] = ml_runtime.advise(t, top_k=top_k, include_neighbors=include_neighbors)
+        return Response(out, status=200)
+
+    if "texts" in payload and isinstance(payload["texts"], (list, tuple)):
+        txts = [str(x) for x in payload["texts"]]
+        preds = ml_runtime.predict(txts)
+        out = {"inputs": txts, "predictions": preds}
+        if with_advice:
+            out["advice"] = [
+                ml_runtime.advise(x, top_k=top_k, include_neighbors=include_neighbors) for x in txts
+            ]
+        return Response(out, status=200)
+
+    return Response({"error": "text or texts is required"}, status=400)
+
+# ----------------- Ideas (DEV: CSRF off) -----------------
+# backend/api/views.py (ideas endpoints)
+
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, parser_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.parsers import JSONParser
+from rest_framework.response import Response
+from rest_framework import status
+
+from .serializers import IdeaCreateSerializer, BusinessIdeaReadSerializer
+from .models import BusinessIdea
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])                     # require session login
+@authentication_classes([SessionAuthentication, BasicAuthentication])
+@parser_classes([JSONParser])
+def idea_create(request):
+    """
+    Create a BusinessIdea for the logged-in user.
+    Assumes frontend sends JSON and CSRF header (handled by api.js).
+    """
+    ser = IdeaCreateSerializer(
+        data=request.data,
+        context={"request": request},
+    )
+    if not ser.is_valid():
+        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    idea = ser.save()  # serializer uses request.user
+    return Response(BusinessIdeaReadSerializer(idea).data, status=status.HTTP_201_CREATED)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_ideas(request):
+    qs = BusinessIdea.objects.filter(user_id=request.user.id).order_by("-submission_date")
+    return Response(BusinessIdeaReadSerializer(qs, many=True).data, status=200)

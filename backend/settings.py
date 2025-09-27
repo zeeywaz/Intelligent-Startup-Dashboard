@@ -6,7 +6,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'backend.api',   # ✅ instead of just "api"
+    'backend.api',  
 ]
 
 MIDDLEWARE = [

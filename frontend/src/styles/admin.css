@@ -1,0 +1,169 @@
+/* Metallic chic blues */
+:root{
+  --blue-900:#3D52A0;
+  --blue-700:#7091E6;
+  --blue-500:#8697C4;
+  --blue-300:#ADBBDA;
+  --blue-100:#EDE8F5;
+
+  --text:#000;
+  --muted:#6b7280;
+  --border:rgba(0,0,0,.08);
+  --shadow:0 10px 24px rgba(0,0,0,.08);
+}
+
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;color:var(--text)}
+
+/* Page shell */
+.ad-main{
+  background: linear-gradient(180deg, #fff 0%, var(--blue-100) 40%, var(--blue-500) 140%);
+  padding: 1.25rem 0 2.5rem;
+}
+.ad-container{
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* Heading */
+.ad-h1{
+  margin: 1rem 0 1.25rem;
+  font-weight: 800;
+  letter-spacing: .5px;
+  font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2rem);
+}
+
+/* Panels */
+.ad-panel{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding: 1rem 1rem 1.25rem;
+  margin: 1rem 0 1.25rem;
+  box-shadow: var(--shadow);
+}
+.ad-panel__bar{
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding: .25rem .25rem .6rem;
+}
+.ad-panel__title{
+  margin:0;font-size:1rem;font-weight:700;color:#111;
+}
+
+/* Search */
+.ad-search{
+  display:flex;align-items:center;gap:.5rem;
+  background:#fff;border:1px solid var(--border);
+  border-radius:24px;padding:.35rem .6rem;
+  min-width: 220px;
+}
+.ad-search input{
+  border:0;outline:0;background:transparent;
+  width:180px;font-size:.9rem;color:#111;
+}
+
+/* Table */
+.ad-table{ width:100%; }
+.ad-tr{
+  display:grid;
+  grid-template-columns: 1.1fr 1.4fr 1fr .8fr .9fr;
+  align-items:center;
+  padding: .65rem .5rem;
+  border-radius:12px;
+}
+.ad-tr--head{
+  color:#111;font-weight:700;
+}
+.ad-th{ font-size:.9rem; }
+.ad-th--actions{ text-align:right; }
+.ad-td{ font-size:.92rem; }
+.ad-td--actions{ text-align:right; }
+
+/* Zebra rows look (soft) */
+.ad-tr:not(.ad-tr--head):nth-child(odd){
+  background: #fff;
+  border:1px solid var(--border);
+}
+.ad-tr:not(.ad-tr--head):nth-child(even){
+  background: #fff;
+  border:1px solid var(--border);
+}
+.ad-tr:not(.ad-tr--head){ margin:.35rem 0; }
+
+/* Pills / badges */
+.ad-badge{
+  display:inline-block;
+  padding:.25rem .6rem;
+  border-radius:999px;
+  font-size:.78rem;
+  line-height:1;
+  border:1px solid transparent;
+}
+.ad-badge--pending{
+  color:#a04b2a;
+  background:#fff7ed;
+  border-color:#fed7aa;
+}
+.ad-badge--active{
+  color:#0a6a2f;
+  background:#ecfdf5;
+  border-color:#a7f3d0;
+}
+
+/* Buttons */
+.ad-btn{
+  appearance:none;border:1px solid transparent;cursor:pointer;
+  border-radius:8px;padding:.35rem .7rem;font-size:.82rem;font-weight:600;
+  transition:background .15s ease,border-color .15s ease,transform .05s ease;
+}
+.ad-btn:active{ transform: translateY(1px); }
+.ad-btn--primary{
+  background: var(--blue-700); color:#fff;
+}
+.ad-btn--primary:hover{ filter:brightness(.97); }
+.ad-btn--outline{
+  background:#fff; color:#9a2424; border-color:#f3b4b4;
+}
+.ad-btn--outline:hover{ background:#fff5f5; }
+.ad-btn--danger{
+  background:#fff; color:#9a2424; border-color:#f3b4b4;
+}
+.ad-btn--danger:hover{ background:#fff5f5; }
+
+/* Responsive */
+@media (max-width: 900px){
+  .ad-tr{ grid-template-columns: 1fr; gap:.3rem; }
+  .ad-th--actions,.ad-td--actions{ text-align:left; }
+  .ad-search{ min-width: 0; width: 60%; }
+}
+
+/* --- New button variant for 'View Attached Doc' --- */
+.ad-btn--ghost{
+  background:#fff;
+  color: var(--blue-900);
+  border:1px solid var(--blue-300);
+}
+.ad-btn--ghost:hover{ background:#f8faff; border-color: var(--blue-500); }
+
+/* --- Modal --- */
+.ad-modal{
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.45);
+  display: grid; place-items: center; padding: 1rem;
+}
+.ad-modal__panel{
+  width: min(900px, 96vw);
+  background:#fff; border:1px solid var(--border);
+  border-radius:12px; box-shadow: var(--shadow);
+}
+.ad-modal__head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.75rem 1rem; border-bottom:1px solid var(--border);
+}
+.ad-modal__title{ margin:0; font-size:1rem; font-weight:700; }
+.ad-modal__body{ padding:1rem; }
+.ad-doc-viewer{
+  width: 100%; height: 70vh; border:1px solid var(--border);
+  border-radius:8px;
+}

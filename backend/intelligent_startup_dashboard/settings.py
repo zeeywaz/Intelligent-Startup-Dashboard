@@ -1,6 +1,5 @@
 # backend/intelligent_startup_dashboard/settings.py
 
-# --- imports / base ---
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,7 +11,6 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev")
 DEBUG = True
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
-# --- apps ---
 INSTALLED_APPS = [
     # Django
     "django.contrib.admin",
@@ -27,12 +25,10 @@ INSTALLED_APPS = [
     # Your apps
     "backend.api",
     "backend.healthcheck",
-    
 ]
 
-# --- middleware (keep cors near the top, before CommonMiddleware) ---
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",           # ← important position
+    "corsheaders.middleware.CorsMiddleware",           # must be high
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -45,7 +41,6 @@ MIDDLEWARE = [
 ROOT_URLCONF = "backend.intelligent_startup_dashboard.urls"
 WSGI_APPLICATION = "backend.intelligent_startup_dashboard.wsgi.application"
 
-# --- templates ---
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -62,7 +57,6 @@ TEMPLATES = [
     }
 ]
 
-# --- database ---
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -74,13 +68,11 @@ DATABASES = {
     }
 }
 
-# --- i18n / tz ---
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Colombo"
 USE_I18N = True
 USE_TZ = True
 
-# --- static / media ---
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -89,12 +81,16 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- DRF ---
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    # Session auth by default so request.user works everywhere
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
 }
 
-# --- CORS / CSRF (local dev) ---
+# CORS / CSRF for local dev
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -110,8 +106,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
-# Cookies for dev (HTTP)
+# Cookies in dev (HTTP)
 SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE   = "Lax"
+SESSION_COOKIE_SECURE  = False
+CSRF_COOKIE_SECURE     = False

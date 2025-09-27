@@ -1,0 +1,16 @@
+{
+  "saved_at": "2025-09-25 22:39:29",
+  "rows": 10000,
+  "featurizer": "tfidf(word ngram 1-2) + tfidf(char_wb 3-5) + TruncatedSVD(512)",
+  "embedding_backend": {
+    "type": "tfidf_svd",
+    "info": "use featurizer pipeline from featurizer_cls.joblib"
+  },
+  "ann_backend": {
+    "type": "hnswlib",
+    "path": "artifacts_n\\neighbors.index"
+  },
+  "sklearn": "1.7.2",
+  "numpy": "2.2.6",
+  "pandas": "2.3.2"
+}

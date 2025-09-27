@@ -3,148 +3,211 @@
   min-height:100vh;
   display:flex;
   flex-direction:column;
-  background: radial-gradient(1200px 800px at 50% 18%, #3f7997 0%, #243141 70%);
+  background: radial-gradient(1400px 900px at 50% 18%, #3f7997 0%, #243141 70%);
   color:#eef3f8;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Top-left logo */
-.ibot-logo-left{
-  position:fixed; left:18px; top:14px; z-index:10;
-}
-.auth-logo{ height:32px; opacity:.95; }
+.ibot-logo-left{ position:fixed; left:20px; top:16px; z-index:10; }
+.auth-logo{ height:36px; opacity:.95; }
 
 /* ---------- Main ---------- */
 .ibot-main{
   flex:1; display:flex; align-items:center; justify-content:flex-start;
-  flex-direction:column; padding:92px 16px 96px; gap:18px;
+  flex-direction:column; padding:112px 20px 120px; gap:22px;
 }
 
 /* Title */
 .ibot-title{
-  text-align:center; margin:0 0 6px;
+  text-align:center; margin:0 0 10px;
   font-weight:900; letter-spacing:.02em;
-  line-height:1.1;
-  font-size:clamp(28px, 3.6vw, 44px);
+  line-height:1.08;
+  font-size:clamp(34px, 4.4vw, 56px);
   color:#ffffff;
-  text-shadow:0 10px 30px rgba(0,0,0,.35);
+  text-shadow:0 12px 36px rgba(0,0,0,.35);
 }
 .ibot-title span{
-  display:block; margin-top:6px;
-  font-weight:800; opacity:.92; font-size:clamp(18px,2vw,22px);
+  display:block; margin-top:8px;
+  font-weight:800; opacity:.92; font-size:clamp(20px,2.4vw,24px);
 }
 
 /* ---------- Input bar ---------- */
-.ibot-input-wrap{ width:min(1080px,94vw); }
+.ibot-input-wrap{ width:min(1240px,96vw); }
 .ibot-input-inner{
-  display:flex; align-items:center; gap:12px;
-  background:#0f172a; border-radius:16px; padding:10px 12px;
+  display:flex; align-items:center; gap:14px;
+  background:#0f172a; border-radius:18px; padding:14px 16px;
   border:1px solid #1f2a44;
-  box-shadow:0 12px 30px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
+  box-shadow:0 14px 36px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
 }
-.ibot-addfiles-btn{ background:none; border:0; cursor:pointer; }
-.ibot-plus{ width:22px; height:22px; fill:#c5d2e6; }
+.ibot-addfiles-btn{ background:none; border:0; cursor:pointer; padding:6px 8px; border-radius:12px; }
+.ibot-addfiles-btn:hover{ background:#111c34; }
+.ibot-plus{ width:26px; height:26px; fill:#c5d2e6; }
 .ibot-hidden-file{ display:none; }
 
 .ibot-input{
   flex:1; background:transparent; border:0; outline:0;
-  color:#e8f0ff; font-size:16.5px; font-weight:600;
+  color:#e8f0ff; font-size:18px; font-weight:600;
 }
 .ibot-input::placeholder{ color:#a9b7cd; font-weight:600; }
 
-.ibot-submit-btn{ background:#0b1021; border:1px solid #1e2944; border-radius:12px; padding:8px 10px; cursor:pointer; }
+.ibot-submit-btn{
+  background:#0b1021; border:1px solid #1e2944; border-radius:14px;
+  padding:10px 12px; cursor:pointer;
+}
 .ibot-submit-btn:hover{ background:#0d142a; }
-.ibot-send{ fill:#eaf2ff; width:20px; height:20px; display:block; }
+.ibot-send{ fill:#eaf2ff; width:22px; height:22px; display:block; }
 
 /* Busy state */
-.ibot-input-inner.busy{ opacity:.85; }
+.ibot-input-inner.busy{ opacity:.9; }
 
 /* ---------- Chat thread ---------- */
 .ibot-chat{
-  width:min(980px,94vw);
-  margin:6px auto 0;
-  display:flex; flex-direction:column; gap:14px;
+  width: min(1180px, 96vw);
+  margin:8px auto 0;
+  display:flex; flex-direction:column; gap:16px;
 }
 
 /* Bubbles */
-.ibot-bubble-row{ display:flex; gap:10px; }
+.ibot-bubble-row{ display:flex; gap:12px; margin:4px 0; }
 .ibot-bubble-row.user{ justify-content:flex-end; }
 .ibot-bubble-row.assistant{ justify-content:flex-start; }
 
 .ibot-avatar{
-  width:28px; height:28px; border-radius:8px; object-fit:contain;
+  width:32px; height:32px; border-radius:8px; object-fit:contain;
   filter: drop-shadow(0 6px 18px rgba(0,0,0,.35));
-  margin-top:3px;
+  margin-top:4px;
 }
 
+/* Standard bubble */
 .ibot-bubble{
-  max-width:780px; padding:14px 16px; border-radius:16px;
+  max-width:920px;
+  padding:16px 18px; border-radius:18px;
   background:linear-gradient(180deg, #0e1628, #0b1323);
   border:1px solid #1e2a44;
-  color:#f3f7ff; line-height:1.6; font-size:16px;
-  box-shadow:0 14px 34px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.04);
-  white-space:pre-wrap; overflow:hidden;
+  color:#f3f7ff; line-height:1.7; font-size:18px;
+  box-shadow:0 16px 38px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.04);
+  white-space:normal;
+  overflow-wrap:anywhere; word-break:break-word;
 }
 
-/* Card inside assistant message */
-.ibot-card{
-  display:flex; flex-direction:column; gap:12px;
+/* When rendering rich HTML card, let the card control spacing */
+.ibot-bubble--html{
+  padding:0; background:transparent; border:0; box-shadow:none;
 }
-.ibot-kv{ display:flex; gap:10px; align-items:center; }
-.ibot-kv b{ min-width:128px; font-weight:800; color:#fff; }
-.ibot-kv span{ color:#d7e2f3; }
-
-.ibot-suggs{ margin-top:4px; padding:10px 12px; border-radius:12px;
-  background:linear-gradient(180deg, #0f1a30, #0e172a);
-  border:1px solid #223154;
-}
-.ibot-suggs-title{ font-weight:800; margin-bottom:6px; color:#fff; }
-.ibot-suggs ul{ margin:0; padding-left:18px; display:grid; gap:6px; }
-.ibot-suggs li{ color:#e7f0ff; }
 
 /* Typing indicator and skeleton */
-.ibot-dots{ display:inline-flex; gap:4px; align-items:center; }
-.ibot-dots span{ display:inline-block; width:6px; height:6px; border-radius:50%;
+.ibot-dots{ display:inline-flex; gap:5px; align-items:center; }
+.ibot-dots span{
+  display:inline-block; width:7px; height:7px; border-radius:50%;
   background:#cfe0ff; opacity:.35; animation:ibotDot 1.2s infinite ease-in-out;
 }
 .ibot-dots span:nth-child(2){ animation-delay:.15s; }
 .ibot-dots span:nth-child(3){ animation-delay:.3s; }
-@keyframes ibotDot{
-  0%,80%,100%{ transform:translateY(0); opacity:.35;}
-  40%{ transform:translateY(-4px); opacity:1;}
-}
+@keyframes ibotDot{ 0%,80%,100%{ transform:translateY(0); opacity:.35;} 40%{ transform:translateY(-4px); opacity:1;} }
 
-.ibot-thinking{ padding:4px 4px 6px 38px; }
+.ibot-thinking{ padding:6px 6px 8px 42px; }
 .ibot-skel{
-  height:16px; width:56%; border-radius:7px;
+  height:18px; width:60%; border-radius:8px;
   background:linear-gradient(90deg,#ffffff14,#ffffff2b,#ffffff14);
   animation:ibotSkel 1.2s infinite linear; background-size:200%;
 }
-.ibot-skel.short{ width:38%; margin-top:8px; }
+.ibot-skel.short{ width:42%; margin-top:10px; }
 @keyframes ibotSkel{ to{ background-position:-200% 0; } }
 
 /* Example line */
 .ibot-example{
-  color:#cbd7ea; opacity:.85; text-align:center;
-  font-size:clamp(14px,1.9vw,16px);
-  margin-top:6px;
+  color:#cbd7ea; opacity:.9; text-align:center;
+  font-size:clamp(15px,2vw,18px);
+  margin-top:10px;
 }
-.ibot-example-intro{ font-weight:700; }
+.ibot-example-intro{ font-weight:800; }
 
 /* Proceed button */
 .ibot-to-dash{
-  position:fixed; right:18px; bottom:18px;
-  padding:10px 14px; background:#ffffff; color:#0b1222;
-  border:1px solid rgba(0,0,0,.06); border-radius:12px;
-  box-shadow:0 14px 28px rgba(0,0,0,.22);
-  font-weight:800; cursor:pointer;
+  position:fixed; right:20px; bottom:20px;
+  padding:12px 16px; background:#ffffff; color:#0b1222;
+  border:1px solid rgba(0,0,0,.06); border-radius:14px;
+  box-shadow:0 16px 32px rgba(0,0,0,.22);
+  font-weight:800; cursor:pointer; font-size:15px;
 }
 .ibot-to-dash:hover{ transform: translateY(-1px); }
 
+/* ---------- Advice Card (polished, upsized) ---------- */
+.card{
+  width: min(1100px, 94vw);
+  background: #0b1323;
+  border: 1px solid #1f2a3e;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  overflow: hidden;
+}
+.card-head{
+  display: flex; gap: 10px; align-items: center;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #1a2540;
+  background: radial-gradient(520px 160px at 16% -40%, #15305666 0%, transparent 70%);
+}
+
+.chip{
+  display:inline-flex; align-items:center; gap:10px;
+  padding: 8px 14px; border-radius: 999px;
+  background:#0f1b32; border:1px solid #203055; color:#e7f0ff;
+  font-weight: 800; font-size: 14.5px;
+}
+.chip--cat::before{
+  content:""; width:9px; height:9px; border-radius:50%;
+  background:#7aa2ff; box-shadow:0 0 10px #7aa2ff80;
+}
+.chip--loc{ opacity:.95; }
+
+.block{ padding: 18px 20px; }
+.block + .block{ padding-top: 14px; border-top: 1px dashed #1a2742; }
+
+.block > h3{
+  margin: 0 0 12px;
+  font-weight: 900; color: #ffffff; letter-spacing:.2px; font-size:22px;
+}
+
+/* Paragraph text inside card */
+.para{ margin: 0; color:#dae6ff; font-size:18px; }
+.para + .para{ margin-top: 12px; }
+
+/* Lists */
+.list{ margin:0; padding-left: 22px; }
+.list.small li{ margin: 6px 0; font-size:18px; }
+.list--bullets li{ margin: 8px 0; font-size:18px; }
+
+/* Steps (Next 90 Days) */
+.steps{ display: grid; gap: 14px; }
+.step{
+  padding: 14px 16px;
+  border: 1px solid #1b2743; border-radius: 14px;
+  background: linear-gradient(180deg,#0f1a30,#0d1628);
+  font-size:18px;
+}
+.step-title{ font-weight: 900; margin-bottom: 8px; font-size:19px; }
+
+/* KPI grid */
+.kpi-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.kpi{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 14px; border-radius:14px;
+  background:#0f1a30; border:1px solid #223154;
+  font-size:18px;
+}
+.kpi-name{ font-weight:900; color:#eaf2ff; }
+.kpi-value{ font-weight:900; color:#cfe0ff; }
+
 /* ---------- Small screens ---------- */
-@media (max-width:700px){
-  .ibot-title{ font-size:26px; }
-  .ibot-title span{ font-size:16px; }
-  .ibot-bubble{ font-size:15px; }
-  .ibot-kv b{ min-width:110px; }
+@media (max-width:820px){
+  .ibot-bubble{ max-width:100%; font-size:17px; }
+  .card{ width:min(100%, 96vw); }
+  .block{ padding:16px; }
+  .kpi-grid{ grid-template-columns: 1fr; }
+  .chip{ font-size:14px; padding:7px 12px; }
 }
