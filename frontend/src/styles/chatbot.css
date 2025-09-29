@@ -173,7 +173,7 @@
 }
 .ibot-example-intro { font-weight: 800; color: var(--ibot-ink); }
 
-/* Proceed button */
+/* Proceed buttons */
 .ibot-to-dash {
   position: fixed;
   right: 20px;
@@ -189,6 +189,26 @@
   font-size: 15px;
 }
 .ibot-to-dash:hover { transform: translateY(-1px); filter: brightness(1.05); }
+
+/* Inline hint / error */
+.ibot-hint{
+  background: #fff;
+  border: 1px solid var(--ibot-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: var(--ibot-shadow);
+  color: var(--ibot-ink);
+  font-weight: 700;
+}
+.ibot-error{
+  color:#b91c1c;
+  font-weight:800;
+  background:#fff;
+  border:1px solid #fecaca;
+  border-radius:10px;
+  padding:8px 10px;
+  width:max-content;
+}
 
 /* ---------- Advice Card ---------- */
 .card {
@@ -207,6 +227,15 @@
   border-bottom: 1px solid var(--ibot-border);
   background: #f9faff;
 }
+.card-head h3{
+  margin:0;
+  font-weight:900;
+  font-size:20px;
+  letter-spacing:.2px;
+  color:var(--ibot-ink);
+}
+.pillrow{ display:flex; flex-wrap:wrap; gap:8px; }
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -286,5 +315,3 @@
   .kpi-grid { grid-template-columns: 1fr; }
   .chip { font-size: 13px; padding: 6px 10px; }
 }
-
-

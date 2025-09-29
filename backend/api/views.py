@@ -865,3 +865,115 @@ class InvestorViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ["investor_name", "company_name", "email_address"]
     ordering_fields = ["investor_name", "company_name", "credit_score"]
     ordering = ["investor_name"]
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def analytics_category_trend(request):
+    """
+    For the selected category, return N months of trend,
+    comparing each month vs the immediately previous month.
+    """
+    months = max(3, min(12, int(request.GET.get("months", 5) or 5)))
+
+    # figure out which category to chart (query param or latest idea)
+    cat_id = request.GET.get("category_id")
+    cat_name = (request.GET.get("category") or "").strip()
+    if cat_id and str(cat_id).isdigit():
+        category = BusinessCategory.objects.filter(pk=int(cat_id)).first()
+    elif cat_name:
+        category = BusinessCategory.objects.filter(name__iexact=cat_name).first()
+    else:
+        latest = BusinessIdea.objects.filter(user_id=request.user.id).order_by("-submission_date").first()
+        category = latest.category if latest else None
+    if not category:
+        return Response({"detail": "No category found for trend."}, status=404)
+
+    # build month anchors from oldest→newest
+    now = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    anchors = []
+    y, m = now.year, now.month
+    for i in range(months - 1, -1, -1):
+        yy, mm = y, m - i
+        while mm <= 0:
+            yy -= 1; mm += 12
+        anchors.append(timezone.make_aware(datetime(yy, mm, 1)))
+
+    points = []
+    for anchor in anchors:
+        # this month
+        this_start = anchor
+        this_end = (anchor.replace(year=anchor.year + 1, month=1)
+                    if anchor.month == 12 else anchor.replace(month=anchor.month + 1))
+        # previous month
+        prev_end = this_start
+        prev_start = (this_start.replace(year=this_start.year - 1, month=12)
+                      if this_start.month == 1 else this_start.replace(month=this_start.month - 1))
+
+        this_count = BusinessIdea.objects.filter(
+            category_id=category.pk,
+            submission_date__gte=this_start, submission_date__lt=this_end
+        ).count()
+        last_count = BusinessIdea.objects.filter(
+            category_id=category.pk,
+            submission_date__gte=prev_start, submission_date__lt=prev_end
+        ).count()
+
+        points.append({"month": anchor.strftime("%b"),
+                       "thisMonth": this_count, "lastMonth": last_count})
+
+    return Response({"category_id": category.pk, "category": category.name, "points": points}, status=200)
+
+
+# views.py
+from datetime import datetime
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import BusinessIdea
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def analytics_monthly_overview(request):
+    """
+    Line chart data for last N months (default 5):
+      - thisMonth (BLUE): total ideas across all users/categories
+      - lastMonth (GREEN): ideas created by the current user
+    """
+    months = max(3, min(12, int(request.GET.get("months", 5) or 5)))
+
+    # month anchors oldest → newest (1st of each month, tz-aware)
+    now = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    anchors = []
+    y, m = now.year, now.month
+    for i in range(months - 1, -1, -1):
+        yy, mm = y, m - i
+        while mm <= 0:
+            yy -= 1; mm += 12
+        anchors.append(timezone.make_aware(datetime(yy, mm, 1)))
+
+    pts = []
+    uid = request.user.id
+    for start in anchors:
+        end = (start.replace(year=start.year + 1, month=1)
+               if start.month == 12 else start.replace(month=start.month + 1))
+
+        all_cnt = BusinessIdea.objects.filter(
+            submission_date__gte=start, submission_date__lt=end
+        ).count()
+
+        my_cnt = BusinessIdea.objects.filter(
+            user_id=uid,
+            submission_date__gte=start, submission_date__lt=end
+        ).count()
+
+        pts.append({
+            "month": start.strftime("%b"),
+            "thisMonth": all_cnt,   # BLUE
+            "lastMonth": my_cnt,    # GREEN (my ideas)
+        })
+
+    return Response({"label": "My ideas", "points": pts}, status=200)

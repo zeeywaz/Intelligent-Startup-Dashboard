@@ -55,4 +55,7 @@ urlpatterns = [
     
     path("request-otp/", views.request_otp),
     path("verify-otp/", views.verify_otp_api),
+    
+    path("analytics/monthly-overview/", views.analytics_monthly_overview, name="analytics-monthly-overview"),
+
 ]

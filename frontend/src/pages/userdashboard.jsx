@@ -1,3 +1,4 @@
+// src/pages/userdashboard.jsx
 import React, { useEffect, useState } from "react";
 
 import Card from "../components/Card";
@@ -34,6 +35,7 @@ export default function UserDashboard() {
   const [name, setName] = useState("");
   const [pieData, setPieData] = useState(FALLBACK_PIE);
   const [lineData, setLineData] = useState(FALLBACK_LINE);
+  const [myBT, setMyBT] = useState(null); // user's business_type label
 
   // fetch name
   useEffect(() => {
@@ -54,31 +56,36 @@ export default function UserDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        // Optionally seed when empty during development (no-op if already populated)
-        // await fetch(`${API_BASE}/api/analytics/seed/`, { method: "POST", credentials: "include" });
-
-        // Popular categories for the month
-        const r1 = await fetch(`${API_BASE}/api/analytics/popular-categories/`, { credentials: "include" });
+        // Donut: popular categories for THIS month
+        const r1 = await fetch(`${API_BASE}/api/analytics/popular-categories/`, {
+          credentials: "include",
+        });
         if (r1.ok) {
           const j1 = await r1.json();
           const items = Array.isArray(j1?.items) ? j1.items : [];
-          if (items.length) {
-            setPieData(items.map((it) => ({ name: it.name, value: it.count })));
-          }
+          if (items.length) setPieData(items.map((it) => ({ name: it.name, value: it.count })));
         }
 
-        // Trend for current user's category (last 5 months, this vs last year)
-        const r2 = await fetch(`${API_BASE}/api/analytics/category-trend/?months=5`, { credentials: "include" });
+        // LINE: blue = ALL ideas; green = MY business_type (last N months)
+        const r2 = await fetch(`${API_BASE}/api/analytics/monthly-overview/?months=5`, {
+          credentials: "include",
+        });
         if (r2.ok) {
           const j2 = await r2.json();
           const pts = Array.isArray(j2?.points) ? j2.points : [];
           if (pts.length) setLineData(pts);
+          if (j2?.business_type) {
+            setMyBT(j2.business_type);
+            localStorage.setItem("if_bt", j2.business_type);
+          }
         }
       } catch {
         // keep fallbacks
       }
     })();
   }, []);
+
+  const myBTLabel = myBT || localStorage.getItem("if_bt") || "n/a";
 
   return (
     <>
@@ -123,8 +130,17 @@ export default function UserDashboard() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="thisMonth" stroke="#6d7dfc" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="lastMonth"  stroke="#7dd3a1" strokeWidth={2} dot={false} />
+                  {/* BLUE: all ideas */}
+                  <Line
+                    type="monotone"
+                    dataKey="thisMonth"
+                    name="All categories"
+                    stroke="#6d7dfc"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  {/* GREEN: user's business_type */}
+                  <Line type="monotone" dataKey="lastMonth"  name="My ideas" stroke="#7dd3a1" strokeWidth={2} dot={false} />
                 </LineChart>
               </div>
             </section>

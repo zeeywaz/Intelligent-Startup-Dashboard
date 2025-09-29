@@ -2,9 +2,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/chatbot.css";
-import api, { API_BASE, apiFetch } from "../lib/api";
+import api, { apiFetch } from "../lib/api";
 
-/* typing indicator */
+/* ---------------- Typing indicator ---------------- */
 function Typing() {
   return (
     <div className="ibot-dots" aria-label="Thinking">
@@ -13,16 +13,25 @@ function Typing() {
   );
 }
 
-/* chat bubble */
+/* ---------------- Chat bubble ---------------- */
 function Bubble({ role = "assistant", kind = "text", children }) {
   const isUser = role === "user";
   return (
     <div className={`ibot-bubble-row ${isUser ? "user" : "assistant"}`}>
       {!isUser && (
-        <img src="/logo-black.png" alt="IdeaForge" className="ibot-avatar" width={28} height={28} />
+        <img
+          src="/logo-black.png"
+          alt="IdeaForge"
+          className="ibot-avatar"
+          width={28}
+          height={28}
+        />
       )}
       {kind === "html" ? (
-        <div className="ibot-bubble ibot-bubble--html" dangerouslySetInnerHTML={{ __html: children }} />
+        <div
+          className="ibot-bubble ibot-bubble--html"
+          dangerouslySetInnerHTML={{ __html: children }}
+        />
       ) : (
         <div className="ibot-bubble">{children}</div>
       )}
@@ -30,10 +39,15 @@ function Bubble({ role = "assistant", kind = "text", children }) {
   );
 }
 
-/* helpers */
-const sentenceCase = (s) =>
-  !s ? "" : s.trim().replace(/\s+/g, " ").replace(/^([a-z])/, (m) => m.toUpperCase());
+/* ================= Helpers ================= */
 
+/** Sentence case and tidy spacing */
+const sentenceCase = (s) =>
+  !s
+    ? ""
+    : String(s).trim().replace(/\s+/g, " ").replace(/^([a-z])/, (m) => m.toUpperCase());
+
+/** De-dup + cap + end with period */
 const tidySuggestions = (arr, max = 5) => {
   const seen = new Set();
   const out = [];
@@ -49,6 +63,211 @@ const tidySuggestions = (arr, max = 5) => {
   return out;
 };
 
+// Allowed enum labels in DB (after removing local/regional/national)
+const ALLOWED_LOCATIONS = [
+  "Online",
+  "Colombo","Gampaha","Kalutara","Kandy","Matale","Nuwara Eliya",
+  "Galle","Matara","Hambantota","Jaffna","Kilinochchi","Mannar",
+  "Vavuniya","Mullaitivu","Batticaloa","Ampara","Trincomalee",
+  "Kurunegala","Puttalam","Anuradhapura","Polonnaruwa",
+  "Badulla","Monaragala","Ratnapura","Kegalle",
+];
+const LCASE_TO_CANON = Object.fromEntries(ALLOWED_LOCATIONS.map((s) => [s.toLowerCase(), s]));
+
+/** Case-insensitive, suffix-tolerant canonicalizer for enum-backed location */
+function toEnumLocation(v) {
+  if (!v) return null;
+  const key = String(v).trim().toLowerCase().replace(/\bdistrict\b/g, "").trim();
+  return LCASE_TO_CANON[key] ?? null;
+}
+
+/** Very small HTML escaper for any free text we render in HTML card */
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Pull out "On operations: ..." and convert to bullets; return { body, ops } */
+function extractOps(narr) {
+  const out = { body: narr || "", ops: [] };
+  if (!narr) return out;
+
+  const paras = String(narr).split(/\n{2,}/);
+  const keep = [];
+  for (const p of paras) {
+    const m = p.match(/^\s*On operations:\s*(.+)$/i);
+    if (m) {
+      const opsRaw = m[1];
+      // split by semicolons or sentence breaks, tidy, and keep non-empty points
+      const ops = opsRaw
+        .split(/(?:;|•|·|\.)\s+/g)
+        .map((s) => s.trim().replace(/\.*$/, ""))
+        .filter(Boolean)
+        .map((s) => sentenceCase(s) + ".");
+      out.ops = ops;
+    } else {
+      keep.push(p);
+    }
+  }
+  out.body = keep.join("\n\n").trim();
+  return out;
+}
+
+/** Normalize a roadmap item into a uniform { title, bullets, phase } shape */
+function normalizeRoadmapStep(step, index) {
+  if (step == null) return null;
+
+  // String → split into bullets by punctuation / newline
+  if (typeof step === "string") {
+    const str = step.trim();
+    // Try to infer a "phase" like "Weeks 1–2:" prefix
+    let phase = "";
+    let body = str;
+    const m = str.match(/^(Weeks?\s*[^:]+):\s*(.+)$/i);
+    if (m) { phase = m[1]; body = m[2]; }
+
+    const bullets = body
+      .split(/(?:\.\s+|;|\n|,)(?![^()]*\))/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return { title: `Step ${index + 1}`, bullets, phase };
+  }
+
+  // Array → direct bullets
+  if (Array.isArray(step)) {
+    const bullets = step.map((x) => sentenceCase(String(x).replace(/\.*\s*$/, "")) + ".");
+    return { title: `Step ${index + 1}`, bullets, phase: "" };
+  }
+
+  // Object → try common fields
+  if (typeof step === "object") {
+    const title =
+      step.title || step.name || step.heading || `Step ${index + 1}`;
+    const phase =
+      step.phase || step.when || step.timeframe || step.window || "";
+
+    let bullets = [];
+    if (Array.isArray(step.goals)) bullets = step.goals.map(String);
+    else if (Array.isArray(step.tasks)) bullets = step.tasks.map(String);
+    else if (Array.isArray(step.items)) bullets = step.items.map(String);
+    else if (step.description) bullets = [String(step.description)];
+    else {
+      bullets = Object.values(step)
+        .filter((v) => typeof v === "string")
+        .map(String);
+    }
+
+    bullets = bullets
+      .map((x) => sentenceCase(String(x).replace(/\.*\s*$/, "")) + ".")
+      .filter(Boolean);
+
+    return { title, bullets, phase };
+  }
+
+  return null;
+}
+
+/** Build the HTML card we drop into the assistant bubble */
+function buildResultHTML({ category, location, narrative, suggestions, roadmap, kpis, risks }) {
+  const cat = esc(category || "—");
+  const loc = esc(location || "—");
+
+  // pull out ops and the remaining body
+  const { body: narr, ops } = extractOps(narrative || "");
+
+  const li = (xs) =>
+    (xs || [])
+      .map((x) => `<li>${esc(typeof x === "string" ? x : JSON.stringify(x))}</li>`)
+      .join("");
+
+  // KPIs can be strings OR objects {name, target, timeframe}. Handle both.
+  const kpiGrid = (kpis || [])
+    .map((k) => {
+      if (!k) return "";
+      if (typeof k === "string") {
+        return `<div class="kpi"><span class="kpi-name">${esc(k)}</span><span class="kpi-value">—</span></div>`;
+      }
+      const name = esc(k.name ?? "");
+      const target = esc(k.target ?? k.goal ?? "");
+      const timeframe = esc(k.timeframe ?? k.period ?? "");
+      const right = [target, timeframe].filter(Boolean).join(" · ") || "—";
+      return `<div class="kpi"><span class="kpi-name">${name}</span><span class="kpi-value">${right}</span></div>`;
+    })
+    .join("");
+
+  // Nicely formatted steps
+  const steps = (roadmap || [])
+    .map((raw, i) => normalizeRoadmapStep(raw, i))
+    .filter(Boolean)
+    .map((norm) => {
+      const title = esc(norm.title || "");
+      const phaseChip = norm.phase ? ` <span class="chip" style="margin-left:8px">${esc(norm.phase)}</span>` : "";
+      const bullets = (norm.bullets && norm.bullets.length)
+        ? `<ul class="list small">${li(norm.bullets)}</ul>`
+        : "";
+      return `<div class="step"><div class="step-title">${title}${phaseChip}</div>${bullets}</div>`;
+    })
+    .join("");
+
+  const suggestionsList = (suggestions && suggestions.length)
+    ? `<ul class="list list--bullets">${li(suggestions)}</ul>`
+    : "";
+
+  const risksList = (risks && risks.length)
+    ? `<ul class="list small">${li(risks)}</ul>`
+    : "";
+
+  const opsBlock = ops.length
+    ? `<div class="block">
+         <h3>Operations</h3>
+         <ul class="list small">${li(ops)}</ul>
+       </div>`
+    : "";
+
+  return `
+  <article class="card">
+    <div class="card-head">
+      <h3>Suggested Plan</h3>
+      <div class="pillrow">
+        <span class="chip chip--cat">${cat}</span>
+        <span class="chip chip--loc">Location: ${loc}</span>
+      </div>
+    </div>
+
+    ${narr ? `<div class="block"><p class="para">${esc(narr)}</p></div>` : ""}
+
+    ${opsBlock}
+
+    ${suggestionsList ? `
+      <div class="block">
+        <h3>Actions to Start</h3>
+        ${suggestionsList}
+      </div>` : ""}
+
+    ${steps ? `
+      <div class="block">
+        <h3>Next 90 Days</h3>
+        <div class="steps">${steps}</div>
+      </div>` : ""}
+
+    ${kpiGrid ? `
+      <div class="block">
+        <h3>KPIs</h3>
+        <div class="kpi-grid">${kpiGrid}</div>
+      </div>` : ""}
+
+    ${risksList ? `
+      <div class="block">
+        <h3>Risks</h3>
+        ${risksList}
+      </div>` : ""}
+  </article>
+  `;
+}
+
+/* ================= Page ================= */
 export default function ChatPage() {
   const [idea, setIdea] = useState("");
   const [messages, setMessages] = useState([
@@ -65,19 +284,93 @@ export default function ChatPage() {
   const [saveMsg, setSaveMsg] = useState("");
   const [lastResult, setLastResult] = useState(null); // { text, category, location, narrative, ... }
 
+  // NEW: saved ideas state
+  const [savedIdeas, setSavedIdeas] = useState([]);
+  const [selectedIdeaId, setSelectedIdeaId] = useState(null);
+
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  // Make sure the CSRF cookie exists early (once per tab)
+  // Ensure CSRF cookie early and try to auto-load last saved idea
   useEffect(() => {
-    apiFetch("/api/csrf/").catch(() => {});
+    (async () => {
+      try { await apiFetch("/api/csrf/"); } catch {}
+      try {
+        const me = await api.me(); // session check
+        if (!me?.authenticated) return;
+        const ideas = await api.myIdeas(); // GET /api/ideas/mine/
+        if (!Array.isArray(ideas) || !ideas.length) return;
+        setSavedIdeas(ideas);
+        const storedId = Number(localStorage.getItem("last_idea_id") || 0);
+        const chosen = ideas.find((i) => i.idea_id === storedId) || ideas[0];
+        setSelectedIdeaId(chosen.idea_id);
+        await renderIdea(chosen, { silentIntro: true });
+      } catch (e) {
+        // Not signed in or 401 → ignore
+      }
+    })();
   }, []);
+
+  async function renderIdea(ideaRow, { silentIntro = false } = {}) {
+    const baseText = (ideaRow?.description || ideaRow?.title || "").trim();
+    if (!baseText) return;
+    setErrorText("");
+    setLoading(true);
+    try {
+      const data = await api.classify({
+        text: baseText,
+        top_k: 5,
+        with_advice: true,
+        include_neighbors: false,
+      });
+
+      const pred0 = Array.isArray(data?.predictions) ? data.predictions[0] : {};
+      const cat = pred0?.Category || pred0?.category || ideaRow?.category || "";
+      // prefer saved idea location if present
+      const locRaw = ideaRow?.location || pred0?.Location || pred0?.location || null;
+
+      const advice = data?.advice || {};
+      const suggestions = tidySuggestions(advice?.suggestions, 6);
+      const narrative = advice?.narrative || "";
+      const roadmap = Array.isArray(advice?.next_90_days) ? advice.next_90_days : [];
+      const kpis = Array.isArray(advice?.kpis) ? advice.kpis : [];
+      const risks = tidySuggestions(advice?.risks, 5);
+      const canonLoc = toEnumLocation(locRaw);
+
+      const result = {
+        text: baseText,
+        category: String(cat || ""),
+        location: canonLoc,
+        narrative,
+        suggestions,
+        roadmap,
+        kpis,
+        risks,
+      };
+      setLastResult(result);
+
+      const html = buildResultHTML(result);
+      setMessages((m) => [
+        ...m,
+        ...(silentIntro ? [] : [{ role: "assistant", kind: "text", content: `Loaded your saved idea: ${ideaRow.title || ideaRow.category}.` }]),
+        { role: "assistant", kind: "html", content: html },
+      ]);
+    } catch (e) {
+      console.error(e);
+      setErrorText("Network error");
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", kind: "text", content: "Network error. Please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const submitIdea = async () => {
     const trimmed = idea.trim();
     if (!trimmed || loading) return;
 
-    // echo user message
     setMessages((m) => [...m, { role: "user", kind: "text", content: trimmed }]);
     setIdea("");
     setErrorText("");
@@ -95,106 +388,31 @@ export default function ChatPage() {
       // normalize backend
       const pred0 = Array.isArray(data?.predictions) ? data.predictions[0] : {};
       const cat = pred0?.Category || pred0?.category || "";
-      const loc = pred0?.Location || pred0?.location || null;
+      const locRaw = pred0?.Location || pred0?.location || null;
 
       const advice = data?.advice || {};
-      const suggestions = tidySuggestions(advice?.suggestions, 4);
+      const suggestions = tidySuggestions(advice?.suggestions, 6);
       const narrative = advice?.narrative || "";
       const roadmap = Array.isArray(advice?.next_90_days) ? advice.next_90_days : [];
       const kpis = Array.isArray(advice?.kpis) ? advice.kpis : [];
-      const risks = tidySuggestions(advice?.risks, 3);
+      const risks = tidySuggestions(advice?.risks, 5);
 
-      setLastResult({
+      // Canonicalize location for display (keep original for context too)
+      const canonLoc = toEnumLocation(locRaw);
+
+      const result = {
         text: trimmed,
-        category: cat,
-        location: loc,
+        category: String(cat || ""),
+        location: canonLoc,
         narrative,
         suggestions,
         roadmap,
         kpis,
         risks,
-      });
+      };
+      setLastResult(result);
 
-      // build compact HTML card
-      const html = `
-        <article class="card">
-          <header class="card-head">
-            <span class="chip chip--cat">${String(cat || "—")}</span>
-            ${loc ? `<span class="chip chip--loc">${String(loc)}</span>` : ""}
-          </header>
-          ${
-            suggestions.length
-              ? `<section class="block">
-                   <h3>Suggested next moves</h3>
-                   <ul class="list list--bullets">
-                     ${suggestions.map((s) => `<li>${s}</li>`).join("")}
-                   </ul>
-                 </section>`
-              : ""
-          }
-          ${
-            narrative
-              ? `<section class="block">
-                   <h3>Narrative</h3>
-                   <p class="para">${String(narrative)
-                     .replace(/&/g, "&amp;")
-                     .replace(/</g, "&lt;")
-                     .replace(/>/g, "&gt;")
-                     .replace(/\n{2,}/g, "</p><p class='para'>")
-                     .replace(/\n/g, "<br/>")}</p>
-                 </section>`
-              : ""
-          }
-          ${
-            roadmap.length
-              ? `<section class="block">
-                   <h3>Next 90 Days</h3>
-                   <div class="steps">
-                     ${roadmap
-                       .map(
-                         (ph) => `
-                         <div class="step">
-                           <div class="step-title">${String(ph.phase || "")}</div>
-                           <ul class="list list--bullets small">
-                             ${(ph.goals || []).map((g) => `<li>${String(g)}</li>`).join("")}
-                           </ul>
-                         </div>`
-                       )
-                       .join("")}
-                   </div>
-                 </section>`
-              : ""
-          }
-          ${
-            kpis.length
-              ? `<section class="block">
-                   <h3>KPIs</h3>
-                   <div class="kpi-grid">
-                     ${kpis
-                       .map(
-                         (k) => `
-                         <div class="kpi">
-                           <div class="kpi-name">${String(k.name || "")}</div>
-                           <div class="kpi-value">${String(k.target ?? "")}</div>
-                         </div>`
-                       )
-                       .join("")}
-                   </div>
-                 </section>`
-              : ""
-          }
-          ${
-            risks.length
-              ? `<section class="block">
-                   <h3>Risks</h3>
-                   <ul class="list list--bullets small">
-                     ${risks.map((r) => `<li>${r}</li>`).join("")}
-                   </ul>
-                 </section>`
-              : ""
-          }
-        </article>
-      `;
+      const html = buildResultHTML(result);
       setMessages((m) => [...m, { role: "assistant", kind: "html", content: html }]);
     } catch (e) {
       console.error(e);
@@ -219,16 +437,21 @@ export default function ChatPage() {
       title: lastResult.text.slice(0, 255),
       description: lastResult.narrative || lastResult.text,
       target_audience: "",
-      location: lastResult.location === "Online" ? "online" : null,
+      // IMPORTANT: send canonical enum value (e.g., "Online", "Galle") or null
+      location: toEnumLocation(lastResult.location),
       business_type: null,
     };
 
     try {
-      await api.saveIdea(payload);                // <— CSRF header auto-added
+      const created = await api.saveIdea(payload); // returns the created idea row
       setSaveMsg("Saved! You can find it in your dashboard.");
+      // keep a quick list in UI + remember last idea id for auto-load after login
+      setSavedIdeas((s) => [created, ...s]);
+      setSelectedIdeaId(created.idea_id);
+      localStorage.setItem("last_idea_id", String(created.idea_id));
     } catch (e) {
       console.error(e);
-      setSaveMsg(`Couldn’t save the idea. ${e.message}`);
+      setSaveMsg(`Couldn’t save the idea. ${e.message || "Unknown error"}`);
     } finally {
       setSaveBusy(false);
     }
@@ -249,6 +472,7 @@ export default function ChatPage() {
 
   return (
     <div className="ibot-app">
+      {/* Header & Navigation */}
       <div className="ibot-logo-left">
         <Link to="/userdashboard" className="auth-brand" aria-label="IdeaForge User Dashboard">
           <img src="/logo-black.png" alt="IdeaForge" className="auth-logo" height={40} />
@@ -261,9 +485,35 @@ export default function ChatPage() {
           <span>Where Ideas Turn Into Reality</span>
         </h1>
 
+        {/* Saved ideas chips */}
+        {savedIdeas.length > 0 && (
+          <div className="ibot-saved" style={{ margin: "8px 0 16px" }}>
+            <div className="pillrow" role="listbox" aria-label="Saved ideas">
+              {savedIdeas.map((it) => (
+                <button
+                  key={it.idea_id}
+                  type="button"
+                  role="option"
+                  aria-selected={selectedIdeaId === it.idea_id}
+                  className={`chip ${selectedIdeaId === it.idea_id ? "chip--active" : ""}`}
+                  title={it.title || it.category}
+                  onClick={() => {
+                    setSelectedIdeaId(it.idea_id);
+                    localStorage.setItem("last_idea_id", String(it.idea_id));
+                    renderIdea(it);
+                  }}
+                >
+                  {it.title || it.category}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* input bar */}
         <div className="ibot-input-wrap" role="group" aria-label="Submit your idea">
           <div className={`ibot-input-inner ${loading ? "busy" : ""}`}>
+            {/* File picker button */}
             <button
               type="button"
               className="ibot-addfiles-btn"
@@ -271,10 +521,12 @@ export default function ChatPage() {
               aria-label="Add files"
               title="Attach files"
             >
-              <svg viewBox="0 0 43 44" className="ibot-plus">
+              <svg viewBox="0 0 43 44" className="ibot-plus" aria-hidden="true">
                 <path d="M19.7 23.83H8.96V20.17h10.74V9.17h3.58v11h10.75v3.67H22.54v11h-3.58v-11Z" />
               </svg>
             </button>
+
+            {/* File input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -283,6 +535,7 @@ export default function ChatPage() {
               className="ibot-hidden-file"
             />
 
+            {/* Idea input */}
             <input
               type="text"
               className="ibot-input"
@@ -294,6 +547,7 @@ export default function ChatPage() {
               disabled={loading}
             />
 
+            {/* Submit button */}
             <button
               type="button"
               className="ibot-submit-btn"
@@ -305,7 +559,7 @@ export default function ChatPage() {
               {loading ? (
                 <Typing />
               ) : (
-                <svg viewBox="0 0 24 24" className="ibot-send">
+                <svg viewBox="0 0 24 24" className="ibot-send" aria-hidden="true">
                   <path d="M3.4 20.6 22 12 3.4 3.4 3 10l12 2-12 2z" />
                 </svg>
               )}
@@ -327,20 +581,22 @@ export default function ChatPage() {
             )
           )}
 
+          {/* Loading/Thinking indicator */}
           {loading && (
-            <div className="ibot-thinking">
+            <div className="ibot-thinking" aria-hidden="true">
               <div className="ibot-skel" />
               <div className="ibot-skel short" />
               <Typing />
             </div>
           )}
 
+          {/* Error message */}
           {errorText && <div className="ibot-error">{errorText}</div>}
         </section>
 
         <p className="ibot-example">
-          <span className="ibot-example-intro">Example:</span>{" "}
-          “I want to start a clothing business in Colombo. I’ll begin online and expand to a physical store.”
+          <span className="ibot-example-intro">Example:</span> “I want to start a clothing business
+          in Colombo. I’ll begin online and expand to a physical store.”
         </p>
       </main>
 
@@ -356,6 +612,7 @@ export default function ChatPage() {
         {saveBusy ? "Saving…" : "Proceed with Idea"}
       </button>
 
+      {/* Proceed to Dashboard */}
       <button
         type="button"
         className="ibot-to-dash"
