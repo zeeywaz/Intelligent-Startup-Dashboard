@@ -9,13 +9,33 @@ import {
   PieChart, Pie, Tooltip, Cell, Legend, LineChart,
   Line, XAxis, YAxis, CartesianGrid,
 } from "recharts";
-
 import { API_BASE } from "../lib/api";
 
+// fallback palettes
+const COLORS = ["#2a5684", "#c1dfff", "#8699c4", "#667ba5", "#a9b8d9"];
+
+// fallback data (used only if API fails)
+const FALLBACK_PIE = [
+  { name: "Niche 1", value: 400 },
+  { name: "Niche 2", value: 300 },
+  { name: "Niche 3", value: 200 },
+  { name: "Niche 4", value: 100 },
+  { name: "Niche 5", value: 100 },
+];
+const FALLBACK_LINE = [
+  { month: "Jan", thisMonth: 400, lastMonth: 350 },
+  { month: "Feb", thisMonth: 300, lastMonth: 280 },
+  { month: "Mar", thisMonth: 200, lastMonth: 220 },
+  { month: "Apr", thisMonth: 278, lastMonth: 260 },
+  { month: "May", thisMonth: 189, lastMonth: 210 },
+];
 
 export default function UserDashboard() {
   const [name, setName] = useState("");
+  const [pieData, setPieData] = useState(FALLBACK_PIE);
+  const [lineData, setLineData] = useState(FALLBACK_LINE);
 
+  // fetch name
   useEffect(() => {
     (async () => {
       try {
@@ -30,21 +50,35 @@ export default function UserDashboard() {
     })();
   }, []);
 
-  const pieData = [
-    { name: "Niche 1", value: 400 },
-    { name: "Niche 2", value: 300 },
-    { name: "Niche 3", value: 200 },
-    { name: "Niche 4", value: 100 },
-    { name: "Niche 5", value: 100 },
-  ];
-  const COLORS = ["#2a5684", "#c1dfff", "#8699c4", "#667ba5", "#a9b8d9"];
-  const lineData = [
-    { month: "Jan", thisMonth: 400, lastMonth: 350 },
-    { month: "Feb", thisMonth: 300, lastMonth: 280 },
-    { month: "Mar", thisMonth: 200, lastMonth: 220 },
-    { month: "Apr", thisMonth: 278, lastMonth: 260 },
-    { month: "May", thisMonth: 189, lastMonth: 210 },
-  ];
+  // fetch analytics (with graceful fallback)
+  useEffect(() => {
+    (async () => {
+      try {
+        // Optionally seed when empty during development (no-op if already populated)
+        // await fetch(`${API_BASE}/api/analytics/seed/`, { method: "POST", credentials: "include" });
+
+        // Popular categories for the month
+        const r1 = await fetch(`${API_BASE}/api/analytics/popular-categories/`, { credentials: "include" });
+        if (r1.ok) {
+          const j1 = await r1.json();
+          const items = Array.isArray(j1?.items) ? j1.items : [];
+          if (items.length) {
+            setPieData(items.map((it) => ({ name: it.name, value: it.count })));
+          }
+        }
+
+        // Trend for current user's category (last 5 months, this vs last year)
+        const r2 = await fetch(`${API_BASE}/api/analytics/category-trend/?months=5`, { credentials: "include" });
+        if (r2.ok) {
+          const j2 = await r2.json();
+          const pts = Array.isArray(j2?.points) ? j2.points : [];
+          if (pts.length) setLineData(pts);
+        }
+      } catch {
+        // keep fallbacks
+      }
+    })();
+  }, []);
 
   return (
     <>
@@ -57,7 +91,7 @@ export default function UserDashboard() {
             <p className="dash-sub">Business Insight — Get ahead of your competition</p>
           </div>
 
-          {/* Cards row using your Card component */}
+          {/* Cards row */}
           <div className="ud-cards" style={{ marginTop: 8, marginBottom: 8 }}>
             <Card icon={Boxes} label="Resource & Services" to="/resources" />
             <Card icon={Store} label="Other Business & Competitors" to="/competitors" />

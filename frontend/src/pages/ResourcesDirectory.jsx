@@ -2,22 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
 import "../styles/resources-directory.css";
+import { API_BASE } from "../lib/api";
+import useServerBookmarks from "../hooks/useServerBookmarks";
 
 /** how many to request at a time */
 const PAGE_SIZE = 20;
 
-/** API base that works in Vite, CRA, or as a plain absolute dev URL */
-const API_BASE =
-  (typeof import.meta !== "undefined" &&
-    import.meta.env &&
-    import.meta.env.VITE_API_BASE) ||
-  (typeof process !== "undefined" &&
-    process.env &&
-    process.env.REACT_APP_API_BASE) ||
-  "http://127.0.0.1:8000/api";
-
-const API_URL = `${API_BASE}/resources/`; // trailing slash to match DRF route
-const STORAGE_KEY = "bookmarkedResources.v1";
+/** API base that works in Vite/CRA */
+const API_URL = `${API_BASE}/api/resources/`; // trailing slash to match DRF route
 
 const TYPE_LABEL = {
   WAREHOUSE: "Warehouses",
@@ -37,38 +29,6 @@ const SLUG_TO_TYPE = {
   saas: "SAAS",
   SAAS: "SAAS",
 };
-
-function readBookmarks() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-function writeBookmarks(obj) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  } catch {}
-}
-
-function useBookmarks() {
-  const [bm, setBm] = useState(readBookmarks);
-  const isBookmarked = (id) => Boolean(bm[id]);
-  const toggle = (row) => {
-    const rid = row?.resource_id ?? row?.id ?? String(row?.pk ?? "");
-    if (!rid) return;
-    setBm((prev) => {
-      const next = { ...prev };
-      if (next[rid]) delete next[rid];
-      else next[rid] = { id: rid, name: row.name, type: row.type, location: row.location };
-      writeBookmarks(next);
-      return next;
-    });
-  };
-  const list = useMemo(() => Object.values(bm), [bm]);
-  return { isBookmarked, toggle, list };
-}
 
 function getRequestedType() {
   const usp = new URLSearchParams(window.location.search);
@@ -90,7 +50,7 @@ function normalizeApiResult(json, currentPage, pageSize) {
     const page = Number(json.page || currentPage);
     const pageCount = Number(json.pageCount || Math.ceil(total / pageSize));
     const hasMore = page < pageCount;
-    return { items: json.items, total, hasMore, nextPage: hasMore ? page + 1 : page };
+    return { items: json.items, total, hasMore, nextPage: hasMore ? page + 1 : currentPage };
   }
   if (Array.isArray(json)) {
     const total = json.length;
@@ -125,7 +85,9 @@ export default function ResourcesDirectory() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
-  const { isBookmarked, toggle, list } = useBookmarks();
+
+  // SERVER bookmarks
+  const { ids: bmIds, isBookmarked, toggle } = useServerBookmarks("resource");
 
   const sentinelRef = useRef(null);
   const ioRef = useRef(null);
@@ -239,11 +201,12 @@ export default function ResourcesDirectory() {
           </div>
 
           <button
+            type="button"
             className={`chip ${onlyBookmarks ? "chip-on" : ""}`}
             onClick={() => setOnlyBookmarks((v) => !v)}
             title="Show only bookmarked"
           >
-            ★ Bookmarks {onlyBookmarks && `(${list.length})`}
+            ★ Bookmarks {onlyBookmarks && `(${bmIds.size})`}
           </button>
         </div>
       </header>
@@ -278,8 +241,9 @@ export default function ResourcesDirectory() {
               return (
                 <article className="r-card" key={rid}>
                   <button
+                    type="button"
                     className={`bookmark ${isBookmarked(rid) ? "on" : ""}`}
-                    onClick={() => toggle(row)}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(rid); }}
                     aria-label={isBookmarked(rid) ? "Remove bookmark" : "Add bookmark"}
                     title={isBookmarked(rid) ? "Remove bookmark" : "Add bookmark"}
                   >
@@ -351,6 +315,7 @@ export default function ResourcesDirectory() {
             ) : (
               <button
                 className="chip"
+                type="button"
                 onClick={() => fetchPage(page + 1)}
                 disabled={status === "loading"}
               >

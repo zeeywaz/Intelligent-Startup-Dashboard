@@ -1,4 +1,3 @@
-# backend/api/serializers.py
 from django.contrib.auth import get_user_model, password_validation
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
@@ -9,6 +8,7 @@ from .models import (
     Competitor,
     Resource,
     BusinessIdea,
+    ChatMessage, Notification, Bookmark
 )
 
 User = get_user_model()
@@ -68,6 +68,7 @@ class InvestorRegisterSerializer(RegisterSerializer):
         InvestorProfile.objects.create(user=user, company=company, phone=phone, role=role)
         return user
 
+
 # ---------- Profile ----------
 class ProfileSerializer(serializers.ModelSerializer):
     firstName = serializers.CharField(source="first_name")
@@ -105,11 +106,13 @@ class PasswordChangeSerializer(serializers.Serializer):
             raise serializers.ValidationError({"newPassword": list(e.messages)})
         return attrs
 
+
 # ---------- Categories / Competitors ----------
 class BusinessCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model  = BusinessCategory
         fields = ["id", "name"]
+
 
 class CompetitorSerializer(serializers.ModelSerializer):
     category = BusinessCategorySerializer(read_only=True)
@@ -123,11 +126,13 @@ class CompetitorSerializer(serializers.ModelSerializer):
         model  = Competitor
         fields = ["id", "name", "strength", "website", "description", "category", "category_id"]
 
+
 # ---------- Resources ----------
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Resource
         fields = ("resource_id", "type", "name", "location", "website", "description", "geo_data")
+
 
 # ---------- Ideas ----------
 class BusinessIdeaReadSerializer(serializers.ModelSerializer):
@@ -157,15 +162,9 @@ class BusinessIdeaReadSerializer(serializers.ModelSerializer):
             return None
 
 
-# backend/api/serializers.py  (idea parts)
-
-from rest_framework import serializers
-from .models import BusinessIdea, BusinessCategory
-
 class IdeaCreateSerializer(serializers.Serializer):
-    # payload from the chatbot
     text = serializers.CharField()
-    category = serializers.CharField()  # e.g., "Retail", "Food", etc.
+    category = serializers.CharField()
     title = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     target_audience = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -176,10 +175,8 @@ class IdeaCreateSerializer(serializers.Serializer):
         req = self.context.get("request")
         user = getattr(req, "user", None)
         if not (user and user.is_authenticated):
-            # 400 with the array you saw earlier
             raise serializers.ValidationError(["Authentication required."])
 
-        # upsert category by case-insensitive name
         cat_name = (validated.get("category") or "").strip()
         if not cat_name:
             raise serializers.ValidationError({"category": ["This field is required."]})
@@ -192,8 +189,8 @@ class IdeaCreateSerializer(serializers.Serializer):
         description = validated.get("description") or validated.get("text") or ""
 
         idea = BusinessIdea.objects.create(
-            user_id=user.id,          # model uses integer user_id column
-            category_id=cat.id,       # use .id (not category_id)
+            user_id=user.id,
+            category_id=cat.id,
             title=title,
             description=description,
             target_audience=validated.get("target_audience") or "",
@@ -203,31 +200,64 @@ class IdeaCreateSerializer(serializers.Serializer):
         return idea
 
 
-# add this
-# add this
-class InvestorSerializer(serializers.ModelSerializer):
-    user_id = serializers.IntegerField(source="user.id", read_only=True)
-    firstName = serializers.CharField(source="user.first_name", read_only=True)
-    lastName  = serializers.CharField(source="user.last_name", read_only=True)
-    email     = serializers.EmailField(source="user.email", read_only=True)
-
-    class Meta:
-        model = InvestorProfile
-        fields = [
-            "id", "user_id", "firstName", "lastName", "email",
-            "company", "phone", "role", "verify_type"
-        ]
-
-
+# ---------- Investors ----------
 # backend/api/serializers.py
 from rest_framework import serializers
-from .models import ChatMessage
+from .models import InvestorDetails  # <-- make sure this is imported
 
+class InvestorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvestorDetails
+        fields = [
+            "investor_id",
+            "investor_name",
+            "company_name",
+            "email_address",
+            "phone",
+            "credit_score",
+            "verification_status",
+        ]
+
+# ---------- Chat ----------
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
-        fields = [
-            "id", "user", "message", "response", "category", "location",
-            "narrative", "suggestions", "risks", "roadmap", "kpis", "created_at"
-        ]
+        fields = ["id", "user", "message", "response", "created_at"]
         read_only_fields = ["id", "user", "created_at"]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = "__all__"
+        
+        
+        
+# Import Bookmark, Notification,
+
+class InvestorProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvestorProfile
+        fields = [
+            "investor_id",
+            "investor_name",
+            "company_name",
+            "credit_score",
+            "verification_status",
+            "email_address",
+            "phone"
+        ]
+
+class InvestorBookmarkSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source="user.pk", read_only=True)
+    investor_id = serializers.IntegerField(source="investor.pk", read_only=True)
+
+    class Meta:
+        model = Bookmark
+        fields = ("bookmark_id", "user_id", "investor_id", "created_date")
+        read_only_fields = fields
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = "__all__"

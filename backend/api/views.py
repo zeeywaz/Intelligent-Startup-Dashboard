@@ -1,42 +1,36 @@
-# backend/api/views.py
-from django.contrib.auth import get_user_model, authenticate, login, logout, update_session_auth_hash
-from django.http import JsonResponse
-from django.db.models import Q
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from django.middleware.csrf import get_token
+from __future__ import annotations
+from . import ml_runtime
+import json
+import random
+from datetime import datetime, timedelta
+from typing import Any
 
-from rest_framework import viewsets, filters, status
+from django.contrib.auth import (
+    authenticate,
+    get_user_model,
+    login,
+    logout,
+    update_session_auth_hash,
+)
+from django.db.models import Q, Count
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+
+from rest_framework import viewsets, generics, status
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.decorators import (
-    api_view, permission_classes, authentication_classes, parser_classes
+    api_view,
+    permission_classes,
+    authentication_classes,
+    parser_classes,
 )
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 
-from .models import Resource, Competitor, BusinessIdea, InvestorProfile
-from .serializers import (
-    ResourceSerializer,
-    CompetitorSerializer,
-    BusinessIdeaReadSerializer,
-    InvestorSerializer,
-)
-from django.shortcuts import get_object_or_404
-
-from rest_framework import permissions
-
-
-from .serializers import (
-    ResourceSerializer,
-    ProfileSerializer,
-    PasswordChangeSerializer,
-    BusinessCategorySerializer,
-    CompetitorSerializer,
-    RegisterSerializer,
-    InvestorRegisterSerializer,
-    IdeaCreateSerializer,
-    BusinessIdeaReadSerializer,
-)
 from .models import (
     InvestorProfile,
     Role,
@@ -45,16 +39,42 @@ from .models import (
     BusinessCategory,
     Competitor,
     BusinessIdea,
+    ChatMessage,
+    Notification,
+    Bookmark, 
+    InvestorDetails
+)
+from .serializers import (
+    ResourceSerializer,
+    CompetitorSerializer,
+    BusinessCategorySerializer,
+    RegisterSerializer,
+    InvestorRegisterSerializer,
+    ProfileSerializer,
+    PasswordChangeSerializer,
+    IdeaCreateSerializer,
+    BusinessIdeaReadSerializer,
+    InvestorSerializer,
+    ChatMessageSerializer,
+    NotificationSerializer
 )
 
-from . import ml_runtime
+
+from rest_framework import viewsets, generics, status, filters
+
 
 User = get_user_model()
 
-# ----------------- CSRF -----------------
-from django.middleware.csrf import get_token
-from django.views.decorators.csrf import ensure_csrf_cookie
 
+# --------------------- helpers ---------------------
+def _int(request, name: str, default: int) -> int:
+    try:
+        return int(request.GET.get(name, default))
+    except Exception:
+        return default
+
+
+# --------------------- CSRF ---------------------
 @api_view(["GET"])
 @permission_classes([AllowAny])
 @ensure_csrf_cookie
@@ -62,7 +82,7 @@ def csrf(request):
     return Response({"csrftoken": get_token(request)}, status=200)
 
 
-# ----------------- Auth -----------------
+# --------------------- Auth ---------------------
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @parser_classes([JSONParser])
@@ -78,12 +98,21 @@ def register(request):
     except Role.DoesNotExist:
         pass
     login(request, user)
-    return Response({
-        "message": "Registration successful",
-        "user": {"id": user.id, "username": user.username, "email": user.email,
-                 "firstName": user.first_name, "lastName": user.last_name},
-        "next": "/chatbot",
-    }, status=201)
+    return Response(
+        {
+            "message": "Registration successful",
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "firstName": user.first_name,
+                "lastName": user.last_name,
+            },
+            "next": "/userdashboard",
+        },
+        status=201,
+    )
+
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -99,34 +128,33 @@ def investor_register(request):
     except Role.DoesNotExist:
         pass
     login(request, user)
-    return Response({
-        "message": "Registration successful",
-        "user": {"id": user.id, "username": user.username, "email": user.email,
-                 "firstName": user.first_name, "lastName": user.last_name},
-        "next": "/investordashboard",
-    }, status=201)
+    return Response(
+        {
+            "message": "Registration successful",
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "firstName": user.first_name,
+                "lastName": user.last_name,
+            },
+            "next": "/investordashboard",
+        },
+        status=201,
+    )
 
-# views.py
-from django.contrib.auth import authenticate, login, get_user_model
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-
-User = get_user_model()
 
 @csrf_exempt
 def login_view(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
-
     try:
-        data = json.loads(request.body)
+        data = json.loads(request.body or "{}")
     except Exception:
         return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
-    email = data.get("email")
-    password = data.get("password")
-
+    email = (data.get("email") or "").strip()
+    password = data.get("password") or ""
     if not email or not password:
         return JsonResponse({"detail": "Email and password are required"}, status=400)
 
@@ -136,17 +164,19 @@ def login_view(request):
         return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
     user = authenticate(request, username=user.username, password=password)
-    if user is not None:
-        login(request, user)
-        return JsonResponse({"detail": "Login successful"})
-    else:
+    if user is None:
         return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
+    login(request, user)
+    return JsonResponse({"detail": "Login successful"})
 
+
+@csrf_exempt  # dev-friendly
 @api_view(["POST"])
 def logout_view(request):
     logout(request)
     return Response({"message": "Logged out"}, status=200)
+
 
 @api_view(["GET"])
 def me(request):
@@ -158,15 +188,31 @@ def me(request):
         .filter(auth_user=u)
         .values_list("role__role_name", flat=True)
     )
-    next_path = "/investordashboard" if "Investor" in roles else ("/admindashboard" if "Admin" in roles else "/userdashboard")
-    return Response({
-        "authenticated": True,
-        "user": {"id": u.id, "username": u.username, "email": u.email,
-                 "firstName": u.first_name, "lastName": u.last_name},
-        "roles": roles, "next": next_path
-    }, status=200)
+    next_path = (
+        "/investordashboard"
+        if "Investor" in roles
+        else "/admindashboard"
+        if "Admin" in roles
+        else "/userdashboard"
+    )
+    return Response(
+        {
+            "authenticated": True,
+            "user": {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "firstName": u.first_name,
+                "lastName": u.last_name,
+            },
+            "roles": roles,
+            "next": next_path,
+        },
+        status=200,
+    )
 
-# ----------------- Profile -----------------
+
+# --------------------- Profile ---------------------
 @api_view(["GET", "PATCH"])
 @parser_classes([JSONParser])
 def profile_view(request):
@@ -180,6 +226,7 @@ def profile_view(request):
     s.save()
     return Response(s.data, status=200)
 
+
 @api_view(["POST"])
 @parser_classes([JSONParser])
 def change_password(request):
@@ -188,68 +235,354 @@ def change_password(request):
     s = PasswordChangeSerializer(data=request.data)
     if not s.is_valid():
         return Response({"error": s.errors}, status=400)
-    new_pw = s.validated_data["newPassword"]
     user = request.user
-    user.set_password(new_pw)
+    user.set_password(s.validated_data["newPassword"])
     user.save(update_fields=["password"])
     update_session_auth_hash(request, user)
     return Response({"message": "Password updated."}, status=200)
 
-# ----------------- Resources -----------------
-class ResourcePage(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = "limit"
-    max_page_size = 100
 
-@api_view(["GET"])
-@permission_classes([permissions.IsAuthenticated])
-def resources_list(request):
-    location = request.query_params.get("location")
-    qs = Resource.objects.all()
-    if location:
-        qs = qs.filter(location__iexact=location)
-    serializer = ResourceSerializer(qs, many=True)
-    return Response(serializer.data)
-
-# ----------------- Categories / Competitors -----------------
+# --------------------- Categories / Competitors ---------------------
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = BusinessCategory.objects.all()
+    queryset = BusinessCategory.objects.all().order_by("name")
     serializer_class = BusinessCategorySerializer
     permission_classes = [AllowAny]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ["name"]
+
 
 class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    GET /api/competitors/?search=...&strength=low|medium|high
+                          &category_id=...|&category=Name
+                          &page=1&page_size=15 (or limit/offset)
+                          &fallback=1 (default)
+    Returns: {items, total, limit, offset, next_offset, fallback}
+    """
     queryset = Competitor.objects.select_related("category").all()
     serializer_class = CompetitorSerializer
     permission_classes = [AllowAny]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "description", "strength", "category__name"]
-    ordering_fields = ["name"]
-    ordering = ["name"]
+
+    def list(self, request, *args, **kwargs):
+        default_ps = _int(request, "page_size", 15)
+        limit = _int(request, "limit", default_ps)
+        page = max(_int(request, "page", 1), 1)
+        offset = _int(request, "offset", (page - 1) * limit)
+
+        search = (request.GET.get("search") or request.GET.get("q") or "").strip()
+        strength = (request.GET.get("strength") or "").strip().lower()
+        cat_id = request.GET.get("category_id")
+        cat_name = (request.GET.get("category") or "").strip()
+        do_fallback = request.GET.get("fallback", "1") != "0"
+
+        base = self.get_queryset().order_by("id")
+
+        if search:
+            base = base.filter(Q(name__icontains=search) | Q(description__icontains=search))
+        if strength in {"low", "medium", "high"}:
+            base = base.filter(strength__iexact=strength)
+
+        if cat_id and str(cat_id).isdigit():
+            cand = base.filter(category_id=int(cat_id))
+        elif cat_name:
+            cand = base.filter(category__name__iexact=cat_name)
+        else:
+            cand = base
+
+        fallback_used = False
+        if (cat_id or cat_name) and not cand.exists() and do_fallback:
+            qs = base
+            fallback_used = True
+        else:
+            qs = cand
+
+        total = qs.count()
+        rows = list(qs[offset : offset + limit])
+        data = self.get_serializer(rows, many=True).data
+        next_offset = offset + len(rows) if (offset + len(rows)) < total else None
+
+        return Response(
+            {
+                "items": data,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "next_offset": next_offset,
+                "fallback": fallback_used,
+            },
+            status=200,
+        )
+
+
+# --------------------- Resources ---------------------
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def resources_list(request):
+    """
+    GET /api/resources/?type=WAREHOUSE&page=1&page_size=20
+                       &location=...&category_id=...&fallback=1
+    Also supports: limit/offset instead of page/page_size
+    Returns: {items, total, limit, offset, next_offset, fallback}
+    """
+    default_ps = _int(request, "page_size", 10)
+    limit = _int(request, "limit", default_ps)
+    page = max(_int(request, "page", 1), 1)
+    offset = _int(request, "offset", (page - 1) * limit)
+
+    location = (request.GET.get("location") or "").strip()
+    category_id = request.GET.get("category_id")
+    rtype = (request.GET.get("type") or "").strip()
+    do_fallback = request.GET.get("fallback", "1") != "0"
+
+    qs = Resource.objects.all().order_by("name")
+    if category_id and str(category_id).isdigit():
+        qs = qs.filter(category_id=int(category_id))
+    if rtype:
+        qs = qs.filter(type__iexact=rtype)
+
+    fallback_used = False
+    if location:
+        loc_qs = qs.filter(location__iexact=location)
+        if not loc_qs.exists() and do_fallback:
+            fallback_used = True
+        else:
+            qs = loc_qs
+
+    total = qs.count()
+    rows = list(qs[offset : offset + limit])
+    data = ResourceSerializer(rows, many=True).data
+    next_offset = offset + len(rows) if (offset + len(rows)) < total else None
+
+    return Response(
+        {
+            "items": data,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "next_offset": next_offset,
+            "fallback": fallback_used,
+        },
+        status=200,
+    )
+
+
+# --------------------- Notifications (ViewSet for router) ---------------------
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    /api/notifications/  -> list current user's notifications
+    """
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        cat = self.request.query_params.get("category")
-        if cat:
-            if str(cat).isdigit():
-                qs = qs.filter(category_id=int(cat))
-            else:
-                qs = qs.filter(category__name__icontains=cat)
-        return qs
+        return (
+            Notification.objects.filter(user_id=self.request.user.id)
+            .order_by("-created_date")
+        )
 
-# ----------------- Root -----------------
-def root_ok(_request):
-    return JsonResponse({"status": "ok", "app": "IdeaForge API"})
 
-# ----------------- Account deletion -----------------
-@api_view(["DELETE"])
+# --------------------- Ideas ---------------------
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def delete_account(request):
-    user = request.user
-    user.delete()
-    return Response(status=204)
+@authentication_classes([SessionAuthentication, BasicAuthentication])
+@parser_classes([JSONParser])
+def idea_create(request):
+    ser = IdeaCreateSerializer(data=request.data, context={"request": request})
+    if not ser.is_valid():
+        return Response(ser.errors, status=400)
+    idea = ser.save()
+    return Response(BusinessIdeaReadSerializer(idea).data, status=201)
 
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_ideas(request):
+    qs = BusinessIdea.objects.filter(user_id=request.user.id).order_by("-submission_date")
+    return Response(BusinessIdeaReadSerializer(qs, many=True).data, status=200)
+
+
+# --------------------- MyStartup Bundle ---------------------
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def mystartup_data(request, idea_id: int):
+    """
+    Initial payload for My Startup page.
+    Returns first pages for resources & competitors with meta + fallback flags.
+    """
+    idea = get_object_or_404(BusinessIdea, pk=idea_id, user_id=request.user.id)
+    res_limit = _int(request, "res_limit", 8)
+    comp_limit = _int(request, "comp_limit", 8)
+
+    # Resources by idea.location (fallback to all)
+    res_q = Resource.objects.all().order_by("name")
+    res_fallback = False
+    if idea.location:
+        cand = res_q.filter(location__iexact=idea.location)
+        if cand.exists():
+            res_q = cand
+        else:
+            res_fallback = True
+    res_total = res_q.count()
+    res_items = list(res_q[:res_limit])
+
+    # Competitors by idea.category (fallback to all)
+    comp_q = Competitor.objects.select_related("category").all().order_by("id")
+    comp_fallback = False
+    if idea.category_id:
+        cand = comp_q.filter(category_id=idea.category_id)
+        if cand.exists():
+            comp_q = cand
+        else:
+            comp_fallback = True
+    comp_total = comp_q.count()
+    comp_items = list(comp_q[:comp_limit])
+
+    investors = InvestorDetails.objects.all()[:5]
+
+   
+    return Response(
+        {
+            "idea": BusinessIdeaReadSerializer(idea).data,
+            "resources": ResourceSerializer(res_items, many=True).data,
+            "resources_meta": {
+                "total": res_total,
+                "limit": res_limit,
+                "offset": 0,
+                "next_offset": res_limit if res_limit < res_total else None,
+                "fallback": res_fallback,
+            },
+            "competitors": CompetitorSerializer(comp_items, many=True).data,
+            "competitors_meta": {
+                "total": comp_total,
+                "limit": comp_limit,
+                "offset": 0,
+                "next_offset": comp_limit if comp_limit < comp_total else None,
+                "fallback": comp_fallback,
+            },
+            "investors": InvestorSerializer(investors, many=True).data, 
+            
+            
+        },
+        status=200,
+    )
+
+
+# --------------------- Bookmarks (generic) ---------------------
+def _ids_for(qs, field):
+    return list(qs.exclude(**{f"{field}__isnull": True}).values_list(field, flat=True))
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def bookmark_ids(request):
+    """
+    GET /api/bookmarks/ids/?kind=resource|competitor|investor
+    If kind omitted: returns all three lists.
+    """
+    qs = Bookmark.objects.filter(user=request.user)
+    kind = (request.GET.get("kind") or "").strip().lower()
+
+    if kind in ("resource", "resources"):
+        return Response({"kind": "resource", "ids": _ids_for(qs, "resource_id")})
+    if kind in ("competitor", "competitors"):
+        return Response({"kind": "competitor", "ids": _ids_for(qs, "competitor_id")})
+    if kind in ("investor", "investors"):
+        return Response({"kind": "investor", "ids": _ids_for(qs, "investor_id")})
+
+    return Response(
+        {
+            "resource": _ids_for(qs, "resource_id"),
+            "competitor": _ids_for(qs, "competitor_id"),
+            "investor": _ids_for(qs, "investor_id"),
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([JSONParser])
+def bookmark_toggle(request):
+    """
+    POST /api/bookmarks/toggle/
+    body: { "kind": "resource|competitor|investor", "id": <int> }
+    """
+    kind = (request.data.get("kind") or "").strip().lower()
+    raw_id = request.data.get("id")
+
+    try:
+        obj_id = int(raw_id)
+    except (TypeError, ValueError):
+        return Response({"detail": "Valid id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    field_map = {"resource": "resource_id", "competitor": "competitor_id", "investor": "investor_id"}
+    field = field_map.get(kind)
+    if not field:
+        return Response({"detail": "Invalid kind."}, status=status.HTTP_400_BAD_REQUEST)
+
+    qs = Bookmark.objects.filter(user=request.user, **{field: obj_id})
+    existing = qs.first()
+    if existing:
+        existing.delete()
+        return Response({"ok": True, "bookmarked": False})
+    else:
+        # create exactly one targeted bookmark; avoid passing duplicate kwargs
+        payload = {"user": request.user, "resource_id": None, "competitor_id": None, "investor_id": None}
+        payload[field] = obj_id
+        Bookmark.objects.create(**payload)
+        return Response({"ok": True, "bookmarked": True})
+
+
+# ---- Investor-specific bookmark endpoints (to satisfy urls.py) ----
+class InvestorBookmarkListCreateView(generics.ListCreateAPIView):
+    """
+    GET: list current user's investor bookmarks
+    POST: { "investor_id": <int> } -> create bookmark
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        rows = (
+            Bookmark.objects.filter(user=request.user)
+            .exclude(investor_id__isnull=True)
+            .values("bookmark_id", "investor_id", "created_date")
+            .order_by("-created_date")
+        )
+        return Response(list(rows), status=200)
+
+    @parser_classes([JSONParser])
+    def create(self, request, *args, **kwargs):
+        iid = request.data.get("investor_id")
+        try:
+            iid = int(iid)
+        except (TypeError, ValueError):
+            return Response({"detail": "investor_id must be an integer"}, status=400)
+        exists = Bookmark.objects.filter(user=request.user, investor_id=iid).first()
+        if exists:
+            return Response({"detail": "Already bookmarked", "bookmark_id": exists.bookmark_id}, status=200)
+        bm = Bookmark.objects.create(user=request.user, investor_id=iid, resource_id=None, competitor_id=None)
+        return Response({"bookmark_id": bm.bookmark_id, "investor_id": iid}, status=201)
+
+
+class InvestorBookmarkDeleteView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, bookmark_id: int, *args, **kwargs):
+        bm = get_object_or_404(Bookmark, pk=bookmark_id, user=request.user)
+        bm.delete()
+        return Response(status=204)
+
+
+# --------------------- Chat ---------------------
+class ChatMessageListCreateView(generics.ListCreateAPIView):
+    serializer_class = ChatMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ChatMessage.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+# --------------------- ML (dev stubs) ---------------------
 # ----------------- ML -----------------
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -327,82 +660,208 @@ def my_ideas(request):
     return Response(BusinessIdeaReadSerializer(qs, many=True).data, status=200)
 
 
+# --------------------- Analytics ---------------------
+def _month_bounds(dt):
+    """Return timezone-aware first/next month datetimes for dt's month."""
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt)
+    start = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # first of next month
+    if start.month == 12:
+        nxt = start.replace(year=start.year + 1, month=1)
+    else:
+        nxt = start.replace(month=start.month + 1)
+    return start, nxt
 
-from .serializers import InvestorSerializer
+
+def _label_month(dt):
+    return dt.strftime("%b")  # Jan, Feb, ...
+
 
 @api_view(["GET"])
-@permission_classes([permissions.IsAuthenticated])
-def mystartup_data(request, idea_id):
-    idea = get_object_or_404(BusinessIdea, pk=idea_id, user_id=request.user.id)
+@permission_classes([AllowAny])
+def analytics_popular_categories(request):
+    """
+    Top-N (default 5) categories for the CURRENT MONTH across all ideas.
+    Response: { month: "YYYY-MM", items: [{category_id, name, count}], total_ideas }
+    """
+    top_n = int(request.GET.get("top", 5) or 5)
+    now = timezone.now()
+    start, end = _month_bounds(now)
 
-    # location-based resources
-    resources = Resource.objects.filter(location__iexact=idea.location)
+    qs = (
+        BusinessIdea.objects.filter(submission_date__gte=start, submission_date__lt=end)
+        .values("category_id", "category__name")
+        .annotate(count=Count("idea_id"))
+        .order_by("-count", "category__name")
+    )
+    rows = list(qs[:top_n])
+    total = sum(r["count"] for r in rows)
 
-    # competitors in same category
-    competitors = Competitor.objects.filter(category_id=idea.category_id)
+    if not rows:
+        qs_all = (
+            BusinessIdea.objects.all()
+            .values("category_id", "category__name")
+            .annotate(count=Count("idea_id"))
+            .order_by("-count", "category__name")
+        )
+        rows = list(qs_all[:top_n])
+        total = sum(r["count"] for r in rows)
 
-    # all investors (you can later filter by category/location if needed)
-    investors = InvestorProfile.objects.all()
+    out = {
+        "month": now.strftime("%Y-%m"),
+        "items": [
+            {"category_id": r["category_id"], "name": r["category__name"], "count": r["count"]} for r in rows
+        ],
+        "total_ideas": total,
+    }
+    return Response(out, status=200)
 
-    return Response({
-        "idea": BusinessIdeaReadSerializer(idea).data,
-        "resources": ResourceSerializer(resources, many=True).data,
-        "competitors": CompetitorSerializer(competitors, many=True).data,
-        "investors": InvestorSerializer(investors, many=True).data,
-    })
-
-
-
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from .models import ChatMessage
-from .serializers import ChatMessageSerializer
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def chat_history(request):
-    chats = ChatMessage.objects.filter(user=request.user).order_by("created_at")
-    serializer = ChatMessageSerializer(chats, many=True)
-    return Response(serializer.data)
+def analytics_category_trend(request):
+    """
+    For the current user's latest idea's category, return a trend for N months
+    comparing this year vs last year.
+    """
+    months = max(3, min(12, int(request.GET.get("months", 5) or 5)))
+
+    # Determine category
+    cat_id = request.GET.get("category_id")
+    cat_name = (request.GET.get("category") or "").strip()
+    category = None
+    if cat_id and str(cat_id).isdigit():
+        category = BusinessCategory.objects.filter(pk=int(cat_id)).first()
+    elif cat_name:
+        category = BusinessCategory.objects.filter(name__iexact=cat_name).first()
+    else:
+        latest_idea = (
+            BusinessIdea.objects.filter(user_id=request.user.id).order_by("-submission_date").first()
+        )
+        if latest_idea:
+            category = latest_idea.category
+
+    if not category:
+        return Response({"detail": "No category found for trend."}, status=404)
+
+    now = timezone.now()
+    anchors = []
+    cur = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    for i in range(months - 1, -1, -1):
+        y = cur.year
+        m = cur.month - i
+        while m <= 0:
+            y -= 1
+            m += 12
+        anchors.append(datetime(y, m, 1, tzinfo=cur.tzinfo))
+
+    points = []
+    for anchor in anchors:
+        this_start = anchor
+        this_end = (anchor.replace(year=anchor.year + 1, month=1) if anchor.month == 12 else anchor.replace(month=anchor.month + 1))
+        last_start = anchor.replace(year=anchor.year - 1)
+        last_end = last_start.replace(year=last_start.year + 1, month=1) if last_start.month == 12 else last_start.replace(month=last_start.month + 1)
+
+        this_count = BusinessIdea.objects.filter(
+            category_id=category.pk, submission_date__gte=this_start, submission_date__lt=this_end
+        ).count()
+        last_count = BusinessIdea.objects.filter(
+            category_id=category.pk, submission_date__gte=last_start, submission_date__lt=last_end
+        ).count()
+
+        points.append({"month": _label_month(anchor), "thisMonth": this_count, "lastMonth": last_count})
+
+    return Response({"category_id": category.pk, "category": category.name, "points": points}, status=200)
+
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def chat_message(request):
-    message = request.data.get("message")
-    response = request.data.get("response")  # coming from frontend/AI
+@permission_classes([AllowAny])  # dev helper only; tighten in prod
+def analytics_seed(request):
+    """
+    Dev-only helper: seed a handful of categories + ideas if DB looks empty.
+    """
+    cat_names = ["Retail", "Food", "Services", "Education", "Tech", "Health"]
+    created = {"categories": 0, "ideas": 0}
 
-    if not message:
-        return Response({"error": "Message required"}, status=status.HTTP_400_BAD_REQUEST)
+    # Ensure categories
+    cats = []
+    for nm in cat_names:
+        c, was_new = BusinessCategory.objects.get_or_create(name=nm)
+        if was_new:
+            created["categories"] += 1
+        cats.append(c)
 
-    chat_msg = ChatMessage.objects.create(
-        user=request.user, message=message, response=response or ""
-    )
-    serializer = ChatMessageSerializer(chat_msg)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    if BusinessIdea.objects.count() > 50:
+        return Response({"ok": True, "skipped": True, "created": created}, status=200)
+
+    users = list(User.objects.all()[:5])
+    if not users:
+        u = User.objects.create_user(username="demo", email="demo@example.com", password="demo12345")
+        users = [u]
+
+    now = timezone.now().replace(day=15, hour=12, minute=0, second=0, microsecond=0)
+    for i in range(12):
+        month_dt = now - timedelta(days=30 * i)
+        start, end = _month_bounds(month_dt)
+        for cat in cats:
+            for _ in range(random.randint(0, 6)):
+                u = random.choice(users)
+                BusinessIdea.objects.create(
+                    user_id=u.id,
+                    category_id=cat.id,
+                    title=f"{cat.name} idea {random.randint(1000, 9999)}",
+                    description=f"Auto-seeded idea in {cat.name}",
+                    target_audience="",
+                    location=None,
+                    business_type=None,
+                    submission_date=start + timedelta(days=random.randint(0, 27)),
+                )
+                created["ideas"] += 1
+
+    return Response({"ok": True, "created": created}, status=201)
+
+
+# --------------------- OTP (dev stubs to satisfy urls) ---------------------
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@parser_classes([JSONParser])
+def request_otp(request):
+    """
+    Dev stub: generate a 6-digit OTP and store it in the session.
+    Body: { "email": "<optional>" }
+    """
+    code = f"{random.randint(0, 999999):06d}"
+    request.session["otp_code"] = code
+    request.session["otp_ts"] = timezone.now().isoformat()
+    # In real life you'd email/SMS the code. Here we return it to make testing easy.
+    return Response({"ok": True, "otp": code}, status=200)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@parser_classes([JSONParser])
+def verify_otp_api(request):
+    """
+    Dev stub: verify the 6-digit OTP stored in the session.
+    Body: { "otp": "123456" }
+    """
+    provided = (request.data.get("otp") or "").strip()
+    stored = request.session.get("otp_code")
+    ok = bool(stored and provided and stored == provided)
+    return Response({"ok": ok}, status=200)
 
 
 
 # backend/api/views.py
-from rest_framework import generics, permissions
-from .models import ChatMessage
-from .serializers import ChatMessageSerializer
+from rest_framework import viewsets, filters
+from .serializers import InvestorSerializer
 
-class ChatMessageListCreateView(generics.ListCreateAPIView):
-    serializer_class = ChatMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return ChatMessage.objects.filter(user=self.request.user).order_by("-created_at")
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-
-class ChatHistoryView(generics.ListAPIView):
-    serializer_class = ChatMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return ChatMessage.objects.filter(user=self.request.user).order_by("created_at")
+class InvestorViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = InvestorDetails.objects.all().order_by("investor_name")
+    serializer_class = InvestorSerializer
+    permission_classes = [AllowAny]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["investor_name", "company_name", "email_address"]
+    ordering_fields = ["investor_name", "company_name", "credit_score"]
+    ordering = ["investor_name"]

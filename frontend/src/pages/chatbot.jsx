@@ -19,7 +19,7 @@ function Bubble({ role = "assistant", kind = "text", children }) {
   return (
     <div className={`ibot-bubble-row ${isUser ? "user" : "assistant"}`}>
       {!isUser && (
-        <img src="/logo-white.png" alt="IdeaForge" className="ibot-avatar" width={28} height={28} />
+        <img src="/logo-black.png" alt="IdeaForge" className="ibot-avatar" width={28} height={28} />
       )}
       {kind === "html" ? (
         <div className="ibot-bubble ibot-bubble--html" dangerouslySetInnerHTML={{ __html: children }} />
@@ -251,7 +251,7 @@ export default function ChatPage() {
     <div className="ibot-app">
       <div className="ibot-logo-left">
         <Link to="/userdashboard" className="auth-brand" aria-label="IdeaForge User Dashboard">
-          <img src="/logo-white.png" alt="IdeaForge" className="auth-logo" height={40} />
+          <img src="/logo-black.png" alt="IdeaForge" className="auth-logo" height={40} />
         </Link>
       </div>
 

@@ -94,7 +94,7 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const signOut = async () => {
     try {
@@ -167,7 +167,7 @@ export default function Header() {
                     {notifications.map((n) => (
                       <li key={n.id} className={`notif-item ${n.read ? "" : "notif-item--unread"}`}>
                         <div className="notif-title">{n.title || "Notification"}</div>
-                        {n.body ? <div className="notif-body">{n.body}</div> : null}
+                        {n.message && <div className="notif-body">{n.message}</div>}
                         {n.created_at ? (
                           <time className="notif-time" dateTime={n.created_at}>
                             {new Date(n.created_at).toLocaleString()}

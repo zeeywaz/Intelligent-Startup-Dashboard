@@ -1,154 +1,225 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/mystartup.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
+import api, { API_BASE } from "../lib/api";
 
-const API_BASE =
-  import.meta?.env?.VITE_API_BASE ||
-  process.env.REACT_APP_API_BASE ||
-  "http://127.0.0.1:8000";
+/* ---------------- Helpers ---------------- */
+const cx = (...xs) => xs.filter(Boolean).join(" ");
 
-/* =========================== Helpers =========================== */
-function useDots(isRunning) {
+function useDots(on) {
   const [dots, setDots] = useState("");
   useEffect(() => {
-    if (!isRunning) return setDots("");
-    const t = setInterval(() => {
-      setDots((d) => (d.length >= 3 ? "" : d + "."));
-    }, 350);
+    if (!on) return setDots("");
+    const t = setInterval(
+      () => setDots((d) => (d.length >= 3 ? "" : d + ".")),
+      300
+    );
     return () => clearInterval(t);
-  }, [isRunning]);
+  }, [on]);
   return dots;
 }
 
-function Panel({ title, children, rounded = "30px" }) {
-  return (
-    <section className="panel" style={{ borderRadius: rounded }}>
-      <h4 className="panel__title">{title}</h4>
-      {children}
-    </section>
-  );
+/* Investor field helpers (safe to older Babel – no ?? + || mixing) */
+const invId = (x) => (x && (x.id ?? x.investor_id ?? x.user_id)) || null;
+
+const invName = (x) => {
+  if (!x) return "Investor";
+  // Prefer explicit names if present
+  const maybe =
+    x.investor_name ??
+    x.full_name ??
+    (x.user && (x.user.first_name || x.user.last_name)
+      ? `${x.user.first_name || ""} ${x.user.last_name || ""}`.trim()
+      : "");
+  const primary = maybe || x.company;
+  return primary || "Investor";
+};
+
+const invEmail = (x) => {
+  if (!x) return "";
+  const e = x.email ?? x.email_address;
+  return e || "";
+};
+const invPhone = (x) => {
+  if (!x) return "";
+  const p = x.phone ?? x.phone_number;
+  return p || "";
+};
+const invRating = (x) => {
+  const r =
+    x?.rating ??
+    x?.credit_score ??
+    (typeof x?.score === "number" ? x.score : null);
+  return Number.isFinite(r) ? Number(r) : null;
+};
+const invVerified = (x) => {
+  const raw = (x?.verification_status || x?.verified || "").toString().toLowerCase();
+  if (raw === "approved" || raw === "true" || raw === "verified") return "ok";
+  if (raw === "pending") return "pending";
+  return "unverified";
+};
+
+/* ---------- Badge chip ---------- */
+function Badge({ children }) {
+  return <span className="chip">{children}</span>;
 }
 
-/* =========================== Row with Bookmark =========================== */
-function ListItem({ title, subtitle, right, badge, onClick, onBookmark, bookmarked }) {
-  const isInteractive = typeof onClick === "function";
-  const onKeyDown = (e) => {
-    if (!isInteractive) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onClick();
-    }
-  };
+/* ---------- Bookmark star ---------- */
+function Bookmark({ active, onClick, label = "Bookmark" }) {
   return (
-    <div
-      className={`row ${isInteractive ? "row--interactive" : ""}`}
-      {...(isInteractive
-        ? { role: "button", tabIndex: 0, "aria-label": title, onClick, onKeyDown }
-        : {})}
+    <button
+      type="button"
+      className={cx("star", active && "star--active")}
+      aria-pressed={active}
+      aria-label={label}
+      title={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
     >
-      <div>
-        <p className="row__title">{title}</p>
-        {subtitle && <p className="row__sub">{subtitle}</p>}
-      </div>
-      <div className="row__right">
-        {right && <p className="row__meta">{right}</p>}
-        {badge && <span className="row__badge">{badge}</span>}
-        <button
-          type="button"
-          className={`bookmark-btn ${bookmarked ? "active" : ""}`}
-          aria-label="Bookmark"
-          onClick={(e) => { e.stopPropagation(); onBookmark?.(); }}
-        >
-          {bookmarked ? "🔖" : "📑"}
-        </button>
-      </div>
-    </div>
+      <span aria-hidden className="star__glyph">★</span>
+    </button>
   );
 }
 
-/* =========================== Modal =========================== */
-function Modal({ open, title, children, onClose }) {
-  const dialogRef = useRef(null);
-  const closeBtnRef = useRef(null);
+/* ---------- Card ---------- */
+function Card({ onClick, children }) {
+  return (
+    <article
+      className="card"
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      {children}
+    </article>
+  );
+}
 
+/* ---------- Strength pill for competitors ---------- */
+function PriorityPill({ level }) {
+  const lv = String(level || "").toLowerCase();
+  if (!lv) return null;
+  const cls =
+    lv === "high"
+      ? "pill pill--high"
+      : lv === "medium"
+      ? "pill pill--medium"
+      : lv === "low"
+      ? "pill pill--low"
+      : "pill";
+  const label = lv.charAt(0).toUpperCase() + lv.slice(1);
+  return <span className={cls}>{label}</span>;
+}
+
+/* ---------- Modal ---------- */
+function Modal({ open, title, children, onClose }) {
+  const ref = useRef(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  useEffect(() => {
-    if (open && closeBtnRef.current) closeBtnRef.current.focus();
-  }, [open]);
-
   if (!open) return null;
-
   return (
     <div
       className="modal"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
-      ref={dialogRef}
-      onMouseDown={(e) => { if (e.target === dialogRef.current) onClose(); }}
+      ref={ref}
+      onMouseDown={(e) => {
+        if (e.target === ref.current) onClose();
+      }}
     >
       <div className="modal__panel" role="document">
-        <div className="modal__header">
-          <h2 id="modal-title" className="modal__title">{title}</h2>
-          <button
-            type="button"
-            className="modal__close"
-            aria-label="Close dialog"
-            onClick={onClose}
-            ref={closeBtnRef}
-          >
+        <header className="modal__header">
+          <h2 className="modal__title">{title}</h2>
+          <button className="modal__close" onClick={onClose} aria-label="Close">
             ✕
           </button>
-        </div>
+        </header>
         <div className="modal__body">{children}</div>
-        <div className="modal__footer">
-          <button type="button" className="btn btn--ghost" onClick={onClose}>Close</button>
-        </div>
+        <footer className="modal__footer">
+          <button className="btn btn--ghost" onClick={onClose}>
+            Close
+          </button>
+        </footer>
       </div>
     </div>
   );
 }
 
-function Thinking({ label = "Thinking" }) {
-  const dots = useDots(true);
-  return <p className="thinking">{label}{dots}</p>;
-}
-
-/* =========================== Page =========================== */
+/* ---------------- Page ---------------- */
 export default function StartupPage() {
   const navigate = useNavigate();
 
   const [idea, setIdea] = useState(null);
-  const [investors, setInvestors] = useState([]);
+
   const [resources, setResources] = useState([]);
+  const [resourcesMeta, setResourcesMeta] = useState({
+    total: 0,
+    next_offset: null,
+    fallback: false,
+  });
+  const [resourcesBusy, setResourcesBusy] = useState(false);
+
   const [competitors, setCompetitors] = useState([]);
-  const [bookmarks, setBookmarks] = useState([]);
+  const [competitorsMeta, setCompetitorsMeta] = useState({
+    total: 0,
+    next_offset: null,
+    fallback: false,
+  });
+  const [competitorsBusy, setCompetitorsBusy] = useState(false);
+
+  const [investors, setInvestors] = useState([]);
+
+  // Server bookmark id sets
+  const [bmIds, setBmIds] = useState({
+    resource: new Set(),
+    competitor: new Set(),
+    investor: new Set(),
+  });
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
   const [open, setOpen] = useState(false);
-  const [item, setItem] = useState(null);
-  const [kind, setKind] = useState("");
+  const [focusItem, setFocusItem] = useState(null);
+  const [focusKind, setFocusKind] = useState("");
 
-  const show = (k, obj) => { setKind(k); setItem(obj); setOpen(true); };
-  const hide = () => { setOpen(false); setItem(null); setKind(""); };
+  const dots = useDots(loading);
+  const isBookmarked = (kind, id) => bmIds[kind]?.has(id);
 
-  // toggle bookmark
-  const toggleBookmark = (obj, kind) => {
-    const key = `${kind}-${obj.id || obj.resource_id || obj.name}`;
-    if (bookmarks.find((b) => b.key === key)) {
-      setBookmarks(bookmarks.filter((b) => b.key !== key));
-    } else {
-      setBookmarks([...bookmarks, { key, kind, obj }]);
+  const refreshBookmarkIds = async (kind) => {
+    try {
+      const data = await api.bookmarkIds(kind);
+      if (Array.isArray(data?.ids)) {
+        setBmIds((prev) => ({ ...prev, [kind]: new Set(data.ids) }));
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("bookmarkIds failed", e);
+    }
+  };
+
+  const toggleBookmark = async (kind, id) => {
+    try {
+      await api.toggleBookmark(kind, id);
+      await refreshBookmarkIds(kind);
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(e?.message || "Failed to toggle bookmark.");
     }
   };
 
@@ -158,202 +229,501 @@ export default function StartupPage() {
         setLoading(true);
         setErr("");
 
-        // get latest idea
-        const resIdeas = await fetch(`${API_BASE}/api/ideas/mine/`, {
+        // Make sure CSRF cookie exists
+        await api.csrf().catch(() => {});
+
+        // Get latest idea
+        const rIdeas = await fetch(`${API_BASE}/api/ideas/mine/`, {
           credentials: "include",
         });
-        const ideaList = await resIdeas.json();
-        if (!Array.isArray(ideaList) || ideaList.length === 0) {
+        const ideas = await rIdeas.json();
+        if (!Array.isArray(ideas) || ideas.length === 0) {
           setErr("You don’t have any saved ideas yet.");
           return;
         }
-        const latestIdea = ideaList[0];
-        setIdea(latestIdea);
+        const latest = ideas[0];
+        setIdea(latest);
 
-        // fetch data
-        const res = await fetch(`${API_BASE}/api/mystartup/${latestIdea.idea_id}/`, {
-          credentials: "include",
-        });
+        // Bundle for page
+        const res = await fetch(
+          `${API_BASE}/api/mystartup/${latest.idea_id}/?res_limit=8&comp_limit=8`,
+          { credentials: "include" }
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        // sort investors: priority first
-        const sortedInvestors = (data.investors || []).sort(
-          (a, b) => (b.priority === true) - (a.priority === true)
+        setResources(data.resources || []);
+        setResourcesMeta(
+          data.resources_meta || { total: 0, next_offset: null, fallback: false }
         );
 
         setCompetitors(data.competitors || []);
-        setResources(data.resources || []);
-        setInvestors(sortedInvestors);
+        setCompetitorsMeta(
+          data.competitors_meta || {
+            total: 0,
+            next_offset: null,
+            fallback: false,
+          }
+        );
+
+        setInvestors(data.investors || []);
+
+        // Fetch server bookmark ids
+        await Promise.all([
+          refreshBookmarkIds("resource"),
+          refreshBookmarkIds("competitor"),
+          refreshBookmarkIds("investor"),
+        ]);
       } catch (e) {
-        console.error("Fetch error:", e);
+        // eslint-disable-next-line no-console
+        console.error(e);
         setErr("Failed to load startup data.");
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, []); // eslint-disable-line
 
-  // render modal
-  const renderModalBody = () => {
-    if (!item) return null;
-    if (kind === "investor") {
-      return (
-        <div className="modal-grid">
-          <div><strong>Company</strong><div>{item.company || "—"}</div></div>
-          <div><strong>Role</strong><div>{item.role || "—"}</div></div>
-          <div><strong>Phone</strong><div>{item.phone || "—"}</div></div>
-          <div><strong>Email</strong><div>{item.email || "—"}</div></div>
-        </div>
-      );
+  const loadMoreResources = async () => {
+    if (resourcesBusy || resourcesMeta.next_offset == null || !idea) return;
+    try {
+      setResourcesBusy(true);
+      const params = new URLSearchParams({
+        limit: "8",
+        offset: String(resourcesMeta.next_offset),
+        fallback: "1",
+      });
+      if (idea.location) params.set("location", idea.location);
+      const res = await fetch(`${API_BASE}/api/resources/?${params}`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      setResources((prev) => [...prev, ...(data.items || [])]);
+      setResourcesMeta({
+        total: data.total,
+        next_offset: data.next_offset,
+        fallback: data.fallback,
+      });
+    } finally {
+      setResourcesBusy(false);
     }
-    if (kind === "resource") {
-      return (
-        <div className="modal-grid">
-          <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Type</strong><div>{item.type || "—"}</div></div>
-          <div><strong>Location</strong><div>{item.location || "—"}</div></div>
-          <div><strong>Website</strong><div>{item.website ? <a href={item.website} target="_blank" rel="noreferrer">{item.website}</a> : "—"}</div></div>
-          <div><strong>Description</strong><div>{item.description || "—"}</div></div>
-        </div>
-      );
-    }
-    if (kind === "business") {
-      return (
-        <div className="modal-grid">
-          <div><strong>Name</strong><div>{item.name}</div></div>
-          <div><strong>Strength</strong><div>{item.strength || "—"}</div></div>
-          <div><strong>Website</strong><div>{item.website ? <a href={item.website} target="_blank" rel="noreferrer">{item.website}</a> : "—"}</div></div>
-          <div><strong>Description</strong><div>{item.description || "—"}</div></div>
-          <div><strong>Category</strong><div>{item?.category?.name || "—"}</div></div>
-        </div>
-      );
-    }
-    return null;
   };
+
+  const loadMoreCompetitors = async () => {
+    if (competitorsBusy || competitorsMeta.next_offset == null || !idea) return;
+    try {
+      setCompetitorsBusy(true);
+      const params = new URLSearchParams({
+        limit: "8",
+        offset: String(competitorsMeta.next_offset),
+        fallback: "1",
+      });
+      if (idea.category) params.set("category", idea.category);
+      const res = await fetch(`${API_BASE}/api/competitors/?${params}`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      setCompetitors((prev) => [...prev, ...(data.items || [])]);
+      setCompetitorsMeta({
+        total: data.total,
+        next_offset: data.next_offset,
+        fallback: data.fallback,
+      });
+    } finally {
+      setCompetitorsBusy(false);
+    }
+  };
+
+  const show = (kind, obj) => {
+    setFocusKind(kind);
+    setFocusItem(obj);
+    setOpen(true);
+  };
+  const hide = () => {
+    setOpen(false);
+    setFocusItem(null);
+    setFocusKind("");
+  };
+
+  // Build “Bookmarked” from visible lists + ids
+  const bookmarkedCards = useMemo(() => {
+    const out = [];
+    for (const r of resources)
+      if (bmIds.resource.has(r.resource_id))
+        out.push({ key: `resource-${r.resource_id}`, kind: "resource", obj: r });
+    for (const c of competitors)
+      if (bmIds.competitor.has(c.id))
+        out.push({ key: `competitor-${c.id}`, kind: "competitor", obj: c });
+    for (const i of investors) {
+      const iid = invId(i);
+      if (iid != null && bmIds.investor.has(iid))
+        out.push({ key: `investor-${iid}`, kind: "investor", obj: i });
+    }
+    return out;
+  }, [resources, competitors, investors, bmIds]);
 
   return (
     <>
       <Header />
-
       <div className="startup-app">
-        <main id="main" className="pb-12" role="main">
-          <section className="hero">
-            <h2 className="hero__h2">Your Startup: {idea ? idea.title : "Loading..."}</h2>
-            <h3 className="hero__h3">Where do you want to start</h3>
+        <main className="container">
+          <section className="pagehead">
+            <h1 className="pagehead__title">
+              Your Startup: {idea ? idea.title : "Loading"}
+              {dots}
+            </h1>
+            <p className="pagehead__subtitle">Where do you want to start</p>
           </section>
 
-          {loading && <Thinking label="Loading startup data" />}
+          {loading && <p className="thinking">Loading{dots}</p>}
           {err && <p className="err">{err}</p>}
 
           {!loading && !err && (
             <>
-              <section className="grid2" aria-label="Primary panels">
-                <Panel title="Recommended Investors">
+              <div className="grid">
+                {/* Investors */}
+                <section className="panel">
+                  <header className="panel__header">
+                    <h3 className="panel__title">Recommended Investors</h3>
+                  </header>
+
                   {investors.length === 0 ? (
                     <p className="muted">No investors to show.</p>
                   ) : (
-                    <div className="list" role="list">
+                    <div className="cards">
                       {investors.map((it) => {
-                        const key = `investor-${it.id}`;
+                        const id = invId(it);
+                        const active = id != null && isBookmarked("investor", id);
+                        const v = invVerified(it);
+                        const rating = invRating(it);
                         return (
-                          <ListItem
-                            key={key}
-                            title={it.company || "Investor"}
-                            subtitle={it.role || ""}
-                            right={it.email}
+                          <Card
+                            key={`investor-${id ?? Math.random()}`}
                             onClick={() => show("investor", it)}
-                            onBookmark={() => toggleBookmark(it, "investor")}
-                            bookmarked={!!bookmarks.find((b) => b.key === key)}
-                          />
+                          >
+                            <div className="card__content">
+                              <div className="card__main">
+                                <h4 className="card__title">{invName(it)}</h4>
+                                <div className="row row--chips">
+                                  <span
+                                    className={cx(
+                                      "pill",
+                                      v === "ok"
+                                        ? "pill--ok"
+                                        : v === "pending"
+                                        ? "pill--muted"
+                                        : "pill--muted"
+                                    )}
+                                  >
+                                    {v === "ok"
+                                      ? "Verified"
+                                      : v === "pending"
+                                      ? "Pending"
+                                      : "Unverified"}
+                                  </span>
+                                  {Number.isFinite(rating) && (
+                                    <span className="pill pill--soft">
+                                      Rating {rating}
+                                    </span>
+                                  )}
+                                </div>
+                                {invEmail(it) && (
+                                  <p className="card__sub">
+                                    <a
+                                      className="link"
+                                      href={`mailto:${invEmail(it)}`}
+                                    >
+                                      {invEmail(it)}
+                                    </a>
+                                  </p>
+                                )}
+                                {/* Phone shown only if present */}
+                                {invPhone(it) && (
+                                  <p className="card__sub">{invPhone(it)}</p>
+                                )}
+                              </div>
+                              <div className="card__meta">
+                                <Bookmark
+                                  active={active}
+                                  onClick={() => id != null && toggleBookmark("investor", id)}
+                                />
+                              </div>
+                            </div>
+                          </Card>
                         );
                       })}
                     </div>
                   )}
-                </Panel>
+                </section>
 
-                <Panel title="Recommended Resources & Services" rounded="44px">
+                {/* Resources */}
+                <section className="panel">
+                  <header className="panel__header">
+                    <h3 className="panel__title">Recommended Resources & Services</h3>
+                    <Badge>
+                      {resourcesMeta.fallback
+                        ? "Showing all locations"
+                        : idea?.location
+                        ? `Location: ${idea.location}`
+                        : "Location: —"}
+                    </Badge>
+                  </header>
+
                   {resources.length === 0 ? (
                     <p className="muted">No resources found.</p>
                   ) : (
-                    <div className="list scrollable" role="list">
-                      {resources.map((it) => {
-                        const key = `resource-${it.resource_id}`;
-                        return (
-                          <ListItem
-                            key={key}
-                            title={it.name}
-                            subtitle={[it.type, it.location].filter(Boolean).join(" • ")}
-                            right={it.website}
-                            onClick={() => show("resource", it)}
-                            onBookmark={() => toggleBookmark(it, "resource")}
-                            bookmarked={!!bookmarks.find((b) => b.key === key)}
-                          />
-                        );
-                      })}
-                    </div>
+                    <>
+                      <div className="cards">
+                        {resources.map((it) => {
+                          const id = it.resource_id;
+                          const active = isBookmarked("resource", id);
+                          return (
+                            <Card
+                              key={`resource-${id}`}
+                              onClick={() => show("resource", it)}
+                            >
+                              <div className="card__content">
+                                <div className="card__main">
+                                  <h4 className="card__title">{it.name}</h4>
+                                  <p className="card__sub">
+                                    {[it.type, it.location]
+                                      .filter(Boolean)
+                                      .join(" • ")}
+                                  </p>
+                                  {it.description && (
+                                    <p className="card__desc">{it.description}</p>
+                                  )}
+                                </div>
+                                <div className="card__meta">
+                                  {it.website && (
+                                    <a
+                                      href={it.website}
+                                      className="btn btn--tiny"
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      Website
+                                    </a>
+                                  )}
+                                  <Bookmark
+                                    active={active}
+                                    onClick={() => toggleBookmark("resource", id)}
+                                  />
+                                </div>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                      <div className="panel__footer">
+                        {resourcesMeta.next_offset != null ? (
+                          <button
+                            className="btn btn--ghost"
+                            onClick={loadMoreResources}
+                            disabled={resourcesBusy}
+                          >
+                            {resourcesBusy ? "Loading…" : "Load more"}
+                          </button>
+                        ) : (
+                          <span className="muted small">End of list</span>
+                        )}
+                      </div>
+                    </>
                   )}
-                </Panel>
-              </section>
+                </section>
+              </div>
 
-              <section className="grid2" aria-label="Secondary panels">
-                <Panel title="Similar Businesses around You" rounded="30px">
+              <div className="grid">
+                {/* Competitors */}
+                <section className="panel">
+                  <header className="panel__header">
+                    <h3 className="panel__title">Similar Businesses around You</h3>
+                    <Badge>
+                      {competitorsMeta.fallback
+                        ? "Showing all categories"
+                        : idea?.category
+                        ? `Category: ${idea.category}`
+                        : "Category: —"}
+                    </Badge>
+                  </header>
+
                   {competitors.length === 0 ? (
                     <p className="muted">No competitors listed yet.</p>
                   ) : (
-                    <div className="list scrollable" role="list">
-                      {competitors.map((it) => {
-                        const key = `competitor-${it.id}`;
+                    <>
+                      <div className="cards">
+                        {competitors.map((it) => {
+                          const id = it.id;
+                          const active = isBookmarked("competitor", id);
+                          return (
+                            <Card
+                              key={`competitor-${id}`}
+                              onClick={() => show("business", it)}
+                            >
+                              <div className="card__content">
+                                <div className="card__main">
+                                  <h4 className="card__title">{it.name}</h4>
+                                  <p className="card__sub">{it.description}</p>
+                                </div>
+                                <div className="card__meta">
+                                  {it.website && (
+                                    <a
+                                      href={it.website}
+                                      className="btn btn--tiny"
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      Website
+                                    </a>
+                                  )}
+                                  <PriorityPill level={it.strength} />
+                                  <Bookmark
+                                    active={active}
+                                    onClick={() => toggleBookmark("competitor", id)}
+                                  />
+                                </div>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                      <div className="panel__footer">
+                        {competitorsMeta.next_offset != null ? (
+                          <button
+                            className="btn btn--ghost"
+                            onClick={loadMoreCompetitors}
+                            disabled={competitorsBusy}
+                          >
+                            {competitorsBusy ? "Loading…" : "Load more"}
+                          </button>
+                        ) : (
+                          <span className="muted small">End of list</span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </section>
+
+                {/* Bookmarked */}
+                <section className="panel">
+                  <header className="panel__header">
+                    <h3 className="panel__title">Bookmarked</h3>
+                  </header>
+
+                  {bookmarkedCards.length === 0 ? (
+                    <p className="muted">No bookmarks yet. Tap ★ on any card to save.</p>
+                  ) : (
+                    <div className="cards">
+                      {bookmarkedCards.map((bm) => {
+                        const kind = bm.kind;
+                        const o = bm.obj;
+
+                        // For investors, compute chips
+                        const v = kind === "investor" ? invVerified(o) : null;
+                        const rating =
+                          kind === "investor" ? invRating(o) : null;
+                        const investorName =
+                          kind === "investor" ? invName(o) : null;
+                        const investorEmail =
+                          kind === "investor" ? invEmail(o) : null;
+
                         return (
-                          <ListItem
-                            key={key}
-                            title={it.name}
-                            subtitle={[it.description, it.strength].filter(Boolean).join(" • ")}
-                            right={it.website}
-                            onClick={() => show("business", it)}
-                            onBookmark={() => toggleBookmark(it, "competitor")}
-                            bookmarked={!!bookmarks.find((b) => b.key === key)}
-                          />
+                          <Card
+                            key={bm.key}
+                            onClick={() =>
+                              show(kind === "competitor" ? "business" : kind, o)
+                            }
+                          >
+                            <div className="card__content">
+                              <div className="card__main">
+                                <h4 className="card__title">
+                                  {kind === "investor"
+                                    ? investorName
+                                    : o.name || o.company}
+                                </h4>
+
+                                {kind === "investor" ? (
+                                  <>
+                                    <div className="row row--chips">
+                                      <span
+                                        className={cx(
+                                          "pill",
+                                          v === "ok"
+                                            ? "pill--ok"
+                                            : "pill--muted"
+                                        )}
+                                      >
+                                        {v === "ok"
+                                          ? "Verified"
+                                          : v === "pending"
+                                          ? "Pending"
+                                          : "Unverified"}
+                                      </span>
+                                      {Number.isFinite(rating) && (
+                                        <span className="pill pill--soft">
+                                          Rating {rating}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {investorEmail && (
+                                      <p className="card__sub">
+                                        <a
+                                          className="link"
+                                          href={`mailto:${investorEmail}`}
+                                        >
+                                          {investorEmail}
+                                        </a>
+                                      </p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p className="card__sub">
+                                    {o.location || o.description || "—"}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="card__meta">
+                                {kind !== "investor" && o.website && (
+                                  <a
+                                    href={o.website}
+                                    className="btn btn--tiny"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Website
+                                  </a>
+                                )}
+                                <Bookmark
+                                  active
+                                  onClick={() => {
+                                    const id =
+                                      kind === "resource"
+                                        ? o.resource_id
+                                        : kind === "competitor"
+                                        ? o.id
+                                        : invId(o);
+                                    if (id != null) toggleBookmark(kind, id);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </Card>
                         );
                       })}
                     </div>
                   )}
-                </Panel>
-
-                <Panel title="Bookmarked">
-                  {bookmarks.length === 0 ? (
-                    <p className="muted">No bookmarks yet.</p>
-                  ) : (
-                    <div className="list" role="list">
-                      {bookmarks.map((bm) => (
-                        <ListItem
-                          key={bm.key}
-                          title={
-                            bm.kind === "investor"
-                              ? bm.obj.company || "Investor"
-                              : bm.obj.name
-                          }
-                          subtitle={
-                            bm.kind === "investor"
-                              ? bm.obj.role
-                              : bm.obj.location || bm.obj.description
-                          }
-                          right={bm.kind === "investor" ? bm.obj.email : bm.obj.website}
-                          onClick={() => show(bm.kind, bm.obj)}
-                          onBookmark={() => toggleBookmark(bm.obj, bm.kind)}
-                          bookmarked
-                        />
-                      ))}
-                    </div>
-                  )}
-                </Panel>
-              </section>
+                </section>
+              </div>
 
               <div className="actions">
-                <button type="button" className="btn" onClick={() => navigate("/chatbot")}>
+                <button className="btn" onClick={() => navigate("/chatbot")}>
                   Change Idea
                 </button>
-                <button type="button" className="btn" onClick={() => window.history.back()}>
+                <button className="btn" onClick={() => window.history.back()}>
                   Back
                 </button>
               </div>
@@ -363,13 +733,121 @@ export default function StartupPage() {
 
         <Modal
           open={open}
-          title={item ? (item.name || item.company || "Details") : "Details"}
+          title={
+            focusItem ? focusItem.name || focusItem.company || "Details" : "Details"
+          }
           onClose={hide}
         >
-          {renderModalBody()}
+          {focusItem && (
+            <div className="modal-grid">
+              {focusKind === "investor" && (
+                <>
+                  <div>
+                    <strong>Company</strong>
+                    <div>{focusItem.company || "—"}</div>
+                  </div>
+                  <div>
+                    <strong>Role</strong>
+                    <div>{focusItem.role || "—"}</div>
+                  </div>
+                  <div>
+                    <strong>Phone</strong>
+                    <div>{invPhone(focusItem) || "—"}</div>
+                  </div>
+                  <div>
+                    <strong>Email</strong>
+                    <div>
+                      {invEmail(focusItem) ? (
+                        <a
+                          href={`mailto:${invEmail(focusItem)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {invEmail(focusItem)}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+              {focusKind === "resource" && (
+                <>
+                  <div>
+                    <strong>Name</strong>
+                    <div>{focusItem.name}</div>
+                  </div>
+                  <div>
+                    <strong>Type</strong>
+                    <div>{focusItem.type || "—"}</div>
+                  </div>
+                  <div>
+                    <strong>Location</strong>
+                    <div>{focusItem.location || "—"}</div>
+                  </div>
+                  <div>
+                    <strong>Website</strong>
+                    <div>
+                      {focusItem.website ? (
+                        <a
+                          href={focusItem.website}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {focusItem.website}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <strong>Description</strong>
+                    <div>{focusItem.description || "—"}</div>
+                  </div>
+                </>
+              )}
+              {focusKind === "business" && (
+                <>
+                  <div>
+                    <strong>Name</strong>
+                    <div>{focusItem.name}</div>
+                  </div>
+                  <div>
+                    <strong>Strength</strong>
+                    <div>{focusItem.strength || "—"}</div>
+                  </div>
+                  <div>
+                    <strong>Category</strong>
+                    <div>{focusItem?.category?.name || "—"}</div>
+                  </div>
+                  <div>
+                    <strong>Website</strong>
+                    <div>
+                      {focusItem.website ? (
+                        <a
+                          href={focusItem.website}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {focusItem.website}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <strong>Description</strong>
+                    <div>{focusItem.description || "—"}</div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </Modal>
       </div>
-
       <Footer />
     </>
   );

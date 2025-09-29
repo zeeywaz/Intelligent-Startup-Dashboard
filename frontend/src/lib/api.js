@@ -1,81 +1,116 @@
 // src/lib/api.js
-
-// Works in CRA and Vite. If you only use CRA, REACT_APP_API_BASE is enough.
-const fromVite =
-  typeof import.meta !== "undefined" &&
-  import.meta &&
-  import.meta.env &&
-  import.meta.env.VITE_API_BASE;
-
 export const API_BASE =
-  (fromVite && String(fromVite)) ||
+  import.meta?.env?.VITE_API_BASE ||
   process.env.REACT_APP_API_BASE ||
-  "";
+  "http://127.0.0.1:8000";
 
-/* ------------ Cookie helpers ------------ */
 export function getCookie(name) {
   const m = document.cookie.match(
     new RegExp("(^|; )" + name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1") + "=([^;]*)")
   );
   return m ? decodeURIComponent(m[2]) : null;
 }
+
 export function getCsrfFromCookie() {
-  return getCookie("csrftoken") || getCookie("csrfToken") || getCookie("XSRF-TOKEN") || null;
+  return (
+    getCookie("csrftoken") ||
+    getCookie("csrfToken") ||
+    getCookie("XSRF-TOKEN") ||
+    null
+  );
 }
 
-/* Ensure the CSRF cookie exists (hit /api/csrf/ once if missing). */
-async function ensureCsrfCookie() {
-  let tok = getCsrfFromCookie();
-  if (tok) return tok;
-  const url = API_BASE ? `${API_BASE}/api/csrf/` : "/api/csrf/";
-  await fetch(url, { credentials: "include" }).catch(() => {});
-  return getCsrfFromCookie();
-}
+export async function apiFetch(path, opts = {}) {
+  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+  const method = (opts.method || "GET").toUpperCase();
+  const isUnsafe = !["GET", "HEAD", "OPTIONS"].includes(method);
 
-/* ------------ Core fetch wrapper (adds cookies + CSRF) ------------ */
-export async function apiFetch(path, { method = "GET", body, headers } = {}) {
-  const url = API_BASE && path.startsWith("/") ? `${API_BASE}${path}` : path;
+  const headers = new Headers(opts.headers || {});
+  headers.set("Accept", "application/json");
 
-  const opts = {
-    method,
-    credentials: "include",
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      "X-Requested-With": "XMLHttpRequest",
-      ...(headers || {}),
-    },
-  };
-
-  // Add CSRF for unsafe methods
-  const unsafe = !["GET", "HEAD", "OPTIONS", "TRACE"].includes(method.toUpperCase());
-  if (unsafe) {
-    const token = await ensureCsrfCookie();
-    if (token) opts.headers["X-CSRFToken"] = token;
+  const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
+  if (isUnsafe && !isForm && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (isUnsafe && !headers.has("X-CSRFToken")) {
+    const token = getCsrfFromCookie();
+    if (token) headers.set("X-CSRFToken", token);
   }
 
-  if (body) opts.body = typeof body === "string" ? body : JSON.stringify(body);
+  const res = await fetch(url, { credentials: "include", ...opts, headers });
 
-  const res = await fetch(url, opts);
-  const ct = res.headers.get("content-type") || "";
-  const data = ct.includes("application/json")
-    ? await res.json().catch(() => ({}))
-    : await res.text();
+  let data = null;
+  let text = "";
+  try {
+    data = await res.json();
+  } catch {
+    try { text = await res.text(); } catch {}
+  }
 
   if (!res.ok) {
-    const detail = typeof data === "string" ? data : JSON.stringify(data);
-    throw new Error(`${res.status} ${res.statusText}${detail ? " — " + detail : ""}`);
+    const msg = data?.detail || data?.error || text || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.data = data ?? text;
+    throw err;
   }
-  return data;
+  return data ?? (text ? { detail: text } : {});
 }
 
-/* ------------ Convenience endpoints ------------ */
 const api = {
+  /* ---- CSRF & session ---- */
+  csrf: () => apiFetch("/api/csrf/"),
   me: () => apiFetch("/api/me/"),
   login: (email, password) =>
-    apiFetch("/api/login/", { method: "POST", body: { email, password } }),
+    apiFetch("/api/login/", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => apiFetch("/api/logout/", { method: "POST" }),
-  classify: (payload) => apiFetch("/api/ml/classify/", { method: "POST", body: payload }),
-  saveIdea: (payload) => apiFetch("/api/ideas/", { method: "POST", body: payload }),
+
+  /* ---- ML ---- */
+  classify: (payload) =>
+    apiFetch("/api/ml/classify/", { method: "POST", body: JSON.stringify(payload) }),
+
+  /* ---- Ideas + MyStartup bundle ---- */
+  saveIdea: (payload) =>
+    apiFetch("/api/ideas/", { method: "POST", body: JSON.stringify(payload) }),
+  myIdeas: () => apiFetch("/api/ideas/mine/"),
+  myStartupBundle: (ideaId, { res_limit = 8, comp_limit = 8 } = {}) =>
+    apiFetch(`/api/mystartup/${ideaId}/?res_limit=${res_limit}&comp_limit=${comp_limit}`),
+
+  /* ---- Lists (paged) ---- */
+  resourcesList: (params = {}) => {
+    const sp = new URLSearchParams();
+    if (params.limit) sp.set("limit", params.limit);
+    if (params.offset != null) sp.set("offset", params.offset);
+    if (params.location) sp.set("location", params.location);
+    if (params.type) sp.set("type", params.type);
+    if (params.search) sp.set("search", params.search);
+    if (params.fallback) sp.set("fallback", "1");
+    return apiFetch(`/api/resources/?${sp.toString()}`);
+  },
+
+  competitorsList: (params = {}) => {
+    const sp = new URLSearchParams();
+    sp.set("limit", params.limit ?? 15);
+    sp.set("offset", params.offset ?? 0);
+    if (params.search) sp.set("search", params.search);
+    if (params.category) sp.set("category", params.category);
+    if (params.strength) sp.set("strength", params.strength);
+    return apiFetch(`/api/competitors/?${sp.toString()}`);
+  },
+
+  /* ---- Bookmarks ---- */
+  bookmarkIds: (kind) => {
+    const q = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+    return apiFetch(`/api/bookmarks/ids/${q}`);
+  },
+  toggleBookmark: (kind, id) =>
+    apiFetch(`/api/bookmarks/toggle/`, {
+      method: "POST",
+      body: JSON.stringify({ kind, id }),
+    }),
+
+  /* ---- Notifications ---- */
+  notifications: () => apiFetch("/api/notifications/"),
 };
 
 export default api;

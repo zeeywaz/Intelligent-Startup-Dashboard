@@ -1,8 +1,10 @@
 from django.conf import settings
 from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
 import os
 from uuid import uuid4
-from django.contrib.auth.models import User
+from django.db.models import Q
 
 
 # --- Investor verification ---
@@ -25,9 +27,10 @@ class InvestorProfile(models.Model):
         managed = False
 
 
-def investor_doc_path(instance, filename):
+def investor_doc_path(_instance, filename):
     ext = os.path.splitext(filename)[1].lower()[:10]
     return f"investor_docs/{uuid4().hex}{ext}"
+
 
 class InvestorVerificationDoc(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -77,7 +80,8 @@ class UserRole(models.Model):
         managed = False
         unique_together = (("auth_user", "role"),)
 
-# --- Competitors / Categories (maps to existing Postgres tables) ---
+
+# --- Competitors / Categories ---
 
 class BusinessCategory(models.Model):
     id = models.AutoField(primary_key=True, db_column="category_id")
@@ -98,13 +102,14 @@ class Competitor(models.Model):
     )
     name = models.CharField(max_length=160)
     strength = models.TextField(blank=True)
-    website = models.CharField(max_length=255, blank=True)  # change to URLField if you want
+    website = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
 
     class Meta:
         db_table = "competitor"
 
-# --- Resources (matches table `resource`) ---
+
+# --- Resources ---
 
 class Resource(models.Model):
     resource_id = models.AutoField(primary_key=True, db_column="resource_id")
@@ -113,16 +118,16 @@ class Resource(models.Model):
     description = models.TextField(blank=True, default="", db_column="description")
     website = models.CharField(max_length=255, blank=True, default="", db_column="website")
     location = models.CharField(max_length=255, blank=True, default="", db_column="location")
-    # DB type is `point`; we read it as text like "(lon,lat)"
-    geo_data = models.CharField(max_length=128, blank=True, default="", db_column="geo_data")
+    geo_data = models.CharField(max_length=128, blank=True, default="", db_column="geo_data")  # "(lon,lat)"
     type = models.CharField(max_length=100, db_index=True, db_column="type")  # WAREHOUSE/...
 
     class Meta:
-        db_table = "resource"   # ← actual populated table
+        db_table = "resource"
         managed = False
         ordering = ["name"]
 
 
+# --- Ideas ---
 
 class BusinessIdea(models.Model):
     idea_id = models.AutoField(primary_key=True)
@@ -131,15 +136,13 @@ class BusinessIdea(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     target_audience = models.TextField(blank=True, null=True)
-    location = models.CharField(max_length=64)  # district_enum
+    location = models.CharField(max_length=64)       # district_enum
     business_type = models.CharField(max_length=64)  # business_type_enum
     submission_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "business_idea"
         managed = False
-
-
 
 
 class InvestorDetails(models.Model):
@@ -157,21 +160,9 @@ class InvestorDetails(models.Model):
         managed = False
 
 
-class Notification(models.Model):
-    notification_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user_id")
-    title = models.CharField(max_length=255)
-    message = models.TextField()
-    type = models.CharField(max_length=64, blank=True, null=True)
-    is_read = models.BooleanField(default=False)
-    created_date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "notification"
-        managed = False
 
 
-# models.py
+
 class InvestorInterest(models.Model):
     investor = models.ForeignKey(
         InvestorProfile,
@@ -192,25 +183,112 @@ class InvestorInterest(models.Model):
         unique_together = (("investor", "category"),)
 
 
-# backend/api/models.py
-from django.db import models
-from django.contrib.auth.models import User
+# --- Chat (minimal; matches serializer below) ---
 
 class ChatMessage(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chat_messages")
     message = models.TextField()
     response = models.TextField()
-    category = models.CharField(max_length=200, blank=True, null=True)
-    location = models.CharField(max_length=200, blank=True, null=True)
-    narrative = models.TextField(blank=True, null=True)
-
-    # ✅ All JSON fields
-    suggestions = models.JSONField(blank=True, null=True, default=list)
-    risks = models.JSONField(blank=True, null=True, default=list)
-    roadmap = models.JSONField(blank=True, null=True, default=list)
-    kpis = models.JSONField(blank=True, null=True, default=list)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ["created_at"]
+
     def __str__(self):
-        return f"{self.user.username}: {self.message[:50]}"
+        return f"{self.user.username}: {self.message[:30]}"
+
+
+# --- Bookmarks ---
+
+
+
+
+class EmailOTP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    valid_until = models.DateTimeField()
+
+    def is_valid(self):
+        return timezone.now() <= self.valid_until
+    
+    
+class Bookmark(models.Model):
+    """
+    Stores a bookmark for ONE of: resource / competitor / investor.
+    Matches your existing SQL table 'bookmark'.
+    """
+    bookmark_id = models.BigAutoField(primary_key=True, db_column="bookmark_id")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_column="user_id",
+        related_name="bookmarks",
+    )
+    resource_id = models.BigIntegerField(null=True, blank=True)
+    competitor_id = models.BigIntegerField(null=True, blank=True)
+    investor_id = models.BigIntegerField(null=True, blank=True)
+    created_date = models.DateTimeField(default=timezone.now, db_column="created_date")
+
+    class Meta:
+        db_table = "bookmark"
+        indexes = [
+            models.Index(fields=["user", "resource_id"]),
+            models.Index(fields=["user", "competitor_id"]),
+            models.Index(fields=["user", "investor_id"]),
+        ]
+        constraints = [
+            # Prevent duplicate bookmarks per kind (Postgres partial unique)
+            models.UniqueConstraint(
+                fields=["user", "resource_id"],
+                condition=Q(resource_id__isnull=False),
+                name="uniq_user_resource_bookmark",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "competitor_id"],
+                condition=Q(competitor_id__isnull=False),
+                name="uniq_user_competitor_bookmark",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "investor_id"],
+                condition=Q(investor_id__isnull=False),
+                name="uniq_user_investor_bookmark",
+            ),
+        ]
+
+    def __str__(self):
+        kind = (
+            "resource" if self.resource_id
+            else "competitor" if self.competitor_id
+            else "investor" if self.investor_id
+            else "unknown"
+        )
+        which = self.resource_id or self.competitor_id or self.investor_id
+        return f"Bookmark<{self.user_id}:{kind}={which}>"
+    
+
+class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        INVESTOR_INTEREST = "investor_interest", "Investor Interest"
+        NEW_RESOURCE = "new_resource", "New Resource"
+        ANALYSIS_COMPLETE = "analysis_complete", "Analysis Complete"
+        SYSTEM = "system", "System"
+
+    notification_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    type = models.CharField(max_length=50,choices=NotificationType.choices,default=NotificationType.SYSTEM,)
+    is_read = models.BooleanField(default=False)
+    created_date = models.DateTimeField(auto_now_add=True)
+    related_entity_type = models.CharField(max_length=50, null=True, blank=True)
+    related_entity_id = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "notification"
+
+    def __str__(self):
+        return f"{self.title} - {self.user.username}"
+    
+    
+    
