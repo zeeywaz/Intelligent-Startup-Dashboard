@@ -261,3 +261,35 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = "__all__"
+        
+        
+        
+# serializers.py
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "first_name", "last_name", "email"]
+
+class CompetitorIdeaSerializer(serializers.ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
+    category_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BusinessIdea
+        fields = [
+            "idea_id",
+            "title",
+            "description",
+            "submission_date",
+            "category_name",
+            "user",
+        ]
+
+    def get_category_name(self, obj):
+        try:
+            return obj.category.name if obj.category else None
+        except Exception:
+            return None

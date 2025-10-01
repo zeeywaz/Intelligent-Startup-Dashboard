@@ -8,7 +8,7 @@ import useServerBookmarks from "../hooks/useServerBookmarks";
 const PAGE_SIZE = 15;
 const API = `${API_BASE || ""}/api`;
 
-/* ---- small helpers ---- */
+/* ---------- small helpers ---------- */
 const useDebounced = (v, ms = 350) => {
   const [val, setVal] = useState(v);
   useEffect(() => {
@@ -18,24 +18,36 @@ const useDebounced = (v, ms = 350) => {
   return val;
 };
 
+/** Normalize various API shapes to { items, total, hasMore, nextPage } */
 const normalize = (json, currentPage, pageSize) => {
   if (json && Array.isArray(json.results)) {
     const total = Number(json.count || 0);
-    return { items: json.results, total, nextPage: json.next ? currentPage + 1 : currentPage, hasMore: !!json.next };
+    const hasMore = Boolean(json.next);
+    return { items: json.results, total, hasMore, nextPage: hasMore ? currentPage + 1 : currentPage };
   }
   if (json && Array.isArray(json.items)) {
     const total = Number(json.total || 0);
-    const page = Number(json.page || currentPage);
-    const pageCount = Number(json.pageCount || Math.ceil(total / pageSize));
-    return { items: json.items, total, nextPage: page < pageCount ? page + 1 : page, hasMore: page < pageCount };
+    if (json.page || json.pageCount) {
+      const page = Number(json.page || currentPage);
+      const pageCount = Number(json.pageCount || Math.ceil(total / pageSize));
+      const hasMore = page < pageCount;
+      return { items: json.items, total, hasMore, nextPage: hasMore ? page + 1 : currentPage };
+    }
+    if (json.limit != null || json.offset != null) {
+      const hasMore = json.next_offset != null && json.next_offset < total;
+      return { items: json.items, total, hasMore, nextPage: hasMore ? currentPage + 1 : currentPage };
+    }
+    const hasMore = currentPage * pageSize < total;
+    return { items: json.items, total, hasMore, nextPage: hasMore ? currentPage + 1 : currentPage };
   }
   if (Array.isArray(json)) {
     const total = json.length;
     const start = (currentPage - 1) * pageSize;
     const items = json.slice(start, start + pageSize);
-    return { items, total, nextPage: start + pageSize < total ? currentPage + 1 : currentPage, hasMore: start + pageSize < total };
+    const hasMore = start + pageSize < total;
+    return { items, total, hasMore, nextPage: hasMore ? currentPage + 1 : currentPage };
   }
-  return { items: [], total: 0, nextPage: currentPage, hasMore: false };
+  return { items: [], total: 0, hasMore: false, nextPage: currentPage };
 };
 
 async function getJSON(url) {
@@ -44,7 +56,7 @@ async function getJSON(url) {
   return res.json();
 }
 
-/* ---- UI bits ---- */
+/* ---------- UI bits ---------- */
 function StrengthBadge({ strength }) {
   const s = String(strength || "").toLowerCase();
   const cls = s === "high" ? "cmp-strength--high" : s === "medium" ? "cmp-strength--med" : "cmp-strength--low";
@@ -52,13 +64,15 @@ function StrengthBadge({ strength }) {
   return <span className={`cmp-strength ${cls}`}>{label}</span>;
 }
 
-function Card({ item, bookmarked, onBookmark }) {
+function CompetitorCard({ item, bookmarked, onBookmark }) {
+  const cat = item?.category?.name || item?.category_name || "Uncategorized";
   const site =
     item.website && /^https?:\/\//i.test(item.website) ? item.website : item.website ? `https://${item.website}` : null;
+
   return (
     <article className="cmp-card" role="listitem">
       <div className="cmp-card__top">
-        <span className="cmp-pill">{item?.category?.name || "Uncategorized"}</span>
+        <span className="cmp-pill">{cat}</span>
         <button
           type="button"
           className={`cmp-bookmark ${bookmarked ? "is-on" : ""}`}
@@ -92,8 +106,48 @@ function Card({ item, bookmarked, onBookmark }) {
   );
 }
 
-/* ---- Page ---- */
+function IdeaCard({ idea, bookmarked, onBookmark }) {
+  const displayName =
+    (idea?.user?.first_name || idea?.user?.last_name)
+      ? `${idea.user.first_name || ""} ${idea.user.last_name || ""}`.trim()
+      : idea?.user?.username
+      ? `@${idea.user.username}`
+      : "Unknown";
+  const cat = idea?.category_name || "Uncategorised";
+
+  return (
+    <article className="cmp-card" role="listitem">
+      <div className="cmp-card__top">
+        <span className="cmp-pill">{cat}</span>
+        <button
+          type="button"
+          className={`cmp-bookmark ${bookmarked ? "is-on" : ""}`}
+          aria-label={bookmarked ? "Remove bookmark" : "Add bookmark"}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onBookmark?.();
+          }}
+          title={bookmarked ? "Bookmarked" : "Bookmark"}
+        >
+          <svg viewBox="0 0 24 24" className="cmp-bookmark__svg" aria-hidden>
+            <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+          </svg>
+        </button>
+      </div>
+
+      <h3 className="cmp-card__title">{idea?.title || "(Untitled idea)"}</h3>
+      {idea?.user && <p className="cmp-card__desc">by {displayName}</p>}
+      {idea?.description && <p className="cmp-card__desc">{idea.description}</p>}
+    </article>
+  );
+}
+
+/* ---------- Page ---------- */
 export default function CompetitorsPage() {
+  // "ideas" = auth_user + business_idea cards; "companies" = competitors table
+  const [mode, setMode] = useState("ideas"); // "ideas" | "companies"
+
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -102,9 +156,37 @@ export default function CompetitorsPage() {
   const [errMsg, setErrMsg] = useState("");
   const [q, setQ] = useState("");
   const dq = useDebounced(q, 350);
+  const [onlyBookmarks, setOnlyBookmarks] = useState(false);
 
-  // server-backed bookmarks
-  const { isBookmarked, toggle } = useServerBookmarks("competitor");
+  // Server bookmarks, per kind
+  const ideaBms = useServerBookmarks("idea");
+  const cmpBms  = useServerBookmarks("competitor");
+
+  // pick helpers by current mode
+  const isBookmarked = useMemo(
+    () => (id) => (mode === "ideas" ? ideaBms.isBookmarked(id) : cmpBms.isBookmarked(id)),
+    [mode, ideaBms.isBookmarked, cmpBms.isBookmarked]
+  );
+  const toggleBookmark = useMemo(
+    () => (id) => (mode === "ideas" ? ideaBms.toggle(id) : cmpBms.toggle(id)),
+    [mode, ideaBms.toggle, cmpBms.toggle]
+  );
+  const bookmarkCount = mode === "ideas" ? (ideaBms.ids?.size || 0) : (cmpBms.ids?.size || 0);
+
+  function getRowId(row) {
+    if (mode === "ideas") return row?.idea_id ?? row?.id ?? row?.pk;
+    return row?.competitor_id ?? row?.id ?? row?.pk;
+  }
+
+  // category helpers for sorting
+  const catNameOf = (row) => {
+    if (mode === "ideas") return String(row?.category_name || "").trim();
+    return String(row?.category?.name || row?.category_name || "").trim();
+  };
+  const isUncategorized = (name) => {
+    const s = (name || "").trim().toLowerCase();
+    return !s || s === "uncategorized" || s === "uncategorised";
+  };
 
   async function fetchPage(nextPage, replace = false) {
     if (replace) setStatus("loading");
@@ -113,13 +195,14 @@ export default function CompetitorsPage() {
     const usp = new URLSearchParams();
     if (dq.trim()) {
       usp.set("q", dq.trim());
-      usp.set("search", dq.trim()); // support either
+      usp.set("search", dq.trim());
     }
     usp.set("page", String(nextPage));
     usp.set("limit", String(PAGE_SIZE));
     usp.set("page_size", String(PAGE_SIZE));
 
-    const json = await getJSON(`${API}/competitors/?${usp.toString()}`);
+    const endpoint = mode === "ideas" ? "competitor-ideas" : "competitors";
+    const json = await getJSON(`${API}/${endpoint}/?${usp.toString()}`);
     const norm = normalize(json, nextPage, PAGE_SIZE);
 
     setTotal(norm.total);
@@ -129,7 +212,7 @@ export default function CompetitorsPage() {
     setStatus("ready");
   }
 
-  // initial + on search change
+  // load on search/mode change
   useEffect(() => {
     let cancel = false;
     (async () => {
@@ -145,11 +228,9 @@ export default function CompetitorsPage() {
         setErrMsg(e.message || "Failed to load");
       }
     })();
-    return () => {
-      cancel = true;
-    };
+    return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dq]);
+  }, [dq, mode]);
 
   // infinite scroll
   const loaderRef = useRef(null);
@@ -170,18 +251,39 @@ export default function CompetitorsPage() {
     );
     io.observe(loaderRef.current);
     return () => io.disconnect();
-  }, [page, hasMore, status]); // eslint-disable-line
+  }, [page, hasMore, status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // bookmarks filter + push uncategorized to bottom (stable)
+  const filteredRows = useMemo(() => {
+    const base = onlyBookmarks ? rows.filter((r) => isBookmarked(getRowId(r))) : rows;
+
+    // decorate to keep original order among same group (stable-ish)
+    const decorated = base.map((r, i) => ({
+      r,
+      i,
+      uncat: isUncategorized(catNameOf(r)),
+    }));
+
+    // sort: non-uncat first, then uncat; keep original order within groups
+    decorated.sort((a, b) => (a.uncat - b.uncat) || (a.i - b.i));
+
+    return decorated.map((x) => x.r);
+  }, [rows, onlyBookmarks, isBookmarked, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const headerSubtitle = useMemo(
-    () => (dq ? "Search results" : "Browse competitors. Scroll to load more."),
-    [dq]
+    () => (dq ? "Search results" : mode === "ideas"
+      ? "Browse founders and their startup ideas. Scroll to load more."
+      : "Browse competing companies. Scroll to load more."),
+    [dq, mode]
   );
 
   return (
     <div className="cmp-app">
       <Header />
+
       <main id="main" className="cmp-main" role="main">
         <section className="cmp-panel" aria-label="Competitors">
+          {/* Head */}
           <div className="cmp-head">
             <div className="cmp-titles">
               <h2 className="cmp-title">Competitors</h2>
@@ -190,45 +292,109 @@ export default function CompetitorsPage() {
 
             <div className="cmp-searchbar">
               <div className="cmp-searchbar__icon" aria-hidden>
-                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20l-6-6z"/></svg>
+                <svg viewBox="0 0 24 24">
+                  <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20l-6-6z"/>
+                </svg>
               </div>
               <input
                 className="cmp-searchbar__input"
                 type="search"
-                placeholder="Enter Name Or Category"
+                placeholder="Search by title, person, or company…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
               {dq && (
-                <button className="cmp-searchbar__clear" onClick={() => setQ("")} aria-label="Clear search" type="button">
-                  <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round"/></svg>
+                <button
+                  className="cmp-searchbar__clear"
+                  onClick={() => setQ("")}
+                  aria-label="Clear search"
+                  type="button"
+                >
+                  <svg viewBox="0 0 24 24">
+                    <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round"/>
+                  </svg>
                 </button>
               )}
-              <a className="cmp-bookmarks-link" href="/userdashboard#bookmarks">★ Bookmarks</a>
+              {/* Bookmarks filter toggle */}
+              <button
+                type="button"
+                className={`cmp-bookmarks-link ${onlyBookmarks ? "is-on" : ""}`}
+                onClick={() => setOnlyBookmarks((v) => !v)}
+                title="Show only bookmarked"
+              >
+                ★ Bookmarks {onlyBookmarks && `(${bookmarkCount})`}
+              </button>
             </div>
           </div>
 
-          {status === "error" && rows.length === 0 && <div className="state error">Error: {errMsg}</div>}
-
-          <div className="cmp-grid" role="list">
-            {rows.map((it) => (
-              <Card
-                key={it.id}
-                item={it}
-                bookmarked={isBookmarked(it.id)}
-                onBookmark={() => toggle(it.id).catch(() => {})}
-              />
-            ))}
+          {/* Mode tabs */}
+          <div className="cmp-mode-tabs" role="tablist" aria-label="Competitor modes">
+            <button
+              role="tab"
+              aria-selected={mode === "ideas"}
+              className={`cmp-tab ${mode === "ideas" ? "is-active" : ""}`}
+              onClick={() => setMode("ideas")}
+              type="button"
+            >
+              Ideas (people)
+            </button>
+            <button
+              role="tab"
+              aria-selected={mode === "companies"}
+              className={`cmp-tab ${mode === "companies" ? "is-active" : ""}`}
+              onClick={() => setMode("companies")}
+              type="button"
+            >
+              Companies
+            </button>
           </div>
 
+          {/* Errors */}
+          {status === "error" && filteredRows.length === 0 && (
+            <div className="state error">Error: {errMsg}</div>
+          )}
+
+          {/* Grid */}
+          <div className="cmp-grid" role="list">
+            {filteredRows.map((row) => {
+              const rid = getRowId(row);
+              return mode === "ideas" ? (
+                <IdeaCard
+                  key={`idea-${rid}`}
+                  idea={row}
+                  bookmarked={isBookmarked(rid)}
+                  onBookmark={() => toggleBookmark(rid).catch(() => {})}
+                />
+              ) : (
+                <CompetitorCard
+                  key={`cmp-${rid}`}
+                  item={row}
+                  bookmarked={isBookmarked(rid)}
+                  onBookmark={() => toggleBookmark(rid).catch(() => {})}
+                />
+              );
+            })}
+          </div>
+
+          {/* Infinite-scroll sentinel */}
           <div ref={loaderRef} style={{ height: 1 }} />
+
+          {/* Footer state line */}
           <div className="state">
             {status === "loading" && <span>Loading…</span>}
-            {!hasMore && rows.length > 0 && <span className="muted">Showing {rows.length}{total ? ` of ${total}` : ""}</span>}
-            {!rows.length && status === "ready" && <span>No competitors found.</span>}
+            {!hasMore && filteredRows.length > 0 && (
+              <span className="muted">Showing {filteredRows.length}{total ? ` of ${total}` : ""}</span>
+            )}
+            {!filteredRows.length && status === "ready" && (
+              <span>
+                No {mode === "ideas" ? "ideas" : "companies"} found
+                {onlyBookmarks ? " in your bookmarks." : "."}
+              </span>
+            )}
           </div>
         </section>
       </main>
+
       <Footer />
     </div>
   );

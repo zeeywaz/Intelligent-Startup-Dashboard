@@ -53,9 +53,13 @@ urlpatterns = [
     path("analytics/seed/", views.analytics_seed, name="analytics-seed"), 
     
     
-    path("request-otp/", views.request_otp),
+    path("request-otp/", views.request_otp, name="request_otp"),
     path("verify-otp/", views.verify_otp_api),
+    path("reset-password/", views.reset_password),
+    path("register/request-otp/", views.register_request_otp, name="register_request_otp"),
+    path("register/verify-otp/", views.register_verify_otp, name="register_verify_otp"),
     
     path("analytics/monthly-overview/", views.analytics_monthly_overview, name="analytics-monthly-overview"),
+    path("competitor-ideas/", views.competitor_ideas, name="competitor-ideas"),
 
 ]

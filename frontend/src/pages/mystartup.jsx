@@ -165,6 +165,7 @@ export default function StartupPage() {
   const navigate = useNavigate();
 
   const [idea, setIdea] = useState(null);
+  const hasIdea = !!idea; // <-- flag for button label
 
   const [resources, setResources] = useState([]);
   const [resourcesMeta, setResourcesMeta] = useState({
@@ -718,18 +719,19 @@ export default function StartupPage() {
                   )}
                 </section>
               </div>
-
-              <div className="actions">
-                <button className="btn" onClick={() => navigate("/chatbot")}>
-                  Change Idea
-                </button>
-                <button className="btn" onClick={() => window.history.back()}>
-                  Back
-                </button>
-              </div>
             </>
           )}
         </main>
+
+        {/* Always-visible actions */}
+        <div className="actions actions--sticky">
+          <button className="btn" onClick={() => navigate("/chatbot")}>
+            {hasIdea ? "Change Idea" : "Create Idea"}
+          </button>
+          <button className="btn btn--ghost" onClick={() => window.history.back()}>
+            Back
+          </button>
+        </div>
 
         <Modal
           open={open}

@@ -1,63 +1,64 @@
-import React from "react";
+import React, { useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import {
+  Menu, X, LogIn as LogInIcon, Info, Mail, Code, BarChart, Package,
+  Sparkles, ShieldCheck, GaugeCircle, Phone, MapPin
+} from "lucide-react";
 import "../styles/home.css";
-import { Code, BarChart, Package, Mail, Phone, MapPin } from "lucide-react";
-import { Link } from "react-router-dom";
 
-/** Join class names safely */
-function classNames(...list) {
-  return list.filter(Boolean).join(" ");
-}
+const cx = (...l) => l.filter(Boolean).join(" ");
 
-/** Reusable Button with variants & sizes */
 function Button({
-  as: Component = "button",
-  variant = "primary",
-  size = "lg",
+  as: Comp = "button",
+  variant = "primary",        // primary | outline | ghost
+  size = "lg",                // sm | md | lg
   className,
   children,
   ...props
 }) {
-  const variantClass = {
-    primary: "btn--primary",
-    secondary: "btn--secondary",
-    ghost: "btn--ghost",
-  }[variant];
-
-  const sizeClass = { sm: "btn--sm", md: "btn--md", lg: "btn--lg" }[size];
-
   return (
-    <Component className={classNames("btn group", variantClass, sizeClass, className)} {...props}>
-      <span className="btn__inner">
-        <span className="btn__label">{children}</span>
-      </span>
-    </Component>
+    <Comp
+      className={cx("ifx-btn", `ifx-btn--${variant}`, `ifx-btn--${size}`, className)}
+      {...props}
+    >
+      <span className="ifx-btn__shimmer" aria-hidden />
+      <span className="ifx-btn__label">{children}</span>
+    </Comp>
   );
 }
 
-/** Top navigation */
-function Header({ className }) {
+function Header() {
+  const [open, setOpen] = useState(false);
   return (
-    <header className={classNames("navbar", className)}>
-      <div className="container">
-        <nav className="navbar__row" aria-label="Primary">
-          {/* Brand */}
-          <Link to="/" className="navbar__brand" aria-label="IdeaForge home">
-            <span className="logo">IdeaForge</span>
+    <header className="ifx-navbar">
+      <div className="ifx-container">
+        <nav className="ifx-navbar__row" aria-label="Primary">
+          <Link to="/" className="ifx-navbar__brand" aria-label="IdeaForge home">
+            <img src="/logo-black.png" alt="IdeaForge" className="ifx-logo-img" height={36} />
           </Link>
 
-          {/* Desktop nav */}
-          <ul className="nav md:flex hidden" role="list">
-            <li>
-              <Link to="/about" className="nav_link">About Us</Link>
+          <button
+            className="ifx-nav__toggle"
+            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={() => setOpen(v => !v)}
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <ul className={cx("ifx-nav", open && "is-open")} role="list">
+            <li className="ifx-nav__item">
+              <Info size={18} aria-hidden />
+              <NavLink to="/about" className="ifx-nav__link">About Us</NavLink>
             </li>
-            <li>
-              <Link to="/contact" className="nav_link">Contact</Link>
+            <li className="ifx-nav__item">
+              <Mail size={18} aria-hidden />
+              <NavLink to="/contact" className="ifx-nav__link">Contact</NavLink>
             </li>
           </ul>
 
-          {/* Auth */}
-          <div className="navbar__actions">
-            <Button as={Link} to="/login" variant="secondary" size="md" aria-label="Log in">
+          <div className="ifx-navbar__actions">
+            <Button as={Link} to="/login" variant="outline" size="md" aria-label="Log in">
+              <LogInIcon size={18} aria-hidden />
               Log In
             </Button>
           </div>
@@ -67,228 +68,209 @@ function Header({ className }) {
   );
 }
 
-/** Feature card */
 function FeatureCard({ icon: Icon, title, children }) {
   return (
-    <div className="card">
-      <div className="card__icon" aria-hidden>
-        <Icon className="w-12 h-12" strokeWidth={1.5} />
+    <article className="ifx-card" role="listitem">
+      <div className="ifx-card__glow" aria-hidden />
+      <div className="ifx-card__icon">
+        <Icon size={48} strokeWidth={1.6} />
       </div>
-      <h3 className="card__title">{title}</h3>
-      <p className="card__desc">{children}</p>
+      <h3 className="ifx-card__title">{title}</h3>
+      <p className="ifx-card__desc">{children}</p>
+    </article>
+  );
+}
+
+function Stat({ icon: Icon, label }) {
+  return (
+    <div className="ifx-stat">
+      <Icon size={18} aria-hidden />
+      <span>{label}</span>
     </div>
   );
 }
 
-/** Step block */
-function ProcessStep({ align = "left", title, children }) {
-  const alignClass = align === "right" ? "step--right" : align === "center" ? "step--center" : "";
+function Step({ title, children, align = "left" }) {
   return (
-    <div className={classNames("step", alignClass)}>
-      <div className="step__media" aria-hidden />
-      <h3 className="step__title">{title}</h3>
-      <p className="step__desc">{children}</p>
+    <div className={cx("ifx-step", align === "center" && "is-center", align === "right" && "is-right")}>
+      <div className="ifx-step__media" aria-hidden />
+      <h3 className="ifx-step__title">{title}</h3>
+      <p className="ifx-step__desc">{children}</p>
     </div>
   );
 }
 
 export default function HomePage() {
   return (
-    <div id="top" className="home-app">
+    <div className="ifx-app">
       <Header />
 
       <main>
-        {/* Hero */}
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="container">
-            <div className="hero__bg" aria-hidden />
-            <div className="hero__content">
-              <header className="hero__header">
-                <h1 id="hero-title" className="hero__title">
-                  Welcome To
-                  <br />
-                  <span className="hero__brand">IdeaForge</span>
-                </h1>
-                <p className="hero__subtitle">Where Ideas Turn Into Reality</p>
-              </header>
-
-              <div className="hero__ctas">
-                <Button as={Link} to="/signup" variant="primary" size="lg">Get Started</Button>
-                <Button as="a" href="#about" variant="primary" size="lg">Learn More</Button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Introduction */}
-        <section id="about" className="section intro" aria-labelledby="intro-title">
-          <div className="container">
-            <div className="section__eyebrow" aria-hidden>
-              <Code className="w-9 h-9" strokeWidth={1.5} />
-            </div>
-
-            <div className="split">
-              <div className="split__left">
-                <h2 id="intro-title" className="section__title">Empower Your Ideas with AI Assistance</h2>
-                <p className="section__body">
-                  Our AI platform transforms your ideas into actionable plans by connecting you with potential sponsors,
-                  competitors, and essential resources. With a user-friendly dashboard, you can track progress and gain analytics.
-                </p>
-                <div className="actions">
-                  <Button as={Link} to="/signup" variant="primary" size="md">Get Started</Button>
-                  <Button as="a" href="#features" variant="primary" size="md">Learn More</Button>
-                </div>
-              </div>
-              <div className="split__right" aria-hidden>
-                <div className="visual" />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Features */}
-        <section id="features" className="section" aria-labelledby="features-title">
-          <div className="container">
-            <header className="section__header">
-              <h2 id="features-title" className="section__title">Empower Your Ideas Today</h2>
-              <p className="section__subtitle">Connect with sponsors to fuel your vision.</p>
-            </header>
-
-            <div className="grid">
-              <FeatureCard icon={Package} title="Find the Right Sponsors">
-                Get matched with potential investors and supporters.
-              </FeatureCard>
-
-              <FeatureCard icon={BarChart} title="Analyze Your Competition">
-                Understand market dynamics and the competitive landscape.
-              </FeatureCard>
-
-              <FeatureCard icon={Package} title="Access Valuable Resources">
-                Utilize tools and insights to launch successfully.
-              </FeatureCard>
-            </div>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="section how" aria-labelledby="how-title">
-          <div className="container">
-            <header className="section__header">
-              <h2 id="how-title" className="section__title">Transform Your Idea into Reality with AI</h2>
-              <p className="section__subtitle max-w-4xl mx-auto">
-                Input your idea and our AI guides you. From sponsors to competitor tracking, get all the resources you need.
+        {/* HERO */}
+        <section className="ifx-hero" aria-labelledby="hero-title">
+          <div className="ifx-hero__mesh" aria-hidden />
+          <div className="ifx-container">
+            <div className="ifx-hero__wrap">
+              <h1 id="hero-title" className="ifx-hero__title">
+                Build & Launch With
+                <br />
+                <span className="ifx-hero__brand">IdeaForge</span>
+              </h1>
+              <p className="ifx-hero__subtitle">
+                Turn ideas into reality—from funding to analytics—beautifully orchestrated.
               </p>
-            </header>
 
-            <div className="grid grid--steps">
-              <ProcessStep align="left" title="Step 1: Input Your Idea">Share your concept with our intuitive interface.</ProcessStep>
-              <ProcessStep align="center" title="Step 2: Discover Resources & Sponsors">AI connects you with sponsors and resources.</ProcessStep>
-              <ProcessStep align="right" title="Step 3: Track Your Progress">Use the dashboard for analytics and insights.</ProcessStep>
-            </div>
+              <div className="ifx-hero__ctas">
+                <Button as={Link} to="/signup" variant="primary" size="lg">Get Started</Button>
+                <Button as="a" href="#features" variant="ghost" size="lg">Explore Features</Button>
+              </div>
 
-            <div className="cta--right">
-              <Button as={Link} to="/signup" variant="primary" size="md">Get Started</Button>
+              <div className="ifx-hero__stats" aria-label="Highlights">
+                <Stat icon={Sparkles} label="Smart AI Guidance" />
+                <Stat icon={ShieldCheck} label="Private & Secure" />
+                <Stat icon={GaugeCircle} label="Realtime Insights" />
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Testimonials */}
-        <section className="section testimonials" aria-labelledby="testimonials-title">
-          <div className="container">
-            <div className="quote__icon" aria-hidden>
-              <svg width="80" height="70" viewBox="0 0 80 70" fill="none" aria-hidden="true">
-                <path d="M31.967 13.3875C32.7413 12.7059 33.6962 12.2023 34.7466 11.9214C35.797 11.6406 36.9104 11.5911 37.9879 11.7775C39.0654 11.9639 40.0736 12.3803 40.9228 12.9898C41.7721 13.5993 42.4361 14.383 42.8558 15.2711C43.2754 16.1592 43.4379 17.1243 43.3285 18.0806C43.2192 19.0369 42.8416 19.9548 42.2292 20.7526C41.6168 21.5504 40.7886 22.2034 39.8182 22.6537C38.8478 23.1039 37.7653 23.3374 36.667 23.3334H6.66699M41.967 56.6125C42.7413 57.2941 43.6962 57.7977 44.7466 58.0786C45.797 58.3595 46.9104 58.4089 47.9879 58.2226C49.0654 58.0362 50.0736 57.6197 50.9228 57.0102C51.7721 56.4007 52.4361 55.6171 52.8558 54.729C53.2754 53.8408 53.4379 52.8757 53.3285 51.9194C53.2192 50.9631 52.8416 50.0453 52.2292 49.2475C51.6168 48.4497 50.7886 47.7966 49.8182 47.3464C48.8478 46.8961 47.7653 46.6627 46.667 46.6667H6.66699M59.1003 22.5459C60.0698 21.6997 61.2627 21.0756 62.5734 20.7288C63.8842 20.382 65.2724 20.3232 66.6153 20.5575C67.9582 20.7919 69.2144 21.3122 70.2728 22.0724C71.3312 22.8326 72.1592 23.8094 72.6836 24.9162C73.2079 26.0231 73.4125 27.2259 73.2791 28.4184C73.1458 29.6109 72.6787 30.7563 71.9191 31.7532C71.1595 32.7501 70.1308 33.5679 68.9241 34.1342C67.7173 34.7005 66.3697 34.9979 65.0003 35H6.66699" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+        {/* INTRO */}
+        <section id="about" className="ifx-section">
+          <div className="ifx-container ifx-split">
+            <div className="ifx-split__left">
+              <div className="ifx-eyebrow"><Code size={34} strokeWidth={1.5} /></div>
+              <h2 className="ifx-section__title">Your AI Co-founder for Market Readiness</h2>
+              <p className="ifx-section__body">
+                IdeaForge connects you to sponsors, maps competitors, and surfaces resources so
+                you can launch decisively. A unified dashboard tracks traction and converts
+                signals into action.
+              </p>
+              <div className="ifx-actions">
+                <Button as={Link} to="/signup" variant="primary" size="md">Create Free Account</Button>
+                <Button as="a" href="#contact" variant="ghost" size="md">Talk to us</Button>
+              </div>
             </div>
 
-            <h2 id="testimonials-title" className="section__title">What People Say</h2>
+            <div className="ifx-split__right" aria-hidden>
+              <div className="ifx-visual" />
+            </div>
+          </div>
+        </section>
 
-            <blockquote className="quote">
-              “This platform transformed my idea into a viable business. The support and resources provided were invaluable in my journey.”
+        {/* FEATURES */}
+        <section id="features" className="ifx-section">
+          <div className="ifx-container">
+            <header className="ifx-section__header">
+              <h2 className="ifx-section__title">Everything you need to ship</h2>
+              <p className="ifx-section__subtitle">Best-practice tooling wrapped in a clean workflow.</p>
+            </header>
+
+            <div className="ifx-grid" role="list">
+              <FeatureCard icon={Package} title="Sponsor Matching">
+                Instantly find aligned sponsors and streamline outreach with warm intros.
+              </FeatureCard>
+              <FeatureCard icon={BarChart} title="Competition Radar">
+                Track competitors, spot whitespace, and plan moves with confidence.
+              </FeatureCard>
+              <FeatureCard icon={Package} title="Launch Resources">
+                Curated vendors, SaaS, and services to build faster with less risk.
+              </FeatureCard>
+            </div>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section className="ifx-section">
+          <div className="ifx-container">
+            <header className="ifx-section__header">
+              <h2 className="ifx-section__title">From idea to traction—step by step</h2>
+              <p className="ifx-section__subtitle">A clear, guided path—no chaos, just momentum.</p>
+            </header>
+
+            <div className="ifx-grid ifx-grid--steps">
+              <Step title="1) Describe your idea">Our AI frames the opportunity and validates assumptions.</Step>
+              <Step align="center" title="2) Discover resources & sponsors">Matches surface instantly—reach out in one click.</Step>
+              <Step align="right" title="3) Track progress & iterate">Dashboards highlight wins, gaps, and next moves.</Step>
+            </div>
+
+            <div className="ifx-cta--right">
+              <Button as={Link} to="/signup" variant="primary" size="md">Start Building</Button>
+            </div>
+          </div>
+        </section>
+
+        {/* TESTIMONIAL */}
+        <section className="ifx-section ifx-testimonials" aria-labelledby="testimonials-title">
+          <div className="ifx-container">
+            <h2 id="testimonials-title" className="ifx-section__title">Loved by founders</h2>
+            <blockquote className="ifx-quote">
+              “IdeaForge turned our sketch into a funded roadmap in weeks. The sponsor matches
+              were eerily accurate—and the dashboard became our team’s daily compass.”
             </blockquote>
-
-            <figure className="profile">
-              <div className="profile__avatar" aria-hidden />
-              <figcaption className="profile__meta">
-                <p className="profile__name">Jane Doe</p>
-                <p className="profile__role">Founder, Startup Inc.</p>
+            <figure className="ifx-profile">
+              <div className="ifx-profile__avatar" aria-hidden />
+              <figcaption className="ifx-profile__meta">
+                <p className="ifx-profile__name">Jane Doe</p>
+                <p className="ifx-profile__role">Founder, Sparrow Labs</p>
               </figcaption>
             </figure>
-
-            <hr className="divider" />
-
-            <div className="cta">
-              <h3 className="cta__title">Transform Your Ideas into Reality</h3>
-              <p className="cta__desc">Join our platform today and unlock the resources to bring your vision to life.</p>
-              <Button as={Link} to="/signup" variant="primary" size="lg">Get Started</Button>
-            </div>
           </div>
         </section>
 
-        {/* Contact */}
-        <section id="contact" className="section contact" aria-labelledby="contact-title">
-          <div className="container grid lg:grid-cols-2 gap-16">
-            <div className="space-y-8">
-              <header>
-                <p className="eyebrow">Connect</p>
-                <h2 id="contact-title" className="section__title">Get in Touch</h2>
-                <p className="section__subtitle">We are here to assist you with any inquiries.</p>
-              </header>
+        {/* CONTACT */}
+        <section id="contact" className="ifx-section">
+          <div className="ifx-container ifx-contact">
+            <div>
+              <p className="ifx-eyebrow">Connect</p>
+              <h2 className="ifx-section__title">Get in touch</h2>
+              <p className="ifx-section__subtitle">We’ll help you choose the fastest path to launch.</p>
 
-              <ul className="contact__list" role="list">
-                <li className="contact__row">
-                  <Mail className="w-9 h-10" strokeWidth={1.5} aria-hidden />
+              <ul className="ifx-contact__list" role="list">
+                <li className="ifx-contact__row">
+                  <Mail className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
                   <div>
-                    <h3 className="contact__label">Email</h3>
-                    <p className="contact__value">
-                      Reach us at:
-                      <br />
-                      <a href="mailto:support@ideaforge.com" className="link">support@ideaforge.com</a>
+                    <h3 className="ifx-contact__label">Email</h3>
+                    <p className="ifx-contact__value">
+                      <a href="mailto:support@ideaforge.com" className="ifx-link">support@ideaforge.com</a>
                     </p>
                   </div>
                 </li>
 
-                <li className="contact__row">
-                  <Phone className="w-9 h-8" strokeWidth={1.5} aria-hidden />
+                <li className="ifx-contact__row">
+                  <Phone className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
                   <div>
-                    <h3 className="contact__label">Phone</h3>
-                    <p className="contact__value">
-                      Call us:
-                      <br />
-                      <a href="tel:+94123456789" className="link">+94 123 456 789</a>
+                    <h3 className="ifx-contact__label">Phone</h3>
+                    <p className="ifx-contact__value">
+                      <a href="tel:+94123456789" className="ifx-link">+94 123 456 789</a>
                     </p>
                   </div>
                 </li>
 
-                <li className="contact__row">
-                  <MapPin className="w-6 h-7" aria-hidden />
+                <li className="ifx-contact__row">
+                  <MapPin className="ifx-contact__icon" aria-hidden />
                   <div>
-                    <h3 className="contact__label">Office</h3>
-                    <p className="contact__value">
-                      123, Sample St. Colombo 10
-                      <br />
-                      <a href="#" className="link">Get Directions →</a>
+                    <h3 className="ifx-contact__label">Office</h3>
+                    <p className="ifx-contact__value">
+                      123, Sample St. Colombo 10 — <a href="#" className="ifx-link">Get Directions →</a>
                     </p>
                   </div>
                 </li>
               </ul>
             </div>
 
-            <div className="form" aria-hidden />
+            <div className="ifx-form" aria-hidden />
           </div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="footer" aria-labelledby="footer-title">
-        <div className="container">
-          <hr className="divider" />
+      <footer className="ifx-footer">
+        <div className="ifx-container">
           <nav aria-label="Footer">
-            <ul className="footer__links" role="list">
-              <li><a href="#" className="nav__link">Get Started</a></li>
-              <li><a href="#" className="nav__link">Our Services</a></li>
-              <li><a href="#contact" className="nav__link">Contact Us</a></li>
-              <li><a href="#about" className="nav__link">About Us</a></li>
+            <ul className="ifx-footer__links" role="list">
+              <li><a href="#features" className="ifx-nav__link">Features</a></li>
+              <li><a href="#contact" className="ifx-nav__link">Contact</a></li>
+              <li><a href="/about" className="ifx-nav__link">About</a></li>
+              <li><Link to="/signup" className="ifx-nav__link">Get Started</Link></li>
             </ul>
           </nav>
         </div>

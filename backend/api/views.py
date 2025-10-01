@@ -2,6 +2,8 @@ from __future__ import annotations
 from . import ml_runtime
 import json
 import random
+import uuid
+from .utils import send_otp, verify_otp
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -823,33 +825,153 @@ def analytics_seed(request):
 
 
 # --------------------- OTP (dev stubs to satisfy urls) ---------------------
-@api_view(["POST"])
-@permission_classes([AllowAny])
-@parser_classes([JSONParser])
+# ! Email OTP System
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
 def request_otp(request):
-    """
-    Dev stub: generate a 6-digit OTP and store it in the session.
-    Body: { "email": "<optional>" }
-    """
-    code = f"{random.randint(0, 999999):06d}"
-    request.session["otp_code"] = code
-    request.session["otp_ts"] = timezone.now().isoformat()
-    # In real life you'd email/SMS the code. Here we return it to make testing easy.
-    return Response({"ok": True, "otp": code}, status=200)
+    email = request.data.get('email')
+    if not email:
+        return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(email=email)
+        send_otp(user)
+        return Response({"detail": "OTP sent."})
+    except User.DoesNotExist:
+        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def verify_otp_api(request):
+    email = request.data.get('email')
+    code = request.data.get('code')
+    
+    if not email or not code:
+        return Response({"detail": "Email and code are required."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(email=email)
+        if verify_otp(user, code):
+            return Response({"detail": "OTP verified."})
+        else:
+            return Response({"detail": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
+    except User.DoesNotExist:
+        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
-@parser_classes([JSONParser])
-def verify_otp_api(request):
-    """
-    Dev stub: verify the 6-digit OTP stored in the session.
-    Body: { "otp": "123456" }
-    """
-    provided = (request.data.get("otp") or "").strip()
-    stored = request.session.get("otp_code")
-    ok = bool(stored and provided and stored == provided)
-    return Response({"ok": ok}, status=200)
+def reset_password(request):
+    email = request.data.get("email")
+    code = request.data.get("code")
+    new_password = request.data.get("new_password")
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"detail": "User not found"}, status=404)
+
+    if not verify_otp(user, code):
+        return Response({"detail": "Invalid or expired OTP"}, status=400)
+
+    user.set_password(new_password)
+    user.save()
+    return Response({"detail": "Password reset successful"})
+
+# !!!!!!!!!!!!!!!!!!
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def register_request_otp(request):
+    email = request.data.get('email')
+    username = request.data.get('username')
+    
+    if not email:
+        return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if email is already registered (active users)
+    if User.objects.filter(email=email, is_active=True).exists():
+        return Response({"detail": "Email already registered."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # For inactive users (previous failed registrations), we'll reuse them
+    try:
+        user = User.objects.get(email=email, is_active=False)
+        # Update username if provided and different
+        if username and user.username != username:
+            # Check if new username is available
+            if User.objects.filter(username=username).exists():
+                return Response({"detail": "Username already taken."}, status=status.HTTP_400_BAD_REQUEST)
+            user.username = username
+            user.save()
+    except User.DoesNotExist:
+        # Create temporary inactive user - ensure username is unique
+        base_username = (username or email.split('@')[0])[:30]
+        
+        # Ensure the username is unique
+        temp_username = base_username
+        counter = 1
+        while User.objects.filter(username=temp_username).exists():
+            temp_username = f"{base_username}_{counter}"
+            counter += 1
+            if counter > 100:  # Safety limit
+                temp_username = f"{base_username}_{uuid.uuid4().hex[:8]}"
+                break
+        
+        user = User.objects.create(
+            email=email,
+            username=temp_username,
+            is_active=False,
+            first_name=request.data.get('first_name', ''),
+            last_name=request.data.get('last_name', '')
+        )
+
+    send_otp(user)
+    return Response({"detail": "OTP sent for registration."})
+
+
+# ! ---------------- Register: verify OTP and finalize signup ----------------
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def register_verify_otp(request):
+    email = request.data.get('email')
+    code = request.data.get('code')
+    password = request.data.get('password')
+    username = request.data.get('username')
+    first_name = request.data.get('first_name')
+    last_name = request.data.get('last_name')
+
+    if not email or not code or not password:
+        return Response(
+            {"detail": "Email, code and password are required."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        user = User.objects.get(email=email, is_active=False)
+    except User.DoesNotExist:
+        return Response({"detail": "User not found or already active."}, status=status.HTTP_404_NOT_FOUND)
+
+    if not verify_otp(user, code):
+        return Response({"detail": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check username uniqueness ONLY at verification time
+    if username and User.objects.filter(username=username).exclude(pk=user.pk).exists():
+        return Response({"detail": "Username already taken."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Now set the final user details and activate
+    if username:
+        user.username = username
+    if first_name:
+        user.first_name = first_name
+    if last_name:
+        user.last_name = last_name
+        
+    user.set_password(password)
+    user.is_active = True
+    user.save()
+
+    return Response({"detail": "Registration complete."})
 
 
 
@@ -977,3 +1099,120 @@ def analytics_monthly_overview(request):
         })
 
     return Response({"label": "My ideas", "points": pts}, status=200)
+
+
+
+# views.py
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def bookmark_ids(request):
+    qs = Bookmark.objects.filter(user=request.user)
+    kind = (request.GET.get("kind") or "").strip().lower()
+
+    if kind in ("resource", "resources"):
+        return Response({"kind": "resource", "ids": _ids_for(qs, "resource_id")})
+    if kind in ("competitor", "competitors"):
+        return Response({"kind": "competitor", "ids": _ids_for(qs, "competitor_id")})
+    if kind in ("investor", "investors"):
+        return Response({"kind": "investor", "ids": _ids_for(qs, "investor_id")})
+    # NEW
+    if kind in ("idea", "ideas"):
+        return Response({"kind": "idea", "ids": _ids_for(qs, "idea_id")})
+
+    return Response({
+        "resource":   _ids_for(qs, "resource_id"),
+        "competitor": _ids_for(qs, "competitor_id"),
+        "investor":   _ids_for(qs, "investor_id"),
+        # NEW
+        "idea":       _ids_for(qs, "idea_id"),
+    })
+
+
+# views.py
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([JSONParser])
+def bookmark_toggle(request):
+    kind = (request.data.get("kind") or "").strip().lower()
+    raw_id = request.data.get("id")
+    try:
+        obj_id = int(raw_id)
+    except (TypeError, ValueError):
+        return Response({"detail": "Valid id is required."}, status=400)
+
+    # add idea mapping
+    field_map = {
+        "resource":   "resource_id",
+        "competitor": "competitor_id",
+        "investor":   "investor_id",
+        "idea":       "idea_id",    # NEW
+    }
+    field = field_map.get(kind)
+    if not field:
+        return Response({"detail": "Invalid kind."}, status=400)
+
+    qs = Bookmark.objects.filter(user=request.user, **{field: obj_id})
+    existing = qs.first()
+    if existing:
+        existing.delete()
+        return Response({"ok": True, "bookmarked": False})
+
+    payload = {"user": request.user, "resource_id": None, "competitor_id": None, "investor_id": None, "idea_id": None}
+    payload[field] = obj_id
+    Bookmark.objects.create(**payload)
+    return Response({"ok": True, "bookmarked": True})
+
+
+# views.py
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import JSONParser
+from django.db.models import Q
+from .serializers import CompetitorIdeaSerializer
+
+@api_view(["GET"])
+@permission_classes([AllowAny])  # or IsAuthenticated if you want to hide from anon
+def competitor_ideas(request):
+    """
+    GET /api/competitor-ideas/?search=...&category_id=...|&category=Name
+                               &page=1&page_size=15 (or limit/offset)
+    Returns: {items, total, limit, offset, next_offset}
+    """
+    default_ps = _int(request, "page_size", 15)
+    limit  = _int(request, "limit", default_ps)
+    page   = max(_int(request, "page", 1), 1)
+    offset = _int(request, "offset", (page - 1) * limit)
+
+    search   = (request.GET.get("search") or request.GET.get("q") or "").strip()
+    cat_id   = request.GET.get("category_id")
+    cat_name = (request.GET.get("category") or "").strip()
+
+    qs = BusinessIdea.objects.select_related("category", "user").all().order_by("-submission_date")
+
+    # optionally exclude current user's ideas from the "competitors" list
+    if request.user.is_authenticated:
+        qs = qs.exclude(user_id=request.user.id)
+
+    if search:
+        qs = qs.filter(
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(user__username__icontains=search) |
+            Q(user__first_name__icontains=search) |
+            Q(user__last_name__icontains=search) |
+            Q(category__name__icontains=search)
+        )
+    if cat_id and str(cat_id).isdigit():
+        qs = qs.filter(category_id=int(cat_id))
+    elif cat_name:
+        qs = qs.filter(category__name__iexact=cat_name)
+
+    total = qs.count()
+    rows = list(qs[offset:offset+limit])
+    data = CompetitorIdeaSerializer(rows, many=True).data
+    next_offset = offset + len(rows) if (offset + len(rows)) < total else None
+
+    return Response(
+        {"items": data, "total": total, "limit": limit, "offset": offset, "next_offset": next_offset},
+        status=200,
+    )

@@ -4,6 +4,11 @@ import { useNavigate, Link } from "react-router-dom";
 import "../styles/chatbot.css";
 import api, { apiFetch } from "../lib/api";
 
+/* ---------------- UX/Perf toggles ---------------- */
+const SHOW_SAVED_CHIPS = false; // hide the idea chips under the heading
+const IDLE_LOAD = true;         // load saved ideas after first paint
+const INSTANT_CACHE = true;     // render cached HTML immediately if available
+
 /* ---------------- Typing indicator ---------------- */
 function Typing() {
   return (
@@ -100,7 +105,6 @@ function extractOps(narr) {
     const m = p.match(/^\s*On operations:\s*(.+)$/i);
     if (m) {
       const opsRaw = m[1];
-      // split by semicolons or sentence breaks, tidy, and keep non-empty points
       const ops = opsRaw
         .split(/(?:;|•|·|\.)\s+/g)
         .map((s) => s.trim().replace(/\.*$/, ""))
@@ -119,10 +123,8 @@ function extractOps(narr) {
 function normalizeRoadmapStep(step, index) {
   if (step == null) return null;
 
-  // String → split into bullets by punctuation / newline
   if (typeof step === "string") {
     const str = step.trim();
-    // Try to infer a "phase" like "Weeks 1–2:" prefix
     let phase = "";
     let body = str;
     const m = str.match(/^(Weeks?\s*[^:]+):\s*(.+)$/i);
@@ -135,18 +137,14 @@ function normalizeRoadmapStep(step, index) {
     return { title: `Step ${index + 1}`, bullets, phase };
   }
 
-  // Array → direct bullets
   if (Array.isArray(step)) {
     const bullets = step.map((x) => sentenceCase(String(x).replace(/\.*\s*$/, "")) + ".");
     return { title: `Step ${index + 1}`, bullets, phase: "" };
   }
 
-  // Object → try common fields
   if (typeof step === "object") {
-    const title =
-      step.title || step.name || step.heading || `Step ${index + 1}`;
-    const phase =
-      step.phase || step.when || step.timeframe || step.window || "";
+    const title = step.title || step.name || step.heading || `Step ${index + 1}`;
+    const phase = step.phase || step.when || step.timeframe || step.window || "";
 
     let bullets = [];
     if (Array.isArray(step.goals)) bullets = step.goals.map(String);
@@ -173,8 +171,6 @@ function normalizeRoadmapStep(step, index) {
 function buildResultHTML({ category, location, narrative, suggestions, roadmap, kpis, risks }) {
   const cat = esc(category || "—");
   const loc = esc(location || "—");
-
-  // pull out ops and the remaining body
   const { body: narr, ops } = extractOps(narrative || "");
 
   const li = (xs) =>
@@ -182,7 +178,6 @@ function buildResultHTML({ category, location, narrative, suggestions, roadmap, 
       .map((x) => `<li>${esc(typeof x === "string" ? x : JSON.stringify(x))}</li>`)
       .join("");
 
-  // KPIs can be strings OR objects {name, target, timeframe}. Handle both.
   const kpiGrid = (kpis || [])
     .map((k) => {
       if (!k) return "";
@@ -197,7 +192,6 @@ function buildResultHTML({ category, location, narrative, suggestions, roadmap, 
     })
     .join("");
 
-  // Nicely formatted steps
   const steps = (roadmap || [])
     .map((raw, i) => normalizeRoadmapStep(raw, i))
     .filter(Boolean)
@@ -284,49 +278,76 @@ export default function ChatPage() {
   const [saveMsg, setSaveMsg] = useState("");
   const [lastResult, setLastResult] = useState(null); // { text, category, location, narrative, ... }
 
-  // NEW: saved ideas state
+  // saved ideas
   const [savedIdeas, setSavedIdeas] = useState([]);
   const [selectedIdeaId, setSelectedIdeaId] = useState(null);
+
+  // fast replace & cancellation
+  const lastHtmlIndexRef = useRef(-1);
+  const classifyAbortRef = useRef(null);
 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  // Ensure CSRF cookie early and try to auto-load last saved idea
+  // Boot fast: show cached card (if any), then refresh in background
   useEffect(() => {
-    (async () => {
+    const boot = async () => {
       try { await apiFetch("/api/csrf/"); } catch {}
       try {
-        const me = await api.me(); // session check
+        const me = await api.me();
         if (!me?.authenticated) return;
-        const ideas = await api.myIdeas(); // GET /api/ideas/mine/
+        const ideas = await api.myIdeas();
         if (!Array.isArray(ideas) || !ideas.length) return;
+
         setSavedIdeas(ideas);
         const storedId = Number(localStorage.getItem("last_idea_id") || 0);
         const chosen = ideas.find((i) => i.idea_id === storedId) || ideas[0];
         setSelectedIdeaId(chosen.idea_id);
-        await renderIdea(chosen, { silentIntro: true });
-      } catch (e) {
-        // Not signed in or 401 → ignore
-      }
-    })();
+
+        if (INSTANT_CACHE) {
+          const cacheKey = `idea_card_${chosen.idea_id}`;
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            setMessages((prev) => {
+              const idx = prev.length;
+              lastHtmlIndexRef.current = idx;
+              return [...prev, { role: "assistant", kind: "html", content: cached }];
+            });
+          }
+        }
+
+        await renderIdea(chosen, { silentIntro: true, replaceLastHtml: true });
+      } catch {}
+    };
+
+    if (IDLE_LOAD && "requestIdleCallback" in window) {
+      window.requestIdleCallback(boot, { timeout: 1200 });
+    } else {
+      setTimeout(boot, 0);
+    }
   }, []);
 
-  async function renderIdea(ideaRow, { silentIntro = false } = {}) {
+  async function renderIdea(ideaRow, { silentIntro = false, replaceLastHtml = false } = {}) {
     const baseText = (ideaRow?.description || ideaRow?.title || "").trim();
     if (!baseText) return;
     setErrorText("");
     setLoading(true);
     try {
+      // cancel previous classify
+      try { classifyAbortRef.current?.abort(); } catch {}
+      const controller = new AbortController();
+      classifyAbortRef.current = controller;
+
       const data = await api.classify({
         text: baseText,
-        top_k: 5,
+        top_k: 5, // keep full quality
         with_advice: true,
         include_neighbors: false,
+        signal: controller.signal,
       });
 
       const pred0 = Array.isArray(data?.predictions) ? data.predictions[0] : {};
       const cat = pred0?.Category || pred0?.category || ideaRow?.category || "";
-      // prefer saved idea location if present
       const locRaw = ideaRow?.location || pred0?.Location || pred0?.location || null;
 
       const advice = data?.advice || {};
@@ -350,12 +371,24 @@ export default function ChatPage() {
       setLastResult(result);
 
       const html = buildResultHTML(result);
-      setMessages((m) => [
-        ...m,
-        ...(silentIntro ? [] : [{ role: "assistant", kind: "text", content: `Loaded your saved idea: ${ideaRow.title || ideaRow.category}.` }]),
-        { role: "assistant", kind: "html", content: html },
-      ]);
+
+      // cache for instant next load
+      try { localStorage.setItem(`idea_card_${ideaRow.idea_id}`, html); } catch {}
+
+      setMessages((prev) => {
+        if (replaceLastHtml && lastHtmlIndexRef.current >= 0) {
+          const copy = [...prev];
+          copy[lastHtmlIndexRef.current] = { role: "assistant", kind: "html", content: html };
+          return copy;
+        }
+        return [
+          ...prev,
+          ...(silentIntro ? [] : [{ role: "assistant", kind: "text", content: `Loaded your saved idea: ${ideaRow.title || ideaRow.category}.` }]),
+          { role: "assistant", kind: "html", content: html },
+        ];
+      });
     } catch (e) {
+      if (e?.name === "AbortError") return;
       console.error(e);
       setErrorText("Network error");
       setMessages((m) => [
@@ -374,18 +407,22 @@ export default function ChatPage() {
     setMessages((m) => [...m, { role: "user", kind: "text", content: trimmed }]);
     setIdea("");
     setErrorText("");
-    setLoading(true);
     setSaveMsg("");
+    setLoading(true);
 
     try {
+      try { classifyAbortRef.current?.abort(); } catch {}
+      const controller = new AbortController();
+      classifyAbortRef.current = controller;
+
       const data = await api.classify({
         text: trimmed,
-        top_k: 5,
+        top_k: 5, // keep full quality
         with_advice: true,
         include_neighbors: false,
+        signal: controller.signal,
       });
 
-      // normalize backend
       const pred0 = Array.isArray(data?.predictions) ? data.predictions[0] : {};
       const cat = pred0?.Category || pred0?.category || "";
       const locRaw = pred0?.Location || pred0?.location || null;
@@ -397,7 +434,6 @@ export default function ChatPage() {
       const kpis = Array.isArray(advice?.kpis) ? advice.kpis : [];
       const risks = tidySuggestions(advice?.risks, 5);
 
-      // Canonicalize location for display (keep original for context too)
       const canonLoc = toEnumLocation(locRaw);
 
       const result = {
@@ -415,6 +451,7 @@ export default function ChatPage() {
       const html = buildResultHTML(result);
       setMessages((m) => [...m, { role: "assistant", kind: "html", content: html }]);
     } catch (e) {
+      if (e?.name === "AbortError") return;
       console.error(e);
       setErrorText("Network error");
       setMessages((m) => [
@@ -437,18 +474,21 @@ export default function ChatPage() {
       title: lastResult.text.slice(0, 255),
       description: lastResult.narrative || lastResult.text,
       target_audience: "",
-      // IMPORTANT: send canonical enum value (e.g., "Online", "Galle") or null
-      location: toEnumLocation(lastResult.location),
+      location: toEnumLocation(lastResult.location), // canonical or null
       business_type: null,
     };
 
     try {
-      const created = await api.saveIdea(payload); // returns the created idea row
+      const created = await api.saveIdea(payload);
       setSaveMsg("Saved! You can find it in your dashboard.");
-      // keep a quick list in UI + remember last idea id for auto-load after login
       setSavedIdeas((s) => [created, ...s]);
       setSelectedIdeaId(created.idea_id);
       localStorage.setItem("last_idea_id", String(created.idea_id));
+      // cache the rendered HTML so next visit is instant
+      try {
+        const html = buildResultHTML(lastResult);
+        localStorage.setItem(`idea_card_${created.idea_id}`, html);
+      } catch {}
     } catch (e) {
       console.error(e);
       setSaveMsg(`Couldn’t save the idea. ${e.message || "Unknown error"}`);
@@ -485,8 +525,8 @@ export default function ChatPage() {
           <span>Where Ideas Turn Into Reality</span>
         </h1>
 
-        {/* Saved ideas chips */}
-        {savedIdeas.length > 0 && (
+        {/* Saved ideas chips (hidden) */}
+        {SHOW_SAVED_CHIPS && savedIdeas.length > 0 && (
           <div className="ibot-saved" style={{ margin: "8px 0 16px" }}>
             <div className="pillrow" role="listbox" aria-label="Saved ideas">
               {savedIdeas.map((it) => (
@@ -500,7 +540,7 @@ export default function ChatPage() {
                   onClick={() => {
                     setSelectedIdeaId(it.idea_id);
                     localStorage.setItem("last_idea_id", String(it.idea_id));
-                    renderIdea(it);
+                    renderIdea(it, { replaceLastHtml: true });
                   }}
                 >
                   {it.title || it.category}
@@ -593,11 +633,6 @@ export default function ChatPage() {
           {/* Error message */}
           {errorText && <div className="ibot-error">{errorText}</div>}
         </section>
-
-        <p className="ibot-example">
-          <span className="ibot-example-intro">Example:</span> “I want to start a clothing business
-          in Colombo. I’ll begin online and expand to a physical store.”
-        </p>
       </main>
 
       {/* ACTION BUTTONS (fixed bottom-right) */}

@@ -211,13 +211,13 @@ class EmailOTP(models.Model):
 
     def is_valid(self):
         return timezone.now() <= self.valid_until
+
+    class Meta:
+        db_table = "email_otp"
     
     
+# models.py  (Bookmark)
 class Bookmark(models.Model):
-    """
-    Stores a bookmark for ONE of: resource / competitor / investor.
-    Matches your existing SQL table 'bookmark'.
-    """
     bookmark_id = models.BigAutoField(primary_key=True, db_column="bookmark_id")
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -225,9 +225,13 @@ class Bookmark(models.Model):
         db_column="user_id",
         related_name="bookmarks",
     )
-    resource_id = models.BigIntegerField(null=True, blank=True)
+    resource_id   = models.BigIntegerField(null=True, blank=True)
     competitor_id = models.BigIntegerField(null=True, blank=True)
-    investor_id = models.BigIntegerField(null=True, blank=True)
+    investor_id   = models.BigIntegerField(null=True, blank=True)
+
+    # NEW
+    idea_id       = models.IntegerField(null=True, blank=True)
+
     created_date = models.DateTimeField(default=timezone.now, db_column="created_date")
 
     class Meta:
@@ -236,9 +240,10 @@ class Bookmark(models.Model):
             models.Index(fields=["user", "resource_id"]),
             models.Index(fields=["user", "competitor_id"]),
             models.Index(fields=["user", "investor_id"]),
+            # NEW
+            models.Index(fields=["user", "idea_id"]),
         ]
         constraints = [
-            # Prevent duplicate bookmarks per kind (Postgres partial unique)
             models.UniqueConstraint(
                 fields=["user", "resource_id"],
                 condition=Q(resource_id__isnull=False),
@@ -254,18 +259,14 @@ class Bookmark(models.Model):
                 condition=Q(investor_id__isnull=False),
                 name="uniq_user_investor_bookmark",
             ),
+            # NEW: one bookmark per (user, idea_id)
+            models.UniqueConstraint(
+                fields=["user", "idea_id"],
+                condition=Q(idea_id__isnull=False),
+                name="uniq_user_idea_bookmark",
+            ),
         ]
 
-    def __str__(self):
-        kind = (
-            "resource" if self.resource_id
-            else "competitor" if self.competitor_id
-            else "investor" if self.investor_id
-            else "unknown"
-        )
-        which = self.resource_id or self.competitor_id or self.investor_id
-        return f"Bookmark<{self.user_id}:{kind}={which}>"
-    
 
 class Notification(models.Model):
     class NotificationType(models.TextChoices):
