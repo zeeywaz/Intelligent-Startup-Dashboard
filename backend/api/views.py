@@ -173,12 +173,16 @@ def login_view(request):
     return JsonResponse({"detail": "Login successful"})
 
 
-@csrf_exempt  # dev-friendly
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+@csrf_exempt
 @api_view(["POST"])
 def logout_view(request):
     logout(request)
-    return Response({"message": "Logged out"}, status=200)
-
+    response = JsonResponse({"success": True})
+    response.delete_cookie("sessionid")
+    return response
 
 @api_view(["GET"])
 def me(request):

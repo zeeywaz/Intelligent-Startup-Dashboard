@@ -21,7 +21,6 @@ function Button({
       className={cx("ifx-btn", `ifx-btn--${variant}`, `ifx-btn--${size}`, className)}
       {...props}
     >
-      <span className="ifx-btn__shimmer" aria-hidden />
       <span className="ifx-btn__label">{children}</span>
     </Comp>
   );
@@ -32,17 +31,15 @@ function Header() {
 
   return (
     <header className="ifx-navbar">
-      {/* Full-bleed bar so logo sits at the very edge */}
       <div className="ifx-bar">
         <nav className="ifx-navbar__row" aria-label="Primary">
-          {/* Brand — pinned far-left */}
+          {/* Logo */}
           <Link to="/" className="ifx-navbar__brand" aria-label="IdeaForge home">
             <img src="/logo-black.png" alt="IdeaForge" className="ifx-logo-img" />
           </Link>
 
-          {/* Right cluster — pinned far-right */}
+          {/* Right cluster */}
           <div className="ifx-navbar__right">
-            {/* Mobile toggle */}
             <button
               className="ifx-nav__toggle"
               aria-label={open ? "Close menu" : "Open menu"}
@@ -51,7 +48,6 @@ function Header() {
               {open ? <X size={22} /> : <Menu size={22} />}
             </button>
 
-            {/* Inline nav (desktop) / Dropdown (mobile) */}
             <ul className={cx("ifx-nav", open && "is-open")} role="list">
               <li className="ifx-nav__item">
                 <Info size={18} aria-hidden />
@@ -61,20 +57,18 @@ function Header() {
                 <Mail size={18} aria-hidden />
                 <NavLink to="/contact" className="ifx-nav__link">Contact</NavLink>
               </li>
-              {/* Mobile login button shows inside the dropdown */}
+              {/* Mobile login */}
               <li className="ifx-nav__login--mobile">
-                <Button as={Link} to="/login" variant="outline" size="md" aria-label="Log in">
-                  <LogInIcon size={18} aria-hidden />
-                  &nbsp;Log In
+                <Button as={Link} to="/login" variant="outline" size="lg" className="ifx-btn--navbar">
+                  <LogInIcon size={20} aria-hidden /> Log In
                 </Button>
               </li>
             </ul>
 
-            {/* Desktop login button at the extreme right */}
+            {/* Desktop login */}
             <div className="ifx-navbar__actions ifx-login--desktop">
-              <Button as={Link} to="/login" variant="outline" size="md" aria-label="Log in">
-                <LogInIcon size={18} aria-hidden />
-                &nbsp;Log In
+              <Button as={Link} to="/login" variant="outline" size="lg" className="ifx-btn--navbar">
+                <LogInIcon size={20} aria-hidden /> Log In
               </Button>
             </div>
           </div>
@@ -87,9 +81,8 @@ function Header() {
 function FeatureCard({ icon: Icon, title, children }) {
   return (
     <article className="ifx-card" role="listitem">
-      <div className="ifx-card__glow" aria-hidden />
       <div className="ifx-card__icon" aria-hidden>
-        <Icon size={44} strokeWidth={1.6} />
+        <Icon size={42} strokeWidth={1.5} />
       </div>
       <h3 className="ifx-card__title">{title}</h3>
       <p className="ifx-card__desc">{children}</p>
@@ -128,14 +121,13 @@ export default function HomePage() {
       <Header />
 
       <main>
-        {/* HERO with more contrast */}
+        {/* HERO */}
         <section className="ifx-hero ifx-hero--contrast" aria-labelledby="hero-title">
           <div className="ifx-hero__mesh" aria-hidden />
           <div className="ifx-container">
             <div className="ifx-hero__wrap">
               <h1 id="hero-title" className="ifx-hero__title">
-                Build & Launch With
-                <br />
+                Build & Launch With <br />
                 <span className="ifx-hero__brand">IdeaForge</span>
               </h1>
               <p className="ifx-hero__subtitle">
@@ -172,7 +164,6 @@ export default function HomePage() {
                 <Button as="a" href="#contact" variant="ghost" size="md">Talk to us</Button>
               </div>
             </div>
-
             <div className="ifx-split__right" aria-hidden>
               <div className="ifx-visual" />
             </div>
@@ -186,7 +177,6 @@ export default function HomePage() {
               <h2 className="ifx-section__title">Everything you need to ship</h2>
               <p className="ifx-section__subtitle">Best-practice tooling wrapped in a clean workflow.</p>
             </header>
-
             <div className="ifx-grid" role="list">
               <FeatureCard icon={Package} title="Sponsor Matching">
                 Instantly find aligned sponsors and streamline outreach with warm intros.
@@ -208,35 +198,17 @@ export default function HomePage() {
               <h2 className="ifx-section__title">From idea to traction—step by step</h2>
               <p className="ifx-section__subtitle">A clear, guided path—no chaos, just momentum.</p>
             </header>
-
             <div className="ifx-grid ifx-grid--steps">
-              <Step
-                title="1) Describe your idea"
-                image="/Typing.jpg"
-                alt="Typing your idea into IdeaForge"
-              >
+              <Step title="1) Describe your idea" image="/Typing.jpg" alt="Typing your idea">
                 Our AI frames the opportunity and validates assumptions.
               </Step>
-
-              <Step
-                align="center"
-                title="2) Discover resources & sponsors"
-                image="/Process.jpg"
-                alt="Discovery process showing resources and sponsors"
-              >
+              <Step align="center" title="2) Discover resources & sponsors" image="/Process.jpg" alt="Discovery process">
                 Matches surface instantly—reach out in one click.
               </Step>
-
-              <Step
-                align="right"
-                title="3) Track progress & iterate"
-                image="/Results.jpg"
-                alt="Results dashboard with progress and insights"
-              >
+              <Step align="right" title="3) Track progress & iterate" image="/Results.jpg" alt="Results dashboard">
                 Dashboards highlight wins, gaps, and next moves.
               </Step>
             </div>
-
             <div className="ifx-cta--right">
               <Button as={Link} to="/signup" variant="primary" size="md">Start Building</Button>
             </div>
@@ -268,7 +240,6 @@ export default function HomePage() {
               <p className="ifx-eyebrow">Connect</p>
               <h2 className="ifx-section__title">Get in touch</h2>
               <p className="ifx-section__subtitle">We’ll help you choose the fastest path to launch.</p>
-
               <ul className="ifx-contact__list" role="list">
                 <li className="ifx-contact__row">
                   <Mail className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
@@ -279,7 +250,6 @@ export default function HomePage() {
                     </p>
                   </div>
                 </li>
-
                 <li className="ifx-contact__row">
                   <Phone className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
                   <div>
@@ -289,7 +259,6 @@ export default function HomePage() {
                     </p>
                   </div>
                 </li>
-
                 <li className="ifx-contact__row">
                   <MapPin className="ifx-contact__icon" aria-hidden />
                   <div>
@@ -302,7 +271,6 @@ export default function HomePage() {
               </ul>
             </div>
 
-            {/* Map card replaces the empty box (zoomed closer) */}
             <div className="ifx-form ifx-mapcard">
               <iframe
                 title="IdeaForge Office Map"

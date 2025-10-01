@@ -216,7 +216,7 @@ export default function LoginPage() {
                     setStep("requestOtp");
                   }}
                 >
-                  Login with OTP / Forgot Password?
+                  Forgot Password?
                 </button>
               </div>
 

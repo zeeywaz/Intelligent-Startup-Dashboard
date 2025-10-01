@@ -1,4 +1,3 @@
-
 :root{
   --blue-900:#3D52A0;
   --blue-600:#7091E6;
@@ -10,7 +9,7 @@
   --surface:#ffffff;
   --border: rgba(134,151,196,.55);
   --shadow-sm: 0 6px 14px rgba(0,0,0,.08);
-  --shadow-lg: 6px 12px 0 rgba(0,0,0,.18); /* side drop like mock */
+  --shadow-lg: 6px 12px 0 rgba(0,0,0,.18);
 }
 
 /* Base */
@@ -18,7 +17,7 @@
 html, body { margin:0; padding:0; }
 body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif; color:var(--text); }
 
-/* App backdrop (slightly brighter hero gradient) */
+/* App backdrop */
 .auth-app{
   min-height:100vh;
   background:
@@ -27,7 +26,7 @@ body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif; col
   display:grid;
 }
 
-/* Tiny brand in top-left */
+/* Brand */
 .auth-brand{
   position: fixed; top: 14px; left: 14px;
   text-decoration: none;
@@ -88,7 +87,6 @@ body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif; col
 }
 
 /* Password toggle */
-.auth-field--password{ }
 .auth-toggle{
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
   background: transparent; border: 0; padding: .15rem .25rem;
@@ -97,15 +95,35 @@ body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif; col
 }
 .auth-toggle:focus-visible{ outline:2px solid var(--blue-600); outline-offset:2px; }
 
-/* Links + meta */
-.auth-links{ text-align:center; margin-top: .1rem; }
-.auth-link{
-  color: var(--blue-900);
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: border-color .15s ease;
+/* Links */
+.auth-links{ 
+  text-align:center; 
+  margin-top: .2rem; 
+  font-size: .85rem; 
 }
-.auth-link:hover{ border-color: currentColor; }
+.auth-link-btn{
+  background: none;
+  border: none;
+  color: var(--blue-900);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  text-decoration: underline;
+  transition: color 0.2s ease, transform 0.15s ease;
+}
+.auth-link-btn:hover{
+  color: var(--blue-600);
+  transform: translateY(-1px);
+}
+.auth-link-btn:focus-visible{
+  outline:2px solid var(--blue-600);
+  outline-offset:2px;
+  border-radius:6px;
+}
+.auth-separator{
+  margin: 0 0.35rem;
+  color: #999;
+}
 
 .auth-meta{
   margin:.75rem 0 0;
@@ -126,20 +144,19 @@ body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif; col
   filter: grayscale(.2) brightness(.95);
   cursor: not-allowed;
 }
-
-/* A11y helper */
-.sr-only{
-  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+.auth-btn--secondary{
+  background: #f3f4f6;
+  color: #111;
+  box-shadow:none;
+  font-weight:600;
 }
 
-/* …existing styles… */
-
+/* Error */
 .auth-error{
   margin:.4rem 0 .2rem;
-  color:#b91c1c;            /* red */
-  background:#fee2e2;       /* light red bg */
-  border:1px solid #fecaca; /* red border */
+  color:#b91c1c;
+  background:#fee2e2;
+  border:1px solid #fecaca;
   border-radius:10px;
   padding:.5rem .6rem;
   text-align:center;

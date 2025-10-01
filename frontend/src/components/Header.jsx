@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./Header.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, Bell, BellDot, Mail } from "lucide-react";
-import { API_BASE } from "../lib/api";
+import { API_BASE, getCookie } from "../lib/api";   // ✅ getCookie added
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -13,11 +13,11 @@ export default function Header() {
   const [userName, setUserName] = useState("");
   const [notifications, setNotifications] = useState([]);
 
-  // NEW: dynamic home path for the logo
-  const [homePath, setHomePath] = useState("/");
+  const [homePath, setHomePath] = useState("/"); // dynamic home path
 
   const profileRef = useRef(null);
   const notifRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
@@ -30,7 +30,6 @@ export default function Header() {
           setUserInitial(ini);
           setUserName(username || "");
 
-          // decide where the logo should send the user
           const roles = j.roles || [];
           const computed =
             roles.includes("Investor") ? "/investordashboard" :
@@ -39,11 +38,11 @@ export default function Header() {
           setHomePath(j.next || computed);
         } else {
           setUserInitial("?");
-          setHomePath("/"); // not logged in -> marketing/home
+          setHomePath("/");
         }
       } catch {
         setUserInitial("?");
-        setHomePath("/"); // safe fallback
+        setHomePath("/");
       }
     })();
   }, []);
@@ -96,11 +95,28 @@ export default function Header() {
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
+  // ✅ Proper sign out with CSRF
   const signOut = async () => {
     try {
-      await fetch(`${API_BASE}/api/logout/`, { method: "POST", credentials: "include" });
-    } catch {}
-    window.location.assign("/login");
+      const res = await fetch(`${API_BASE}/api/logout/`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+      });
+      if (res.ok) {
+        localStorage.removeItem("if_name");
+        localStorage.removeItem("if_bt");
+        navigate("/login");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.detail || "Logout failed");
+      }
+    } catch (err) {
+      console.error("Logout error", err);
+      alert("Logout failed");
+    }
   };
 
   return (
@@ -121,7 +137,6 @@ export default function Header() {
           </button>
 
           <h1 className="site-logo">
-            {/* use dynamic homePath instead of hardcoding /userdashboard */}
             <Link to={homePath} className="site-logo__link" aria-label="IdeaForge Home">
               <img
                 src="/logo-black.png"
