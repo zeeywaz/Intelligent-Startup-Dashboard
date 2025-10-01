@@ -29,38 +29,54 @@ function Button({
 
 function Header() {
   const [open, setOpen] = useState(false);
+
   return (
     <header className="ifx-navbar">
-      <div className="ifx-container">
+      {/* Full-bleed bar so logo sits at the very edge */}
+      <div className="ifx-bar">
         <nav className="ifx-navbar__row" aria-label="Primary">
+          {/* Brand — pinned far-left */}
           <Link to="/" className="ifx-navbar__brand" aria-label="IdeaForge home">
-            <img src="/logo-black.png" alt="IdeaForge" className="ifx-logo-img" height={36} />
+            <img src="/logo-black.png" alt="IdeaForge" className="ifx-logo-img" />
           </Link>
 
-          <button
-            className="ifx-nav__toggle"
-            aria-label={open ? "Close menu" : "Open menu"}
-            onClick={() => setOpen(v => !v)}
-          >
-            {open ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          {/* Right cluster — pinned far-right */}
+          <div className="ifx-navbar__right">
+            {/* Mobile toggle */}
+            <button
+              className="ifx-nav__toggle"
+              aria-label={open ? "Close menu" : "Open menu"}
+              onClick={() => setOpen(v => !v)}
+            >
+              {open ? <X size={22} /> : <Menu size={22} />}
+            </button>
 
-          <ul className={cx("ifx-nav", open && "is-open")} role="list">
-            <li className="ifx-nav__item">
-              <Info size={18} aria-hidden />
-              <NavLink to="/about" className="ifx-nav__link">About Us</NavLink>
-            </li>
-            <li className="ifx-nav__item">
-              <Mail size={18} aria-hidden />
-              <NavLink to="/contact" className="ifx-nav__link">Contact</NavLink>
-            </li>
-          </ul>
+            {/* Inline nav (desktop) / Dropdown (mobile) */}
+            <ul className={cx("ifx-nav", open && "is-open")} role="list">
+              <li className="ifx-nav__item">
+                <Info size={18} aria-hidden />
+                <NavLink to="/about" className="ifx-nav__link">About Us</NavLink>
+              </li>
+              <li className="ifx-nav__item">
+                <Mail size={18} aria-hidden />
+                <NavLink to="/contact" className="ifx-nav__link">Contact</NavLink>
+              </li>
+              {/* Mobile login button shows inside the dropdown */}
+              <li className="ifx-nav__login--mobile">
+                <Button as={Link} to="/login" variant="outline" size="md" aria-label="Log in">
+                  <LogInIcon size={18} aria-hidden />
+                  &nbsp;Log In
+                </Button>
+              </li>
+            </ul>
 
-          <div className="ifx-navbar__actions">
-            <Button as={Link} to="/login" variant="outline" size="md" aria-label="Log in">
-              <LogInIcon size={18} aria-hidden />
-              Log In
-            </Button>
+            {/* Desktop login button at the extreme right */}
+            <div className="ifx-navbar__actions ifx-login--desktop">
+              <Button as={Link} to="/login" variant="outline" size="md" aria-label="Log in">
+                <LogInIcon size={18} aria-hidden />
+                &nbsp;Log In
+              </Button>
+            </div>
           </div>
         </nav>
       </div>
@@ -72,8 +88,8 @@ function FeatureCard({ icon: Icon, title, children }) {
   return (
     <article className="ifx-card" role="listitem">
       <div className="ifx-card__glow" aria-hidden />
-      <div className="ifx-card__icon">
-        <Icon size={48} strokeWidth={1.6} />
+      <div className="ifx-card__icon" aria-hidden>
+        <Icon size={44} strokeWidth={1.6} />
       </div>
       <h3 className="ifx-card__title">{title}</h3>
       <p className="ifx-card__desc">{children}</p>
@@ -90,10 +106,16 @@ function Stat({ icon: Icon, label }) {
   );
 }
 
-function Step({ title, children, align = "left" }) {
+function Step({ title, children, align = "left", image, alt = "" }) {
   return (
     <div className={cx("ifx-step", align === "center" && "is-center", align === "right" && "is-right")}>
-      <div className="ifx-step__media" aria-hidden />
+      <figure className="ifx-step__media">
+        {image ? (
+          <img src={image} alt={alt} loading="lazy" width="720" height="450" />
+        ) : (
+          <div aria-hidden />
+        )}
+      </figure>
       <h3 className="ifx-step__title">{title}</h3>
       <p className="ifx-step__desc">{children}</p>
     </div>
@@ -106,8 +128,8 @@ export default function HomePage() {
       <Header />
 
       <main>
-        {/* HERO */}
-        <section className="ifx-hero" aria-labelledby="hero-title">
+        {/* HERO with more contrast */}
+        <section className="ifx-hero ifx-hero--contrast" aria-labelledby="hero-title">
           <div className="ifx-hero__mesh" aria-hidden />
           <div className="ifx-container">
             <div className="ifx-hero__wrap">
@@ -188,9 +210,31 @@ export default function HomePage() {
             </header>
 
             <div className="ifx-grid ifx-grid--steps">
-              <Step title="1) Describe your idea">Our AI frames the opportunity and validates assumptions.</Step>
-              <Step align="center" title="2) Discover resources & sponsors">Matches surface instantly—reach out in one click.</Step>
-              <Step align="right" title="3) Track progress & iterate">Dashboards highlight wins, gaps, and next moves.</Step>
+              <Step
+                title="1) Describe your idea"
+                image="/Typing.jpg"
+                alt="Typing your idea into IdeaForge"
+              >
+                Our AI frames the opportunity and validates assumptions.
+              </Step>
+
+              <Step
+                align="center"
+                title="2) Discover resources & sponsors"
+                image="/Process.jpg"
+                alt="Discovery process showing resources and sponsors"
+              >
+                Matches surface instantly—reach out in one click.
+              </Step>
+
+              <Step
+                align="right"
+                title="3) Track progress & iterate"
+                image="/Results.jpg"
+                alt="Results dashboard with progress and insights"
+              >
+                Dashboards highlight wins, gaps, and next moves.
+              </Step>
             </div>
 
             <div className="ifx-cta--right">
@@ -258,11 +302,29 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <div className="ifx-form" aria-hidden />
+            {/* Map card replaces the empty box (zoomed closer) */}
+            <div className="ifx-form ifx-mapcard">
+              <iframe
+                title="IdeaForge Office Map"
+                className="ifx-map-embed"
+                src="https://www.openstreetmap.org/export/embed.html?bbox=79.8512%2C6.9171%2C79.8712%2C6.9371&layer=mapnik&marker=6.9271%2C79.8612"
+              />
+              <div className="ifx-map-footer">
+                <a
+                  className="ifx-link"
+                  href="https://www.openstreetmap.org/?mlat=6.9271&mlon=79.8612#map=17/6.9271/79.8612"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open in OpenStreetMap →
+                </a>
+              </div>
+            </div>
           </div>
         </section>
       </main>
 
+      {/* FOOTER */}
       <footer className="ifx-footer">
         <div className="ifx-container">
           <nav aria-label="Footer">
