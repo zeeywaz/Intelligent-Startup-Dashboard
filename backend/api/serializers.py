@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import (
+    InvestorInterest,
     InvestorProfile,
     BusinessCategory,
     Competitor,
@@ -56,19 +57,64 @@ class RegisterSerializer(serializers.Serializer):
 
 
 class InvestorRegisterSerializer(RegisterSerializer):
-    company = serializers.CharField(required=False, allow_blank=True)
-    phone   = serializers.CharField(required=False, allow_blank=True)
-    role    = serializers.CharField(required=False, allow_blank=True)
+    # Extra investor fields
+    phone = serializers.CharField(required=False, allow_blank=True)
+    company_name = serializers.CharField(required=False, allow_blank=True)
+    verifyType = serializers.CharField(required=False, allow_blank=True)
+    # Category ids from the UI (array)
+    categories = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+    )
+    # Optional verification documents
+    # (We don't validate here because files arrive via request.FILES in the view.)
 
     def create(self, validated):
-        company = (validated.pop("company", "") or "").strip()
-        phone   = (validated.pop("phone", "") or "").strip()
-        role    = (validated.pop("role", "") or "").strip()
+        """
+        1) Create auth user
+        2) Create investor_details row (investor_name = "first last")
+        3) Bulk insert investor_interest rows
+        """
+        categories = validated.pop("categories", [])
+        phone = (validated.pop("phone", "") or "").strip()
+        company_name = (validated.pop("company_name", "") or "").strip()
+
+        first = (validated.get("firstName") or "").strip()
+        last = (validated.get("lastName") or "").strip()
+        full_name = " ".join(p for p in [first, last] if p).strip()
+
         user = super().create(validated)
-        InvestorProfile.objects.create(user=user, company=company, phone=phone, role=role)
+
+        investor = InvestorDetails.objects.create(
+            user=user,
+            investor_name=full_name or user.username,
+            company_name=company_name or None,
+            email_address=user.email,
+            phone=phone or "",
+        )
+
+        if categories:
+            # Validate only existing categories; ignore bad ids quietly
+            existing_ids = set(
+                BusinessCategory.objects.filter(id__in=categories).values_list("id", flat=True)
+            )
+            interests = [
+                InvestorInterest(investor_id=investor.investor_id, category_id=cid)
+                for cid in existing_ids
+            ]
+            if interests:
+                InvestorInterest.objects.bulk_create(interests, ignore_conflicts=True)
+
         return user
 
+class InvestorInterestSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source="category.name", read_only=True)
 
+    class Meta:
+        model = InvestorInterest
+        fields = ["id", "investor_id", "category_id", "category_name"]
 # ---------- Profile ----------
 class ProfileSerializer(serializers.ModelSerializer):
     firstName = serializers.CharField(source="first_name")

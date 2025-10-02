@@ -147,7 +147,7 @@ class BusinessIdea(models.Model):
 
 class InvestorDetails(models.Model):
     investor_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user_id")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column="auth_user_id")
     investor_name = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255, blank=True, null=True)
     credit_score = models.IntegerField(blank=True, null=True)
@@ -160,28 +160,23 @@ class InvestorDetails(models.Model):
         managed = False
 
 
-
-
-
 class InvestorInterest(models.Model):
+    id = models.AutoField(primary_key=True)
     investor = models.ForeignKey(
-        InvestorProfile,
+        InvestorDetails,
         on_delete=models.CASCADE,
         db_column="investor_id",
-        related_name="interests"
+        related_name="interests",
     )
     category = models.ForeignKey(
         BusinessCategory,
         on_delete=models.CASCADE,
         db_column="category_id",
-        related_name="investor_interests"
     )
 
     class Meta:
         db_table = "investor_interest"
-        managed = False
-        unique_together = (("investor", "category"),)
-
+        managed = False  # No duplicate enforcement as requested
 
 # --- Chat (minimal; matches serializer below) ---
 

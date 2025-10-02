@@ -3,9 +3,10 @@ import { useNavigate, Link } from "react-router-dom";
 import "../styles/investor_signup.css";
 import { API_BASE, getCookie } from "../lib/api";
 
+/** Helpers */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_FILES = 3;
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPT = ".pdf,.png,.jpg,.jpeg";
 
 const PWD_RULES = [
@@ -13,9 +14,30 @@ const PWD_RULES = [
   { id: "up", test: (s) => /[A-Z]/.test(s), label: "One uppercase letter (A–Z)" },
   { id: "low", test: (s) => /[a-z]/.test(s), label: "One lowercase letter (a–z)" },
   { id: "dig", test: (s) => /\d/.test(s), label: "One number (0–9)" },
-  { id: "spec", test: (s) => /[~!@#$%^&*()_\-+={}[\]|\\:;\"'<>,.?/`]/.test(s), label: "One special character" },
+  {
+    id: "spec",
+    test: (s) => /[~!@#$%^&*()_\-+={}\[\]|\\:;\"'<>,.?/`]/.test(s),
+    label: "One special character",
+  },
   { id: "space", test: (s) => !/\s/.test(s), label: "No spaces" },
 ];
+
+/* ---------------- formatting helper: Title Case with spaces ----------------
+   Examples:
+     "computer_software" -> "Computer Software"
+     "computer-software" -> "Computer Software"
+     "computer software" -> "Computer Software"
+     "Computer Software" -> "Computer Software"
+*/
+const toTitleCase = (str = "") => {
+  return String(str || "")
+    .replace(/[-_/]+/g, " ")                    // normalize separators to spaces
+    .split(/\s+/)                               // split on whitespace
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ")
+    .trim();
+};
 
 function parseError(data) {
   if (!data) return "Unknown error";
@@ -49,6 +71,11 @@ export default function InvestorSignUpPage() {
     consent: false,
   });
 
+  // Categories state from second code
+  const [cats, setCats] = useState([]); // [{id, name}]
+  const [picked, setPicked] = useState(new Set());
+  const [q, setQ] = useState("");
+
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -57,6 +84,25 @@ export default function InvestorSignUpPage() {
   const [step, setStep] = useState("fill");
   const [otpCode, setOtpCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  /* ---------- fetch categories ---------- */
+  useEffect(() => {
+    let stop = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/categories/`, { credentials: "include" });
+        const data = await res.json();
+        if (!stop && Array.isArray(data)) setCats(data);
+        // Some backends return {results: []}
+        if (!stop && data?.results) setCats(data.results);
+      } catch (e) {
+        // fail silently, keep empty list
+      }
+    })();
+    return () => {
+      stop = true;
+    };
+  }, []);
 
   useEffect(() => {
     let t;
@@ -69,6 +115,42 @@ export default function InvestorSignUpPage() {
   const pwdChecks = useMemo(() => PWD_RULES.map((r) => ({ id: r.id, ok: r.test(form.password), label: r.label })), [form.password]);
   const pwdOk = pwdChecks.every((c) => c.ok);
 
+  // Categories filtering and selection logic from second code
+  const filteredCats = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return cats;
+    return cats.filter((c) => c.name?.toLowerCase().includes(needle));
+  }, [q, cats]);
+
+  const allVisibleSelected = useMemo(() => {
+    if (filteredCats.length === 0) return false;
+    return filteredCats.every((c) => picked.has(c.id));
+  }, [filteredCats, picked]);
+
+  const togglePick = (id) =>
+    setPicked((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  const toggleSelectAllVisible = () =>
+    setPicked((s) => {
+      const n = new Set(s);
+      if (allVisibleSelected) {
+        filteredCats.forEach((c) => n.delete(c.id));
+      } else {
+        filteredCats.forEach((c) => n.add(c.id));
+      }
+      return n;
+    });
+
+  const formatLabel = (name) => {
+    // Always Title Case with spaces (e.g. "Category Name")
+    return toTitleCase(name);
+  };
+
   const validFill = useMemo(() => {
     const emailOk = EMAIL_RE.test(form.email.trim());
     const unameOk = form.username.trim().length >= 3;
@@ -77,8 +159,9 @@ export default function InvestorSignUpPage() {
     const companyOk = form.companyName.trim().length >= 2;
     const matchOk = form.password === form.confirm;
     const docsOk = files.length > 0 && files.length <= MAX_FILES && files.every((f) => f.size <= MAX_BYTES);
-    return emailOk && unameOk && !!namesOk && phoneOk && companyOk && pwdOk && matchOk && form.consent && docsOk;
-  }, [form, files, pwdOk]);
+    const categoriesOk = picked.size >= 1; // at least one interest from second code
+    return emailOk && unameOk && !!namesOk && phoneOk && companyOk && pwdOk && matchOk && form.consent && docsOk && categoriesOk;
+  }, [form, files, pwdOk, picked]);
 
   const onPick = (fileList) => {
     const incoming = Array.from(fileList ?? []).slice(0, MAX_FILES - files.length);
@@ -197,11 +280,14 @@ export default function InvestorSignUpPage() {
         // Don't throw error here, continue to investor registration
       }
 
-      // Step 3: Submit investor-specific data and files
+      // Step 3: Submit investor-specific data and files INCLUDING CATEGORIES
       const investorData = new FormData();
       investorData.append("phone", form.phone.trim());
       investorData.append("company_name", form.companyName.trim());
       investorData.append("verifyType", form.verifyType);
+      
+      // Append categories from second code
+      Array.from(picked).forEach((id) => investorData.append("categoryIds[]", String(id)));
       
       // Append files
       files.forEach((f) => investorData.append("docs", f.file, f.name));
@@ -241,7 +327,7 @@ export default function InvestorSignUpPage() {
         <section className="regv-card" aria-label="Create account with verification">
           <header className="regv-head">
             <h1 className="regv-title">Get started now!</h1>
-            <p className="regv-subtitle">Create your account and add a verification document.</p>
+            <p className="regv-subtitle">Create your account, choose interests, and add a verification document.</p>
           </header>
 
           {err && <p className="regv-error" role="alert">{err}</p>}
@@ -286,6 +372,53 @@ export default function InvestorSignUpPage() {
                 </li>
               </ul>
 
+              {/* Categories section from second code */}
+              <div className="isg-step">
+                <div className="isg-step__head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div>
+                    <p className="isg-subtitle" style={{ margin: 0 }}>Choose your investment interests</p>
+                    <p className="isg-sub" style={{ margin: 0, fontSize: ".85rem", color: "#6b7280" }}>Pick at least one category.</p>
+                  </div>
+                </div>
+
+                <div className="isg-searchrow">
+                  <input
+                    className="isg-search"
+                    placeholder="Search categories…"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                  />
+                </div>
+
+                <div className="isg-actions">
+                  <button type="button" className="isg-selectall" onClick={toggleSelectAllVisible}>
+                    {allVisibleSelected ? "Unselect visible" : "Select all visible"}
+                  </button>
+                  <span className="isg-pickedcount">{picked.size} selected</span>
+                </div>
+
+                <div className="isg-grid isg-grid--cards">
+                  {filteredCats.map((c) => {
+                    const on = picked.has(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`isg-card ${on ? "is-on" : ""}`}
+                        onClick={() => togglePick(c.id)}
+                        aria-pressed={on}
+                      >
+                        <span className={`isg-dot ${on ? "is-on" : ""}`} />
+                        <span className="isg-label">{formatLabel(c.name)}</span>
+                      </button>
+                    );
+                  })}
+                  {filteredCats.length === 0 && (
+                    <div className="isg-empty">No categories match "{q}".</div>
+                  )}
+                </div>
+              </div>
+
               <fieldset className="regv-verify">
                 <legend className="regv-verify__title">Verification Type</legend>
                 <label className="regv-radio">
@@ -327,7 +460,7 @@ export default function InvestorSignUpPage() {
                           <span className="regv-file__name">{f.name}</span>
                           <span className="regv-file__size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
-                        <button type="button" className="regv-file__remove" onClick={() => onRemove(f.id)}>
+                        <button type="button" className="regv-file__remove" onClick={() => onRemove(f.id)} aria-label={`Remove ${f.name}`}>
                           Remove
                         </button>
                       </li>
@@ -378,7 +511,7 @@ export default function InvestorSignUpPage() {
           )}
 
           <div className="regv-meta">
-            <p>Already a user? <a href="/login" className="regv-link">Log in here</a></p>
+            <p>Already a user? <Link to="/login" className="regv-link">Log in here</Link></p>
             <p className="regv-fine">Password must meet the rules above.</p>
           </div>
         </section>

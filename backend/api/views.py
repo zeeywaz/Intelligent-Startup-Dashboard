@@ -320,55 +320,42 @@ class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
 
 # --------------------- Resources ---------------------
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def resources_list(request):
-    """
-    GET /api/resources/?type=WAREHOUSE&page=1&page_size=20
-                       &location=...&category_id=...&fallback=1
-    Also supports: limit/offset instead of page/page_size
-    Returns: {items, total, limit, offset, next_offset, fallback}
-    """
-    default_ps = _int(request, "page_size", 10)
-    limit = _int(request, "limit", default_ps)
-    page = max(_int(request, "page", 1), 1)
-    offset = _int(request, "offset", (page - 1) * limit)
+    search = request.GET.get("search") or request.GET.get("q") or ""
+    rtype = request.GET.get("type")
+    page = int(request.GET.get("page", 1))
+    page_size = int(request.GET.get("page_size", request.GET.get("limit", 20)))
 
-    location = (request.GET.get("location") or "").strip()
-    category_id = request.GET.get("category_id")
-    rtype = (request.GET.get("type") or "").strip()
-    do_fallback = request.GET.get("fallback", "1") != "0"
+    qs = Resource.objects.all()
 
-    qs = Resource.objects.all().order_by("name")
-    if category_id and str(category_id).isdigit():
-        qs = qs.filter(category_id=int(category_id))
+    # Filter by type if provided
     if rtype:
         qs = qs.filter(type__iexact=rtype)
 
-    fallback_used = False
-    if location:
-        loc_qs = qs.filter(location__iexact=location)
-        if not loc_qs.exists() and do_fallback:
-            fallback_used = True
-        else:
-            qs = loc_qs
+    # Search by name/location/description
+    if search.strip():
+        qs = qs.filter(
+            Q(name__icontains=search) |
+            Q(location__icontains=search) |
+            Q(description__icontains=search)
+        )
 
     total = qs.count()
-    rows = list(qs[offset : offset + limit])
-    data = ResourceSerializer(rows, many=True).data
-    next_offset = offset + len(rows) if (offset + len(rows)) < total else None
 
-    return Response(
-        {
-            "items": data,
-            "total": total,
-            "limit": limit,
-            "offset": offset,
-            "next_offset": next_offset,
-            "fallback": fallback_used,
-        },
-        status=200,
-    )
+    # Pagination
+    start = (page - 1) * page_size
+    end = start + page_size
+    qs = qs[start:end]
 
+    serializer = ResourceSerializer(qs, many=True)
+    return JsonResponse({
+        "items": serializer.data,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pageCount": (total + page_size - 1) // page_size,
+    })
 
 # --------------------- Notifications (ViewSet for router) ---------------------
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

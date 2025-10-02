@@ -3,7 +3,7 @@
    ========================= */
 
 /* Wrapper row */
-.ud-cards{
+.ud-cards {
   display: flex;
   gap: 28px;
   justify-content: center;
@@ -14,21 +14,25 @@
   padding: 4px 6px;
 }
 
-/* Theme tokens (inherits page-level variables if defined) */
-:root{
-  --brand: var(--brand, #2a5684);   /* icon/accent */
-  --card:  var(--card, #e8efff);    /* tile background */
-  --ring:  rgba(42,86,132,.18);     /* focus/hover ring */
-  --edge:  rgba(0,0,0,.06);         /* border edge */
-  --ink:   #0f172a;
+/* Dedicated tokens for dashboard cards */
+:root {
+  --ud-brand: #2a5684;     /* icon/accent */
+  --ud-card-bg: #ffffff;   /* card background stays white */
+  --ud-ring: rgba(42,86,132,.18);
+  --ud-edge: rgba(0,0,0,.06);
+  --ud-ink: #0f172a;
 }
 
 /* The card */
-.ud-card{
+.ud-card {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, #fff 8%), var(--card));
-  border: 1px solid var(--edge);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ud-card-bg) 92%, #fff 8%),
+    var(--ud-card-bg)
+  );
+  border: 1px solid var(--ud-edge);
   border-radius: 18px;
 
   width: clamp(210px, 22vw, 240px);
@@ -42,24 +46,18 @@
   padding: 22px 18px;
   text-align: center;
 
-  color: var(--ink);
+  color: var(--ud-ink);
   text-decoration: none;
 
   box-shadow: 6px 8px 0 rgba(0,0,0,.10);
-  transform: translateZ(0);         /* GPU hint */
-  transform-origin: center;
-  will-change: transform, box-shadow, filter, opacity;
-
-  /* smoother easing & slightly longer duration */
+  transform: translateZ(0);
   transition:
     transform .32s cubic-bezier(.22,.61,.36,1),
-    box-shadow .32s cubic-bezier(.22,.61,.36,1),
-    filter .32s ease,
-    opacity .32s ease;
+    box-shadow .32s cubic-bezier(.22,.61,.36,1);
 }
 
-/* subtle sheen on hover */
-.ud-card::before{
+/* subtle sheen */
+.ud-card::before {
   content:"";
   position:absolute; inset:0;
   border-radius: inherit;
@@ -67,80 +65,47 @@
     radial-gradient(120% 80% at 20% 0%, rgba(255,255,255,.42) 0%, transparent 55%),
     linear-gradient(180deg, rgba(255,255,255,.06), transparent 60%);
   opacity: 0;
-  pointer-events: none;
   transition: opacity .36s ease;
   z-index: -1;
 }
-
-/* top highlight edge */
-.ud-card::after{
+.ud-card::after {
   content:"";
   position:absolute; inset:0;
   border-radius: inherit;
   background: linear-gradient(180deg, rgba(255,255,255,.22), transparent 30%);
   mix-blend-mode: soft-light;
   opacity: .35;
-  pointer-events: none;
   z-index: -1;
 }
 
-/* Hover: gentle lift + richer shadow + soft sheen */
-.ud-card:hover{
+/* Hover */
+.ud-card:hover {
   transform: translateY(-6px) scale(1.015);
-  box-shadow:
-    10px 12px 0 rgba(0,0,0,.14),
-    0 18px 35px rgba(31,42,68,.10);
-  filter: saturate(1.04);
+  box-shadow: 10px 12px 0 rgba(0,0,0,.14), 0 18px 35px rgba(31,42,68,.10);
 }
-.ud-card:hover::before{ opacity: 1; }
+.ud-card:hover::before { opacity: 1; }
 
-/* Press feedback */
-.ud-card:active{
-  transform: translateY(-2px) scale(0.995);
-  transition-duration: .18s;
-}
-
-/* Focus-visible ring (keyboard users) */
-.ud-card:focus-visible{
+/* Focus ring */
+.ud-card:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 4px var(--ring),
+    0 0 0 4px var(--ud-ring),
     10px 12px 0 rgba(0,0,0,.14);
 }
 
-/* Icon uses brand color */
-.ud-card__icon{
-  color: var(--brand);
+/* Icon */
+.ud-card__icon {
+  color: var(--ud-brand);
   display: grid;
   place-items: center;
 }
-.ud-card__icon svg{
-  width: 64px; height: 64px;
-}
+.ud-card__icon svg { width: 64px; height: 64px; }
 
 /* Label */
-.ud-card__label{
+.ud-card__label {
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: .2px;
   margin: 0;
-  color: var(--ink);
-}
-
-/* Respect reduced-motion */
-@media (prefers-reduced-motion: reduce){
-  .ud-card,
-  .ud-card::before{
-    transition: none !important;
-  }
-}
-
-/* Small screens */
-@media (max-width: 640px){
-  .ud-cards{ gap: 18px; }
-  .ud-card{
-    width: 100%;
-    max-width: 420px;
-    height: 220px;
-  }
+  color: var(--ud-ink);
 }

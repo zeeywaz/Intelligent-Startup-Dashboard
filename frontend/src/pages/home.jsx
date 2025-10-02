@@ -59,17 +59,17 @@ function Header() {
               </li>
               {/* Mobile login */}
               <li className="ifx-nav__login--mobile">
-                <Button as={Link} to="/login" variant="outline" size="lg" className="ifx-btn--navbar">
+                <Link to="/login" className="ifx-nav__link ifx-nav__link--login">
                   <LogInIcon size={20} aria-hidden /> Log In
-                </Button>
+                </Link>
               </li>
             </ul>
 
             {/* Desktop login */}
             <div className="ifx-navbar__actions ifx-login--desktop">
-              <Button as={Link} to="/login" variant="outline" size="lg" className="ifx-btn--navbar">
+              <Link to="/login" className="ifx-nav__link ifx-nav__link--login">
                 <LogInIcon size={20} aria-hidden /> Log In
-              </Button>
+              </Link>
             </div>
           </div>
         </nav>
@@ -102,15 +102,19 @@ function Stat({ icon: Icon, label }) {
 function Step({ title, children, align = "left", image, alt = "" }) {
   return (
     <div className={cx("ifx-step", align === "center" && "is-center", align === "right" && "is-right")}>
-      <figure className="ifx-step__media">
-        {image ? (
-          <img src={image} alt={alt} loading="lazy" width="720" height="450" />
-        ) : (
-          <div aria-hidden />
-        )}
-      </figure>
-      <h3 className="ifx-step__title">{title}</h3>
-      <p className="ifx-step__desc">{children}</p>
+      <div className="ifx-step__box">
+        <figure className="ifx-step__media">
+          {image ? (
+            <img src={image} alt={alt} loading="lazy" width="720" height="450" />
+          ) : (
+            <div aria-hidden />
+          )}
+        </figure>
+        <div className="ifx-step__content">
+          <h3 className="ifx-step__title">{title}</h3>
+          <p className="ifx-step__desc">{children}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -220,8 +224,8 @@ export default function HomePage() {
           <div className="ifx-container">
             <h2 id="testimonials-title" className="ifx-section__title">Loved by founders</h2>
             <blockquote className="ifx-quote">
-              “IdeaForge turned our sketch into a funded roadmap in weeks. The sponsor matches
-              were eerily accurate—and the dashboard became our team’s daily compass.”
+              "IdeaForge turned our sketch into a funded roadmap in weeks. The sponsor matches
+              were eerily accurate—and the dashboard became our team's daily compass."
             </blockquote>
             <figure className="ifx-profile">
               <div className="ifx-profile__avatar" aria-hidden />
@@ -239,7 +243,7 @@ export default function HomePage() {
             <div>
               <p className="ifx-eyebrow">Connect</p>
               <h2 className="ifx-section__title">Get in touch</h2>
-              <p className="ifx-section__subtitle">We’ll help you choose the fastest path to launch.</p>
+              <p className="ifx-section__subtitle">We'll help you choose the fastest path to launch.</p>
               <ul className="ifx-contact__list" role="list">
                 <li className="ifx-contact__row">
                   <Mail className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />

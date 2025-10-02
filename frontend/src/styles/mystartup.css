@@ -1,5 +1,5 @@
 /* =========================================================
-   mystartup.css — Tile UI
+   mystartup.css — Modern Sleek Tile UI
    ========================================================= */
 
 /* ---------- Base ---------- */
@@ -95,7 +95,7 @@ img,svg{display:block;max-width:100%}
 .cards{
   display:grid;
   grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
-  gap:14px;
+  gap:18px;
   min-width:0;
 }
 
@@ -104,16 +104,17 @@ img,svg{display:block;max-width:100%}
   background:#fff;
   border:1.8px solid var(--border);
   border-radius:var(--card-radius);
-  padding:14px 14px;
-  box-shadow:none;
-  transition:transform .12s ease,border-color .12s ease,background-color .12s ease;
+  padding:16px 16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
   width:100%;max-width:100%;
   position:relative;z-index:0;
 }
 .card:hover{
-  transform:translateY(-1px);
+  transform:translateY(-4px);
   background:#fff;
   border-color:var(--primary);
+  box-shadow:0 8px 24px rgba(61,82,160,.18);
 }
 .card:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
 
@@ -147,8 +148,10 @@ img,svg{display:block;max-width:100%}
 .link{color:#0f172a;font-weight:800;text-decoration:underline;text-underline-offset:3px;word-break:break-all}
 .btn{
   appearance:none;border:0;cursor:pointer;background:var(--primary);color:#fff;
-  padding:9px 12px;border-radius:10px;font-weight:900;letter-spacing:.4px;font-size:13px;
+  padding:10px 14px;border-radius:12px;font-weight:900;letter-spacing:.4px;font-size:14px;
+  transition:background .2s ease,transform .15s ease;
 }
+.btn:hover{background:#5a7ce6;transform:translateY(-1px)}
 .btn--ghost{background:#fff;color:#0f172a;border:1.8px solid var(--border)}
 .btn--tiny{padding:7px 10px;border-radius:10px;font-weight:800;white-space:nowrap}
 
@@ -185,8 +188,23 @@ img,svg{display:block;max-width:100%}
 .small{font-size:.9rem}
 .err{color:#b91c1c;font-weight:800}
 .thinking{font-weight:900}
-.actions{display:flex;gap:12px;justify-content:flex-end;margin-top:26px}
-@media (max-width:700px){.actions{flex-direction:column}}
+
+/* ---------- Actions (buttons row) ---------- */
+.actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 30px;
+  margin-bottom: 70px;   /* lifts buttons higher before footer */
+}
+
+@media (max-width: 700px) {
+  .actions {
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 60px;
+  }
+}
 
 /* Safety: prevent grid/children overflow */
 .grid > .panel,.cards,.card__main{min-width:0}

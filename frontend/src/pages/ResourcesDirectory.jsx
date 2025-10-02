@@ -34,7 +34,9 @@ function getRequestedType() {
   const usp = new URLSearchParams(window.location.search);
   const t = usp.get("type");
   if (t) return String(t).toUpperCase();
-  const seg = decodeURIComponent(window.location.pathname.split("/").filter(Boolean).pop() || "");
+  const seg = decodeURIComponent(
+    window.location.pathname.split("/").filter(Boolean).pop() || ""
+  );
   return SLUG_TO_TYPE[String(seg).toLowerCase()] || "WAREHOUSE";
 }
 
@@ -43,21 +45,38 @@ function normalizeApiResult(json, currentPage, pageSize) {
   if (json && Array.isArray(json.results)) {
     const total = Number(json.count || 0);
     const hasMore = Boolean(json.next);
-    return { items: json.results, total, hasMore, nextPage: hasMore ? currentPage + 1 : currentPage };
+    return {
+      items: json.results,
+      total,
+      hasMore,
+      nextPage: hasMore ? currentPage + 1 : currentPage,
+    };
   }
   if (json && Array.isArray(json.items)) {
     const total = Number(json.total || 0);
     const page = Number(json.page || currentPage);
-    const pageCount = Number(json.pageCount || Math.ceil(total / pageSize));
+    const pageCount = Number(
+      json.pageCount || Math.ceil(total / pageSize)
+    );
     const hasMore = page < pageCount;
-    return { items: json.items, total, hasMore, nextPage: hasMore ? page + 1 : currentPage };
+    return {
+      items: json.items,
+      total,
+      hasMore,
+      nextPage: hasMore ? page + 1 : currentPage,
+    };
   }
   if (Array.isArray(json)) {
     const total = json.length;
     const start = (currentPage - 1) * pageSize;
     const items = json.slice(start, start + pageSize);
     const hasMore = start + pageSize < total;
-    return { items, total, hasMore, nextPage: hasMore ? currentPage + 1 : currentPage };
+    return {
+      items,
+      total,
+      hasMore,
+      nextPage: hasMore ? currentPage + 1 : currentPage,
+    };
   }
   return { items: [], total: 0, hasMore: false, nextPage: currentPage };
 }
@@ -98,12 +117,13 @@ export default function ResourcesDirectory() {
 
     const usp = new URLSearchParams();
     usp.set("type", type);
-    if (q.trim()) usp.set("q", q.trim());
+    if (q.trim()) usp.set("search", q.trim()); // ✅ fixed param
     usp.set("page", String(nextPage));
-    usp.set("limit", String(PAGE_SIZE));
     usp.set("page_size", String(PAGE_SIZE));
 
-    const res = await fetch(`${API_URL}?${usp.toString()}`, { credentials: "include" });
+    const res = await fetch(`${API_URL}?${usp.toString()}`, {
+      credentials: "include",
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
 
@@ -163,7 +183,9 @@ export default function ResourcesDirectory() {
 
   const filtered = useMemo(() => {
     const base = onlyBookmarks
-      ? rows.filter((r) => isBookmarked(r?.resource_id ?? r?.id ?? r?.pk))
+      ? rows.filter((r) =>
+          isBookmarked(r?.resource_id ?? r?.id ?? r?.pk)
+        )
       : rows;
     return base;
   }, [rows, onlyBookmarks, isBookmarked]);
@@ -212,7 +234,9 @@ export default function ResourcesDirectory() {
       </header>
 
       {status === "loading" && rows.length === 0 ? (
-        <div className="loading">Loading {prettyTitle.toLowerCase()}…</div>
+        <div className="loading">
+          Loading {prettyTitle.toLowerCase()}…
+        </div>
       ) : status === "error" && rows.length === 0 ? (
         <div className="empty">
           <div className="empty-card">
@@ -226,7 +250,9 @@ export default function ResourcesDirectory() {
           <div className="empty-card">
             <span className="emoji">🗂️</span>
             <h3>No results</h3>
-            <p>Try clearing search or turning off the bookmarks filter.</p>
+            <p>
+              Try clearing search or turning off the bookmarks filter.
+            </p>
           </div>
         </div>
       ) : (
@@ -236,19 +262,38 @@ export default function ResourcesDirectory() {
               const rid = row?.resource_id ?? row?.id ?? row?.pk;
               const coords = coordsToLatLon(row.geo_data);
               const website =
-                row.website && String(row.website).trim().length > 0 ? row.website : null;
+                row.website && String(row.website).trim().length > 0
+                  ? row.website
+                  : null;
 
               return (
                 <article className="r-card" key={rid}>
                   <button
                     type="button"
-                    className={`bookmark ${isBookmarked(rid) ? "on" : ""}`}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(rid); }}
-                    aria-label={isBookmarked(rid) ? "Remove bookmark" : "Add bookmark"}
-                    title={isBookmarked(rid) ? "Remove bookmark" : "Add bookmark"}
+                    className={`bookmark ${
+                      isBookmarked(rid) ? "on" : ""
+                    }`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggle(rid);
+                    }}
+                    aria-label={
+                      isBookmarked(rid)
+                        ? "Remove bookmark"
+                        : "Add bookmark"
+                    }
+                    title={
+                      isBookmarked(rid)
+                        ? "Remove bookmark"
+                        : "Add bookmark"
+                    }
                   >
                     <svg viewBox="0 0 24 24" width="18" height="18">
-                      <path d="M6 2h12a1 1 0 011 1v18l-7-4-7 4V3a1 1 0 011-1z" fill="currentColor" />
+                      <path
+                        d="M6 2h12a1 1 0 011 1v18l-7-4-7 4V3a1 1 0 011-1z"
+                        fill="currentColor"
+                      />
                     </svg>
                   </button>
 
@@ -259,7 +304,11 @@ export default function ResourcesDirectory() {
                   <h3 className="name">{row.name}</h3>
                   {row.location && (
                     <div className="meta">
-                      <svg viewBox="0 0 24 24" width="16" height="16">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                      >
                         <path
                           d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
                           fill="currentColor"
@@ -333,5 +382,9 @@ export default function ResourcesDirectory() {
 
 // Optional helper for external buttons
 export const openResourcesTab = (type) => {
-  window.open(`/resources/directory?type=${encodeURIComponent(type)}`, "_blank", "noopener");
+  window.open(
+    `/resources/directory?type=${encodeURIComponent(type)}`,
+    "_blank",
+    "noopener"
+  );
 };
