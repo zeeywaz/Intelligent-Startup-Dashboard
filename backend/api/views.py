@@ -1207,3 +1207,31 @@ def competitor_ideas(request):
         {"items": data, "total": total, "limit": limit, "offset": offset, "next_offset": next_offset},
         status=200,
     )
+
+
+
+
+from django.contrib.auth import get_user_model
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework import status
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_user_list(request):
+    users = User.objects.all().values("id", "first_name", "last_name", "email", "date_joined")
+    return Response(list(users), status=status.HTTP_200_OK)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def admin_user_delete(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        user.delete()
+        return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+

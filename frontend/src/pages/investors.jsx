@@ -21,11 +21,7 @@ function getCookie(name) {
   }
   return cookieValue;
 }
-function colorFromString(str = "") {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
-  return `hsl(${h} 55% 60%)`;
-}
+
 function normalizeBookmarks(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -47,12 +43,22 @@ function normalizeBookmarks(raw) {
 /* ---------- small UI bits ---------- */
 function Avatar({ name }) {
   const letter = (name || "?").trim().charAt(0).toUpperCase() || "?";
+
+  // bucket 0..4 so avatars rotate through the brand palette
+  const bucket = (() => {
+    const s = String(name || "?");
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h) % 5;
+  })();
+
   return (
-    <div className="cmp-avatar" style={{ background: colorFromString(name || "?") }} aria-hidden>
+    <div className={`cmp-avatar pfp-${bucket}`} aria-hidden>
       {letter}
     </div>
   );
 }
+
 function BookmarkBtn({ on, onClick, title }) {
   return (
     <button
@@ -87,10 +93,9 @@ function RatingRange({ min = 0, max = 1000, step = 10, valueMin, valueMax, onCha
     onChange([valueMin, v]);
   };
 
-  // make whichever thumb is being dragged float above the other
   const startMin = () => setActive("min");
   const startMax = () => setActive("max");
-  const stop     = () => setActive(null);
+  const stop = () => setActive(null);
 
   return (
     <div className={`inv-range ${active === "min" ? "is-left" : ""} ${active === "max" ? "is-right" : ""}`}>
@@ -131,7 +136,6 @@ function RatingRange({ min = 0, max = 1000, step = 10, valueMin, valueMax, onCha
     </div>
   );
 }
-
 
 /* ---------- card ---------- */
 function InvestorCard({ item, isBookmarked, onToggle, busy }) {
@@ -200,7 +204,13 @@ function InvestorCard({ item, isBookmarked, onToggle, busy }) {
       </div>
 
       {safeUrl && (
-        <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="cmp-btn--primary" style={{ marginTop: ".5rem" }}>
+        <a
+          href={safeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="cmp-btn--primary"
+          style={{ marginTop: ".45rem" }}
+        >
           Visit website
         </a>
       )}
@@ -379,9 +389,9 @@ export default function InvestorsPage() {
                 onChange={([lo, hi]) => { setRatingMin(lo); setRatingMax(hi); }}
               />
               <div className="inv-chips">
-                <span className="inv-chip">{ratingMin}</span>
-                <span className="inv-chip">to</span>
-                <span className="inv-chip">{ratingMax}</span>
+                <span className="inv-chip inv-chip--value">{ratingMin}</span>
+                <span className="inv-chip inv-chip--sep">to</span>
+                <span className="inv-chip inv-chip--value">{ratingMax}</span>
               </div>
             </div>
           </div>

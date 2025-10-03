@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
   Menu, X, LogIn as LogInIcon, Info, Mail, Code, BarChart, Package,
-  Sparkles, ShieldCheck, GaugeCircle, Phone, MapPin
+  Sparkles, ShieldCheck, GaugeCircle, Phone, MapPin, ChevronRight
 } from "lucide-react";
 import "../styles/home.css";
 
@@ -22,6 +22,7 @@ function Button({
       {...props}
     >
       <span className="ifx-btn__label">{children}</span>
+      {variant === "primary" && <div className="ifx-btn__shimmer" />}
     </Comp>
   );
 }
@@ -86,6 +87,9 @@ function FeatureCard({ icon: Icon, title, children }) {
       </div>
       <h3 className="ifx-card__title">{title}</h3>
       <p className="ifx-card__desc">{children}</p>
+      <div className="ifx-card__arrow">
+        <ChevronRight size={20} />
+      </div>
     </article>
   );
 }
@@ -125,9 +129,12 @@ export default function HomePage() {
       <Header />
 
       <main>
-        {/* HERO */}
-        <section className="ifx-hero ifx-hero--contrast" aria-labelledby="hero-title">
-          <div className="ifx-hero__mesh" aria-hidden />
+        {/* HERO - Updated with Dark Veil */}
+        <section className="ifx-hero ifx-hero--dark-veil" aria-labelledby="hero-title">
+          <div className="ifx-hero__background">
+            <div className="ifx-hero__veil" aria-hidden />
+            <div className="ifx-hero__particles" aria-hidden />
+          </div>
           <div className="ifx-container">
             <div className="ifx-hero__wrap">
               <h1 id="hero-title" className="ifx-hero__title">
@@ -140,7 +147,7 @@ export default function HomePage() {
 
               <div className="ifx-hero__ctas">
                 <Button as={Link} to="/signup" variant="primary" size="lg">Get Started</Button>
-                <Button as="a" href="#features" variant="ghost" size="lg">Explore Features</Button>
+                <Button as="a" href="#features" variant="outline" size="lg">Explore Features</Button>
               </div>
 
               <div className="ifx-hero__stats" aria-label="Highlights">
@@ -152,7 +159,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* INTRO */}
+        {/* INTRO - Updated with main2.png */}
         <section id="about" className="ifx-section">
           <div className="ifx-container ifx-split">
             <div className="ifx-split__left">
@@ -168,14 +175,21 @@ export default function HomePage() {
                 <Button as="a" href="#contact" variant="ghost" size="md">Talk to us</Button>
               </div>
             </div>
-            <div className="ifx-split__right" aria-hidden>
-              <div className="ifx-visual" />
+            <div className="ifx-split__right">
+              <div className="ifx-visual">
+                <img 
+                  src="/main2.png" 
+                  alt="IdeaForge Platform Dashboard" 
+                  className="ifx-visual__image"
+                  loading="lazy"
+                />
+              </div>
             </div>
           </div>
         </section>
 
         {/* FEATURES */}
-        <section id="features" className="ifx-section">
+        <section id="features" className="ifx-section ifx-section--alt">
           <div className="ifx-container">
             <header className="ifx-section__header">
               <h2 className="ifx-section__title">Everything you need to ship</h2>
@@ -219,7 +233,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* TESTIMONIAL */}
+        {/* TESTIMONIAL - Updated with profile image */}
         <section className="ifx-section ifx-testimonials" aria-labelledby="testimonials-title">
           <div className="ifx-container">
             <h2 id="testimonials-title" className="ifx-section__title">Loved by founders</h2>
@@ -228,7 +242,14 @@ export default function HomePage() {
               were eerily accurate—and the dashboard became our team's daily compass."
             </blockquote>
             <figure className="ifx-profile">
-              <div className="ifx-profile__avatar" aria-hidden />
+              <img 
+                src="/profile-avatar.png" 
+                alt="Jane Doe" 
+                className="ifx-profile__avatar"
+                width="80"
+                height="80"
+                loading="lazy"
+              />
               <figcaption className="ifx-profile__meta">
                 <p className="ifx-profile__name">Jane Doe</p>
                 <p className="ifx-profile__role">Founder, Sparrow Labs</p>
@@ -238,62 +259,66 @@ export default function HomePage() {
         </section>
 
         {/* CONTACT */}
-        <section id="contact" className="ifx-section">
-          <div className="ifx-container ifx-contact">
-            <div>
-              <p className="ifx-eyebrow">Connect</p>
-              <h2 className="ifx-section__title">Get in touch</h2>
-              <p className="ifx-section__subtitle">We'll help you choose the fastest path to launch.</p>
-              <ul className="ifx-contact__list" role="list">
-                <li className="ifx-contact__row">
-                  <Mail className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
-                  <div>
-                    <h3 className="ifx-contact__label">Email</h3>
-                    <p className="ifx-contact__value">
-                      <a href="mailto:support@ideaforge.com" className="ifx-link">support@ideaforge.com</a>
-                    </p>
-                  </div>
-                </li>
-                <li className="ifx-contact__row">
-                  <Phone className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
-                  <div>
-                    <h3 className="ifx-contact__label">Phone</h3>
-                    <p className="ifx-contact__value">
-                      <a href="tel:+94123456789" className="ifx-link">+94 123 456 789</a>
-                    </p>
-                  </div>
-                </li>
-                <li className="ifx-contact__row">
-                  <MapPin className="ifx-contact__icon" aria-hidden />
-                  <div>
-                    <h3 className="ifx-contact__label">Office</h3>
-                    <p className="ifx-contact__value">
-                      123, Sample St. Colombo 10 — <a href="#" className="ifx-link">Get Directions →</a>
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-
-            <div className="ifx-form ifx-mapcard">
-              <iframe
-                title="IdeaForge Office Map"
-                className="ifx-map-embed"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=79.8512%2C6.9171%2C79.8712%2C6.9371&layer=mapnik&marker=6.9271%2C79.8612"
-              />
-              <div className="ifx-map-footer">
-                <a
-                  className="ifx-link"
-                  href="https://www.openstreetmap.org/?mlat=6.9271&mlon=79.8612#map=17/6.9271/79.8612"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open in OpenStreetMap →
-                </a>
-              </div>
-            </div>
+        {/* CONTACT */}
+<section id="contact" className="ifx-section">
+  <div className="ifx-container ifx-contact">
+    <div>
+      <p className="ifx-eyebrow">Connect</p>
+      <h2 className="ifx-section__title">Get in touch</h2>
+      <p className="ifx-section__subtitle">We'll help you choose the fastest path to launch.</p>
+      <ul className="ifx-contact__list" role="list">
+        <li className="ifx-contact__row">
+          <Mail className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
+          <div>
+            <h3 className="ifx-contact__label">Email</h3>
+            <p className="ifx-contact__value">
+              <a href="mailto:support@ideaforge.com" className="ifx-link">support@ideaforge.com</a>
+            </p>
           </div>
-        </section>
+        </li>
+        <li className="ifx-contact__row">
+          <Phone className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
+          <div>
+            <h3 className="ifx-contact__label">Phone</h3>
+            <p className="ifx-contact__value">
+              <a href="tel:+94123456789" className="ifx-link">+94 123 456 789</a>
+            </p>
+          </div>
+        </li>
+        <li className="ifx-contact__row">
+          <MapPin className="ifx-contact__icon" aria-hidden />
+          <div>
+            <h3 className="ifx-contact__label">Office</h3>
+            <p className="ifx-contact__value">
+              123, Sample St. Colombo 10 — <a href="#" className="ifx-link">Get Directions →</a>
+            </p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div className="ifx-form ifx-mapcard">
+      <iframe
+        title="IdeaForge Office Map"
+        className="ifx-map-embed"
+        src="https://www.openstreetmap.org/export/embed.html?bbox=79.8542%2C6.9251%2C79.8682%2C6.9351&layer=mapnik&marker=6.9301%2C79.8612"
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+      <div className="ifx-map-footer">
+        <a
+          className="ifx-link"
+          href="https://www.openstreetmap.org/?mlat=6.9301&mlon=79.8612#map=18/6.9301/79.8612"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open in OpenStreetMap →
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
       </main>
 
       {/* FOOTER */}

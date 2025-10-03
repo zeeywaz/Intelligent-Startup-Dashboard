@@ -15,7 +15,7 @@ import { API_BASE } from "../lib/api";
 // fallback palettes
 const COLORS = ["#2a5684", "#c1dfff", "#8699c4", "#667ba5", "#a9b8d9"];
 
-// fallback data (used only if API fails)
+// fallbacks (only used if API fails)
 const FALLBACK_PIE = [
   { name: "Niche 1", value: 400 },
   { name: "Niche 2", value: 300 },
@@ -24,18 +24,18 @@ const FALLBACK_PIE = [
   { name: "Niche 5", value: 100 },
 ];
 const FALLBACK_LINE = [
-  { month: "Jan", thisMonth: 400, lastMonth: 350 },
-  { month: "Feb", thisMonth: 300, lastMonth: 280 },
-  { month: "Mar", thisMonth: 200, lastMonth: 220 },
-  { month: "Apr", thisMonth: 278, lastMonth: 260 },
-  { month: "May", thisMonth: 189, lastMonth: 210 },
+  { month: "Jun", allCount: 20, myCatCount: 2 },
+  { month: "Jul", allCount: 15, myCatCount: 4 },
+  { month: "Aug", allCount: 85, myCatCount: 3 },
+  { month: "Sep", allCount: 50, myCatCount: 1 },
+  { month: "Oct", allCount: 180, myCatCount: 0 },
 ];
 
 export default function UserDashboard() {
   const [name, setName] = useState("");
   const [pieData, setPieData] = useState(FALLBACK_PIE);
   const [lineData, setLineData] = useState(FALLBACK_LINE);
-  const [myBT, setMyBT] = useState(null); // user's business_type label
+  const [myCategoryName, setMyCategoryName] = useState(""); // user's BusinessIdea category (derived server-side)
 
   // fetch name
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function UserDashboard() {
     })();
   }, []);
 
-  // fetch analytics (with graceful fallback)
+  // fetch analytics (pie + lines)
   useEffect(() => {
     (async () => {
       try {
@@ -65,27 +65,68 @@ export default function UserDashboard() {
           const items = Array.isArray(j1?.items) ? j1.items : [];
           if (items.length) setPieData(items.map((it) => ({ name: it.name, value: it.count })));
         }
+      } catch {
+        // keep fallback pie
+      }
 
-        // LINE: blue = ALL ideas; green = MY business_type (last N months)
-        const r2 = await fetch(`${API_BASE}/api/analytics/monthly-overview/?months=5`, {
-          credentials: "include",
-        });
-        if (r2.ok) {
-          const j2 = await r2.json();
-          const pts = Array.isArray(j2?.points) ? j2.points : [];
-          if (pts.length) setLineData(pts);
-          if (j2?.business_type) {
-            setMyBT(j2.business_type);
-            localStorage.setItem("if_bt", j2.business_type);
-          }
+      try {
+        // We need two series:
+        // BLUE: all ideas (across DB) per month
+        // GREEN: ideas per month for the user's own BusinessIdea category
+        const months = 5;
+
+        const [rAll, rCat] = await Promise.all([
+          fetch(`${API_BASE}/api/analytics/monthly-overview/?months=${months}`, {
+            credentials: "include",
+          }),
+          // No category params needed: backend picks latest idea's category for this user
+          fetch(`${API_BASE}/api/analytics/category-trend/?months=${months}`, {
+            credentials: "include",
+          }),
+        ]);
+
+        // Build base map by month using the BLUE series
+        let base = [];
+        if (rAll.ok) {
+          const jAll = await rAll.json();
+          const pts = Array.isArray(jAll?.points) ? jAll.points : [];
+          // monthly-overview returns { month, thisMonth (all), lastMonth (my ideas count) }
+          base = pts.map((p) => ({
+            month: p.month,
+            allCount: Number(p.thisMonth) || 0,
+            myCatCount: 0, // fill after we load the category series
+          }));
+        }
+
+        // Overlay GREEN series using category-trend 'thisMonth' values
+        if (rCat.ok && base.length) {
+          const jCat = await rCat.json();
+          setMyCategoryName(jCat?.category || "");
+
+          const catPts = Array.isArray(jCat?.points) ? jCat.points : [];
+          const catByMonth = Object.fromEntries(
+            catPts.map((p) => [String(p.month), Number(p.thisMonth) || 0])
+          );
+
+          const merged = base.map((row) => ({
+            ...row,
+            myCatCount: catByMonth[row.month] ?? 0,
+          }));
+
+          setLineData(merged);
+        } else if (base.length) {
+          // if category trend failed, at least show the blue series
+          setLineData(base);
         }
       } catch {
-        // keep fallbacks
+        // keep fallback line
       }
     })();
   }, []);
 
-  const myBTLabel = myBT || localStorage.getItem("if_bt") || "n/a";
+  const greenSeriesName = myCategoryName
+    ? `My ideas (${myCategoryName})`
+    : "My ideas";
 
   return (
     <>
@@ -130,17 +171,24 @@ export default function UserDashboard() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  {/* BLUE: all ideas */}
+                  {/* BLUE: all ideas (unchanged) */}
                   <Line
                     type="monotone"
-                    dataKey="thisMonth"
+                    dataKey="allCount"
                     name="All categories"
                     stroke="#6d7dfc"
                     strokeWidth={2}
                     dot={false}
                   />
-                  {/* GREEN: user's business_type */}
-                  <Line type="monotone" dataKey="lastMonth"  name="My ideas" stroke="#7dd3a1" strokeWidth={2} dot={false} />
+                  {/* GREEN: ideas in the user's category */}
+                  <Line
+                    type="monotone"
+                    dataKey="myCatCount"
+                    name={greenSeriesName}
+                    stroke="#7dd3a1"
+                    strokeWidth={2}
+                    dot={false}
+                  />
                 </LineChart>
               </div>
             </section>

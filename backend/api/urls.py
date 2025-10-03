@@ -61,5 +61,10 @@ urlpatterns = [
     
     path("analytics/monthly-overview/", views.analytics_monthly_overview, name="analytics-monthly-overview"),
     path("competitor-ideas/", views.competitor_ideas, name="competitor-ideas"),
+    
+    
+    path("admin/users/", views.admin_user_list, name="admin-user-list"),
+    path("admin/users/<int:user_id>/delete/", views.admin_user_delete, name="admin-user-delete"),
+
 
 ]

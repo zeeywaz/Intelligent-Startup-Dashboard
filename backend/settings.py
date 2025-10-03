@@ -42,4 +42,4 @@ EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "ideaforgesrilanka@gmail.com"
-EMAIL_HOST_PASSWORD = "jbrs fven ltta xslb"
+EMAIL_HOST_PASSWORD = "roqy skpb kmrq gfre"
