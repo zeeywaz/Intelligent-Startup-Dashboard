@@ -40,6 +40,20 @@ function getRequestedType() {
   return SLUG_TO_TYPE[String(seg).toLowerCase()] || "WAREHOUSE";
 }
 
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    for (const c of document.cookie.split(";")) {
+      const cookie = c.trim();
+      if (cookie.startsWith(name + "=")) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 /** Normalize API shapes to {items, total, hasMore, nextPage} */
 function normalizeApiResult(json, currentPage, pageSize) {
   if (json && Array.isArray(json.results)) {
@@ -55,9 +69,7 @@ function normalizeApiResult(json, currentPage, pageSize) {
   if (json && Array.isArray(json.items)) {
     const total = Number(json.total || 0);
     const page = Number(json.page || currentPage);
-    const pageCount = Number(
-      json.pageCount || Math.ceil(total / pageSize)
-    );
+    const pageCount = Number(json.pageCount || Math.ceil(total / pageSize));
     const hasMore = page < pageCount;
     return {
       items: json.items,
@@ -94,6 +106,25 @@ function coordsToLatLon(geo_data) {
   return null;
 }
 
+/* ------------------ Confirm modal (Promise-based) ------------------ */
+/* Local, accessible, and avoids window.confirm() */
+function ConfirmModal({ state, onClose }) {
+  if (!state) return null;
+  const { message } = state;
+  return (
+    <div className="confirm-overlay" role="dialog" aria-modal="true" aria-label="Confirm dialog">
+      <div className="confirm-box" role="document">
+        <div className="confirm-message">{message}</div>
+        <div className="confirm-actions" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+          <button onClick={() => onClose(false)} className="confirm-btn cancel">Cancel</button>
+          <button onClick={() => onClose(true)} className="confirm-btn confirm">Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------ Page ------------------ */
 export default function ResourcesDirectory() {
   const [type] = useState(getRequestedType);
   const [rows, setRows] = useState([]);
@@ -105,11 +136,45 @@ export default function ResourcesDirectory() {
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
 
-  // SERVER bookmarks
+  // admin flag
+  const [isSuper, setIsSuper] = useState(false);
+
+  // Server bookmarks
   const { ids: bmIds, isBookmarked, toggle } = useServerBookmarks("resource");
 
   const sentinelRef = useRef(null);
   const ioRef = useRef(null);
+
+  // Confirm modal state
+  const [confirmState, setConfirmState] = useState(null);
+  // showConfirm returns a Promise that resolves to true/false
+  const showConfirm = (message) =>
+    new Promise((resolve) => setConfirmState({ message, resolve }));
+
+  // close handler called by modal buttons
+  const handleConfirmClose = (result) => {
+    if (confirmState && typeof confirmState.resolve === "function") {
+      confirmState.resolve(Boolean(result));
+    }
+    setConfirmState(null);
+  };
+
+  // fetch current user info once to know superuser status
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/me/`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        if (!mounted) return;
+        setIsSuper(Boolean(data?.user?.is_superuser || data?.is_superuser));
+      } catch (e) {
+        // ignore: not authenticated or network error
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   async function fetchPage(nextPage, replace = false) {
     if (replace) setStatus("loading");
@@ -117,7 +182,7 @@ export default function ResourcesDirectory() {
 
     const usp = new URLSearchParams();
     usp.set("type", type);
-    if (q.trim()) usp.set("search", q.trim()); // ✅ fixed param
+    if (q.trim()) usp.set("search", q.trim());
     usp.set("page", String(nextPage));
     usp.set("page_size", String(PAGE_SIZE));
 
@@ -189,6 +254,50 @@ export default function ResourcesDirectory() {
       : rows;
     return base;
   }, [rows, onlyBookmarks, isBookmarked]);
+
+  // --- Admin actions (PATCH/DELETE) ---
+  async function handleDeleteResource(id) {
+    const ok = await showConfirm("Delete this resource permanently?");
+    if (!ok) return;
+    try {
+      const res = await fetch(`${API_URL}${id}/`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (!(res.ok || res.status === 204)) {
+        const j = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(j.detail || `Failed (${res.status})`);
+      }
+      setRows((prev) => prev.filter((r) => (r.resource_id ?? r.id ?? r.pk) !== id));
+    } catch (err) {
+      alert("Delete failed: " + (err.message || "unknown"));
+    }
+  }
+
+  async function handleEditResource(id) {
+    const newName = window.prompt ? window.prompt("New resource name (leave empty to cancel):") : "";
+    if (newName == null || String(newName).trim() === "") return;
+    try {
+      const res = await fetch(`${API_URL}${id}/`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(j.detail || `Failed (${res.status})`);
+      }
+      const updated = await res.json();
+      setRows((prev) => prev.map((r) => ((r.resource_id ?? r.id ?? r.pk) === id ? { ...r, ...updated } : r)));
+    } catch (err) {
+      alert("Edit failed: " + (err.message || "unknown"));
+    }
+  }
 
   return (
     <div className="resources-page">
@@ -345,6 +454,13 @@ export default function ResourcesDirectory() {
                       </a>
                     )}
                   </div>
+
+                  {isSuper && (
+                    <div className="admin-actions">
+                      <button type="button" className="admin-btn edit" onClick={() => handleEditResource(rid)}>Edit</button>
+                      <button type="button" className="admin-btn delete" onClick={() => handleDeleteResource(rid)}>Delete</button>
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -374,6 +490,9 @@ export default function ResourcesDirectory() {
           </div>
         </>
       )}
+
+      {/* Confirm modal (rendered at page level) */}
+      <ConfirmModal state={confirmState} onClose={handleConfirmClose} />
 
       <Footer />
     </div>

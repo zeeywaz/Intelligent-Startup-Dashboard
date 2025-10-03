@@ -169,8 +169,78 @@ def login_view(request):
     if user is None:
         return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
+    # log the user in
     login(request, user)
-    return JsonResponse({"detail": "Login successful"})
+
+    # compute strict next path:
+    # 1) superuser -> admin
+    # 2) role_id == 2 OR investor_details exists -> investor
+    # 3) else -> user dashboard
+    try:
+        if getattr(user, "is_superuser", False):
+            next_path = "/admindashboard"
+        elif UserRole.objects.filter(auth_user=user, role__role_id=2).exists() or InvestorDetails.objects.filter(user_id=user.id).exists():
+            next_path = "/investordashboard"
+        else:
+            next_path = "/userdashboard"
+    except Exception:
+        # fallback safe default
+        next_path = "/userdashboard"
+
+    return JsonResponse({"detail": "Login successful", "next": next_path}, status=200)
+
+
+@api_view(["GET"])
+def me(request):
+    """Return basic info about the current user and a strict next-path.
+
+    Rules (strict order):
+      1) if request.user.is_superuser -> /admindashboard
+      2) elif user has role with role_id == 2 OR has an InvestorDetails record -> /investordashboard
+      3) else -> /userdashboard
+
+    Also includes 'is_superuser' in the returned user payload for frontend convenience.
+    """
+    if not request.user.is_authenticated:
+        return Response({"authenticated": False}, status=200)
+
+    u = request.user
+
+    # collect textual role names (for backwards compat)
+    roles = list(
+        UserRole.objects.select_related("role")
+        .filter(auth_user=u)
+        .values_list("role__role_name", flat=True)
+    )
+
+    # compute strict next path
+    try:
+        if getattr(u, "is_superuser", False):
+            next_path = "/admindashboard"
+        elif UserRole.objects.filter(auth_user=u, role__role_id=2).exists() or InvestorDetails.objects.filter(user=u).exists():
+            next_path = "/investordashboard"
+        else:
+            next_path = "/userdashboard"
+    except Exception:
+        # fallback to safe default
+        next_path = "/userdashboard"
+
+    return Response(
+        {
+            "authenticated": True,
+            "user": {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "firstName": u.first_name,
+                "lastName": u.last_name,
+                "is_superuser": getattr(u, "is_superuser", False),
+            },
+            "roles": roles,
+            "next": next_path,
+        },
+        status=200,
+    )
 
 
 from django.views.decorators.csrf import csrf_exempt
@@ -184,38 +254,7 @@ def logout_view(request):
     response.delete_cookie("sessionid")
     return response
 
-@api_view(["GET"])
-def me(request):
-    if not request.user.is_authenticated:
-        return Response({"authenticated": False}, status=200)
-    u = request.user
-    roles = list(
-        UserRole.objects.select_related("role")
-        .filter(auth_user=u)
-        .values_list("role__role_name", flat=True)
-    )
-    next_path = (
-        "/investordashboard"
-        if "Investor" in roles
-        else "/admindashboard"
-        if "Admin" in roles
-        else "/userdashboard"
-    )
-    return Response(
-        {
-            "authenticated": True,
-            "user": {
-                "id": u.id,
-                "username": u.username,
-                "email": u.email,
-                "firstName": u.first_name,
-                "lastName": u.last_name,
-            },
-            "roles": roles,
-            "next": next_path,
-        },
-        status=200,
-    )
+
 
 
 # --------------------- Profile ---------------------
@@ -489,39 +528,129 @@ def bookmark_ids(request):
     )
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([JSONParser])
 def bookmark_toggle(request):
     """
     POST /api/bookmarks/toggle/
-    body: { "kind": "resource|competitor|investor", "id": <int> }
+    body: { "kind": "resource|competitor|investor|idea", "id": <int> }
     """
     kind = (request.data.get("kind") or "").strip().lower()
     raw_id = request.data.get("id")
+    logger.info("bookmark_toggle called: user=%s kind=%s id=%s", getattr(request.user, "id", None), kind, raw_id)
 
     try:
         obj_id = int(raw_id)
     except (TypeError, ValueError):
-        return Response({"detail": "Valid id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        logger.warning("bookmark_toggle: invalid id: %r", raw_id)
+        return Response({"detail": "Valid id is required."}, status=400)
 
-    field_map = {"resource": "resource_id", "competitor": "competitor_id", "investor": "investor_id"}
+    field_map = {"resource": "resource_id", "competitor": "competitor_id", "investor": "investor_id", "idea": "idea_id"}
     field = field_map.get(kind)
     if not field:
-        return Response({"detail": "Invalid kind."}, status=status.HTTP_400_BAD_REQUEST)
+        logger.warning("bookmark_toggle: invalid kind: %s", kind)
+        return Response({"detail": "Invalid kind."}, status=400)
 
+    # toggle: delete if exists
     qs = Bookmark.objects.filter(user=request.user, **{field: obj_id})
     existing = qs.first()
     if existing:
         existing.delete()
+        logger.info("bookmark_toggle: removed bookmark user=%s %s=%s", request.user.id, field, obj_id)
         return Response({"ok": True, "bookmarked": False})
-    else:
-        # create exactly one targeted bookmark; avoid passing duplicate kwargs
-        payload = {"user": request.user, "resource_id": None, "competitor_id": None, "investor_id": None}
-        payload[field] = obj_id
-        Bookmark.objects.create(**payload)
-        return Response({"ok": True, "bookmarked": True})
 
+    # create bookmark
+    payload = {"user": request.user, "resource_id": None, "competitor_id": None, "investor_id": None, "idea_id": None}
+    payload[field] = obj_id
+    bm = Bookmark.objects.create(**payload)
+    logger.info("bookmark_toggle: created bookmark id=%s user=%s %s=%s", getattr(bm, "bookmark_id", None), request.user.id, field, obj_id)
+
+    # notification resolution with multiple fallbacks
+    try:
+        target_user = None
+        note_title = None
+        note_message = None
+
+        if field == "investor_id":
+            # try InvestorProfile (your code used this)
+            investor = InvestorProfile.objects.filter(investor_id=obj_id).select_related("user").first()
+            if investor:
+                target_user = getattr(investor, "user", None)
+                logger.debug("bookmark_toggle: resolved investor via InvestorProfile investor_id=%s -> user=%s", obj_id, getattr(target_user, "id", None))
+
+            # fallback to InvestorDetails (some parts of your code create InvestorDetails)
+            if target_user is None:
+                try:
+                    from .models import InvestorDetails as _InvestorDetails
+                    invd = _InvestorDetails.objects.filter(investor_id=obj_id).select_related("user").first()
+                    if invd:
+                        target_user = getattr(invd, "user", None)
+                        logger.debug("bookmark_toggle: resolved investor via InvestorDetails investor_id=%s -> user=%s", obj_id, getattr(target_user, "id", None))
+                except Exception:
+                    # ignore import / lookup errors
+                    logger.debug("bookmark_toggle: InvestorDetails lookup failed", exc_info=True)
+
+            # final fallback: maybe frontend sent a raw auth user id mistakenly
+            if target_user is None:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                u = User.objects.filter(pk=obj_id).first()
+                if u:
+                    target_user = u
+                    logger.debug("bookmark_toggle: fallback resolved user by auth id=%s", obj_id)
+
+            note_title = f"{request.user.username} bookmarked you"
+            note_message = f"{request.user.username} bookmarked your investor profile."
+
+        elif field == "idea_id":
+            # BusinessIdea.owner
+            idea = BusinessIdea.objects.filter(idea_id=obj_id).select_related("user").first()
+            if idea is None:
+                idea = BusinessIdea.objects.filter(pk=obj_id).select_related("user").first()
+            if idea:
+                target_user = getattr(idea, "user", None)
+                logger.debug("bookmark_toggle: resolved idea owner idea_id=%s -> user=%s", obj_id, getattr(target_user, "id", None))
+                idea_title = (getattr(idea, "title", "") or "")[:150]
+                note_title = f"{request.user.username} bookmarked your idea"
+                note_message = f"{request.user.username} bookmarked your business idea: '{idea_title}'."
+            else:
+                logger.debug("bookmark_toggle: idea not found idea_id=%s", obj_id)
+
+        else:
+            # competitor/resource: no owner by design
+            logger.debug("bookmark_toggle: no owner for kind=%s id=%s; no notification will be sent", kind, obj_id)
+
+        # create notification if we resolved an owner and it's not self
+        if target_user and target_user.pk != request.user.pk:
+            Notification.objects.create(
+                user=target_user,
+                title=note_title or f"{request.user.username} bookmarked you",
+                message=note_message or f"{request.user.username} bookmarked something you own.",
+                type=Notification.NotificationType.INVESTOR_INTEREST,
+                related_entity_type=kind,
+                related_entity_id=obj_id,
+            )
+            logger.info("bookmark_toggle: notification created for user=%s related=%s/%s", target_user.pk, kind, obj_id)
+        else:
+            if target_user is None:
+                logger.debug("bookmark_toggle: no target_user resolved for kind=%s id=%s", kind, obj_id)
+            else:
+                logger.debug("bookmark_toggle: resolved target is same as actor; skipping notify user=%s", request.user.pk)
+
+    except Exception as exc:
+        logger.exception("bookmark_toggle: error while creating notification for kind=%s id=%s: %s", kind, obj_id, exc)
+
+    return Response({"ok": True, "bookmarked": True})
 
 # ---- Investor-specific bookmark endpoints (to satisfy urls.py) ----
 class InvestorBookmarkListCreateView(generics.ListCreateAPIView):
@@ -551,7 +680,25 @@ class InvestorBookmarkListCreateView(generics.ListCreateAPIView):
         if exists:
             return Response({"detail": "Already bookmarked", "bookmark_id": exists.bookmark_id}, status=200)
         bm = Bookmark.objects.create(user=request.user, investor_id=iid, resource_id=None, competitor_id=None)
+
+        # notify investor owner (same logic as bookmark_toggle)
+        try:
+            investor = InvestorProfile.objects.filter(investor_id=iid).first()
+            target_user = getattr(investor, "user", None)
+            if target_user and target_user != request.user:
+                Notification.objects.create(
+                    user=target_user,
+                    title=f"{request.user.username} bookmarked you",
+                    message=f"{request.user.username} bookmarked your investor profile.",
+                    type=Notification.NotificationType.INVESTOR_INTEREST,
+                    related_entity_type="investor",
+                    related_entity_id=iid,
+                )
+        except Exception:
+            pass
+
         return Response({"bookmark_id": bm.bookmark_id, "investor_id": iid}, status=201)
+
 
 
 class InvestorBookmarkDeleteView(generics.DestroyAPIView):
@@ -1119,38 +1266,162 @@ def bookmark_ids(request):
     })
 
 
-# views.py
+# Replace your current bookmark_toggle with this implementation
+import logging
+logger = logging.getLogger(__name__)
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([JSONParser])
 def bookmark_toggle(request):
+    """
+    POST /api/bookmarks/toggle/
+    body: { "kind": "resource|competitor|investor|idea", "id": <int> }
+
+    Creates/deletes a Bookmark and — when possible — creates a Notification for
+    the owner of that entity (investor profile or business idea).
+    """
     kind = (request.data.get("kind") or "").strip().lower()
     raw_id = request.data.get("id")
+
     try:
         obj_id = int(raw_id)
     except (TypeError, ValueError):
         return Response({"detail": "Valid id is required."}, status=400)
 
-    # add idea mapping
+    # mapping of bookmark kind -> db field (Bookmark model uses *_id fields)
     field_map = {
-        "resource":   "resource_id",
+        "resource": "resource_id",
         "competitor": "competitor_id",
-        "investor":   "investor_id",
-        "idea":       "idea_id",    # NEW
+        "investor": "investor_id",
+        "idea": "idea_id",
     }
     field = field_map.get(kind)
     if not field:
+        logger.warning("bookmark_toggle: invalid kind: %s", kind)
         return Response({"detail": "Invalid kind."}, status=400)
 
+    # toggle: delete if exists
     qs = Bookmark.objects.filter(user=request.user, **{field: obj_id})
     existing = qs.first()
     if existing:
         existing.delete()
+        logger.info("bookmark_toggle: removed bookmark user=%s %s=%s", request.user.pk, field, obj_id)
         return Response({"ok": True, "bookmarked": False})
 
-    payload = {"user": request.user, "resource_id": None, "competitor_id": None, "investor_id": None, "idea_id": None}
+    # create bookmark (set other *_id to None to avoid duplicate kwargs)
+    payload = {
+        "user": request.user,
+        "resource_id": None,
+        "competitor_id": None,
+        "investor_id": None,
+        "idea_id": None,
+    }
     payload[field] = obj_id
-    Bookmark.objects.create(**payload)
+    bm = Bookmark.objects.create(**payload)
+    logger.info("bookmark_toggle: created bookmark id=%s user=%s %s=%s", getattr(bm, "bookmark_id", None), request.user.pk, field, obj_id)
+
+    # ---------------- Notifications (robust owner resolution) ----------------
+    try:
+        target_user = None
+        note_title = None
+        note_message = None
+        related_type = kind  # default
+
+        # INVESTOR: multiple fallbacks (InvestorProfile, InvestorDetails, auth User)
+        if field == "investor_id":
+            investor = InvestorProfile.objects.filter(investor_id=obj_id).select_related("user").first()
+            if investor:
+                target_user = getattr(investor, "user", None)
+                logger.debug("bookmark_toggle: resolved investor via InvestorProfile %s -> user=%s", obj_id, getattr(target_user, "pk", None))
+
+            if target_user is None:
+                # fallback: other table InvestorDetails (if present)
+                try:
+                    from .models import InvestorDetails as _InvestorDetails
+                    invd = _InvestorDetails.objects.filter(investor_id=obj_id).select_related("user").first()
+                    if invd:
+                        target_user = getattr(invd, "user", None)
+                        logger.debug("bookmark_toggle: resolved investor via InvestorDetails %s -> user=%s", obj_id, getattr(target_user, "pk", None))
+                except Exception:
+                    logger.debug("bookmark_toggle: InvestorDetails lookup failed", exc_info=True)
+
+            # last fallback: maybe frontend sent an auth user id directly
+            if target_user is None:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                u = User.objects.filter(pk=obj_id).first()
+                if u:
+                    target_user = u
+                    logger.debug("bookmark_toggle: fallback resolved user by auth id=%s", obj_id)
+
+            note_title = f"{request.user.username} bookmarked you"
+            note_message = f"{request.user.username} bookmarked your investor profile."
+            related_type = "investor"
+
+        # IDEA: notify the idea's auth user
+        elif field == "idea_id":
+            idea = BusinessIdea.objects.filter(idea_id=obj_id).select_related("user").first()
+            if idea is None:
+                # fallback to pk if DB naming differs
+                idea = BusinessIdea.objects.filter(pk=obj_id).select_related("user").first()
+            if idea:
+                target_user = getattr(idea, "user", None)
+                logger.debug("bookmark_toggle: resolved idea owner idea_id=%s -> user=%s", obj_id, getattr(target_user, "pk", None))
+                idea_title = (getattr(idea, "title", "") or "")[:150]
+                note_title = f"{request.user.username} bookmarked your idea"
+                note_message = f"{request.user.username} bookmarked your business idea: '{idea_title}'."
+                related_type = "idea"
+            else:
+                logger.debug("bookmark_toggle: idea not found idea_id=%s", obj_id)
+
+        # COMPETITOR: no owner by design, but the competitor-ideas UI returns BusinessIdea items.
+        # If competitor record doesn't exist for that id, try to treat the id as an idea id (fallback)
+        elif field == "competitor_id":
+            comp = Competitor.objects.filter(competitor_id=obj_id).first()
+            if comp:
+                # Competitor has no owner in models — so normally no notification
+                logger.debug("bookmark_toggle: competitor bookmarked competitor_id=%s (no owner)", obj_id)
+            else:
+                # Fallback: maybe frontend passed a BusinessIdea id (competitor-ideas page)
+                idea = BusinessIdea.objects.filter(idea_id=obj_id).select_related("user").first()
+                if idea is None:
+                    idea = BusinessIdea.objects.filter(pk=obj_id).select_related("user").first()
+                if idea:
+                    target_user = getattr(idea, "user", None)
+                    idea_title = (getattr(idea, "title", "") or "")[:150]
+                    note_title = f"{request.user.username} bookmarked your idea"
+                    note_message = f"{request.user.username} bookmarked your business idea: '{idea_title}'."
+                    related_type = "idea"
+                    logger.debug("bookmark_toggle: competitor id %s resolved as idea -> notify user %s", obj_id, getattr(target_user, "pk", None))
+                else:
+                    logger.debug("bookmark_toggle: competitor id %s not found as competitor or idea", obj_id)
+
+        # RESOURCE or other: no owner -> skip
+        else:
+            logger.debug("bookmark_toggle: no owner resolution for kind=%s id=%s", kind, obj_id)
+
+        # create notification if we resolved an owner and it's not self
+        if target_user and target_user.pk != request.user.pk:
+            Notification.objects.create(
+                user=target_user,
+                title=note_title or f"{request.user.username} bookmarked you",
+                message=note_message or f"{request.user.username} bookmarked something you own.",
+                type=Notification.NotificationType.INVESTOR_INTEREST,  # reuse existing type or add new one
+                related_entity_type=related_type,
+                related_entity_id=obj_id,
+            )
+            logger.info("bookmark_toggle: notification created for user=%s related=%s/%s", target_user.pk, related_type, obj_id)
+        else:
+            if target_user is None:
+                logger.debug("bookmark_toggle: no target_user resolved for kind=%s id=%s", kind, obj_id)
+            else:
+                logger.debug("bookmark_toggle: target is same as actor; skipping notify user=%s", request.user.pk)
+
+    except Exception as exc:
+        # swallow but log — bookmark should not fail because notification failed
+        logger.exception("bookmark_toggle: error while creating notification for kind=%s id=%s: %s", kind, obj_id, exc)
+
     return Response({"ok": True, "bookmarked": True})
 
 
@@ -1234,4 +1505,6 @@ def admin_user_delete(request, user_id):
         return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
 

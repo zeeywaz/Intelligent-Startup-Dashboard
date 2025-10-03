@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from . import views, investor_views as inv
+
 
 router = DefaultRouter()
 router.register(r"categories", views.CategoryViewSet, basename="category")
@@ -66,5 +67,9 @@ urlpatterns = [
     path("admin/users/", views.admin_user_list, name="admin-user-list"),
     path("admin/users/<int:user_id>/delete/", views.admin_user_delete, name="admin-user-delete"),
 
-
+    path("investor-register/", inv.investor_register,           name="investor-register"),   # JSON fallback
+    path("register/investor/", inv.register_investor_details,   name="register-investor"),   # multipart -> writes investor_details
+    path("register/investor/base/", inv.investor_register, name="investor-base-register"),
+    path("register/investor/details/", inv.register_investor_details, name="register-investor-details"),
+    
 ]

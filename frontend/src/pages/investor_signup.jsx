@@ -1,7 +1,7 @@
+// frontend/src/components/InvestorSignup.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/investor_signup.css";
-import { API_BASE, getCookie } from "../lib/api";
 
 /** Helpers */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -10,34 +10,32 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPT = ".pdf,.png,.jpg,.jpeg";
 
 const PWD_RULES = [
-  { id: "len", test: (s) => s.length >= 8, label: "At least 8 characters" },
-  { id: "up", test: (s) => /[A-Z]/.test(s), label: "One uppercase letter (A–Z)" },
-  { id: "low", test: (s) => /[a-z]/.test(s), label: "One lowercase letter (a–z)" },
-  { id: "dig", test: (s) => /\d/.test(s), label: "One number (0–9)" },
-  {
-    id: "spec",
-    test: (s) => /[~!@#$%^&*()_\-+={}\[\]|\\:;\"'<>,.?/`]/.test(s),
-    label: "One special character",
-  },
-  { id: "space", test: (s) => !/\s/.test(s), label: "No spaces" },
+  { id: "len",  test: (s) => s.length >= 8,             label: "At least 8 characters" },
+  { id: "up",   test: (s) => /[A-Z]/.test(s),           label: "One uppercase letter (A–Z)" },
+  { id: "low",  test: (s) => /[a-z]/.test(s),           label: "One lowercase letter (a–z)" },
+  { id: "dig",  test: (s) => /\d/.test(s),              label: "One number (0–9)" },
+  { id: "spec", test: (s) => /[~!@#$%^&*()_\-+={}\[\]|\\:;\"'<>,.?/`]/.test(s), label: "One special character" },
+  { id: "space",test: (s) => !/\s/.test(s),             label: "No spaces" },
 ];
 
-/* ---------------- formatting helper: Title Case with spaces ----------------
-   Examples:
-     "computer_software" -> "Computer Software"
-     "computer-software" -> "Computer Software"
-     "computer software" -> "Computer Software"
-     "Computer Software" -> "Computer Software"
-*/
-const toTitleCase = (str = "") => {
-  return String(str || "")
-    .replace(/[-_/]+/g, " ")                    // normalize separators to spaces
-    .split(/\s+/)                               // split on whitespace
+const toTitleCase = (str = "") =>
+  String(str || "")
+    .replace(/[-_/]+/g, " ")
+    .split(/\s+/)
     .filter(Boolean)
     .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
     .join(" ")
     .trim();
-};
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+async function ensureCsrf(API_BASE) {
+  // make sure csrftoken cookie exists before POSTs that require it
+  if (getCookie("csrftoken")) return;
+  try { await fetch(`${API_BASE}/api/csrf/`, { credentials: "include" }); } catch {}
+}
 
 function parseError(data) {
   if (!data) return "Unknown error";
@@ -55,7 +53,9 @@ function parseError(data) {
   return String(data);
 }
 
-export default function InvestorSignUpPage() {
+const API_BASE = process.env.REACT_APP_API_BASE || "";
+
+export default function InvestorSignup() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -64,22 +64,24 @@ export default function InvestorSignUpPage() {
     username: "",
     email: "",
     phone: "",
-    companyName: "",
+    company_name: "",
     password: "",
     confirm: "",
     verifyType: "ownership",
     consent: false,
+    role_id: 2,
   });
 
-  // Categories state from second code
-  const [cats, setCats] = useState([]); // [{id, name}]
+  // Categories state
+  const [cats, setCats] = useState([]);
   const [picked, setPicked] = useState(new Set());
-  const [q, setQ] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const pickerRef = useRef(null);
+  const [serverErrors, setServerErrors] = useState(null);
+  const [message, setMessage] = useState(null);
+  const fileInputRef = useRef(null);
 
   const [step, setStep] = useState("fill");
   const [otpCode, setOtpCode] = useState("");
@@ -93,157 +95,142 @@ export default function InvestorSignUpPage() {
         const res = await fetch(`${API_BASE}/api/categories/`, { credentials: "include" });
         const data = await res.json();
         if (!stop && Array.isArray(data)) setCats(data);
-        // Some backends return {results: []}
         if (!stop && data?.results) setCats(data.results);
-      } catch (e) {
-        // fail silently, keep empty list
-      }
+      } catch {}
     })();
-    return () => {
-      stop = true;
-    };
+    return () => { stop = true; };
   }, []);
 
+  // Resend cooldown timer
   useEffect(() => {
     let t;
     if (resendCooldown > 0) t = setInterval(() => setResendCooldown((s) => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, [resendCooldown]);
 
-  const update = (k) => (e) => setForm((s) => ({ ...s, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+  const updateForm = (field) => (e) => {
+    const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (serverErrors) setServerErrors(null);
+  };
 
-  const pwdChecks = useMemo(() => PWD_RULES.map((r) => ({ id: r.id, ok: r.test(form.password), label: r.label })), [form.password]);
+  const pwdChecks = useMemo(
+    () => PWD_RULES.map((r) => ({ id: r.id, ok: r.test(form.password), label: r.label })),
+    [form.password]
+  );
   const pwdOk = pwdChecks.every((c) => c.ok);
 
-  // Categories filtering and selection logic from second code
+  // Categories filtering and selection logic
   const filteredCats = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = searchQuery.trim().toLowerCase();
     if (!needle) return cats;
-    return cats.filter((c) => c.name?.toLowerCase().includes(needle));
-  }, [q, cats]);
+    return cats.filter((c) => (c.name || "").toLowerCase().includes(needle));
+  }, [searchQuery, cats]);
 
   const allVisibleSelected = useMemo(() => {
     if (filteredCats.length === 0) return false;
     return filteredCats.every((c) => picked.has(c.id));
   }, [filteredCats, picked]);
 
-  const togglePick = (id) =>
-    setPicked((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
+  const toggleCategory = (id) => {
+    setPicked((prev) => {
+      const ns = new Set(prev);
+      if (ns.has(id)) ns.delete(id); else ns.add(id);
+      return ns;
     });
-
-  const toggleSelectAllVisible = () =>
-    setPicked((s) => {
-      const n = new Set(s);
-      if (allVisibleSelected) {
-        filteredCats.forEach((c) => n.delete(c.id));
-      } else {
-        filteredCats.forEach((c) => n.add(c.id));
-      }
-      return n;
-    });
-
-  const formatLabel = (name) => {
-    // Always Title Case with spaces (e.g. "Category Name")
-    return toTitleCase(name);
   };
 
+  const toggleSelectAllVisible = () => {
+    setPicked((prev) => {
+      const ns = new Set(prev);
+      if (allVisibleSelected) filteredCats.forEach((c) => ns.delete(c.id));
+      else filteredCats.forEach((c) => ns.add(c.id));
+      return ns;
+    });
+  };
+
+  const formatLabel = (name) => toTitleCase(name);
+
+  // Validation for step 1
   const validFill = useMemo(() => {
     const emailOk = EMAIL_RE.test(form.email.trim());
     const unameOk = form.username.trim().length >= 3;
     const namesOk = form.firstName.trim() && form.lastName.trim();
     const phoneOk = form.phone.trim().length >= 7;
-    const companyOk = form.companyName.trim().length >= 2;
+    const companyOk = form.company_name.trim().length >= 2;
     const matchOk = form.password === form.confirm;
     const docsOk = files.length > 0 && files.length <= MAX_FILES && files.every((f) => f.size <= MAX_BYTES);
-    const categoriesOk = picked.size >= 1; // at least one interest from second code
-    return emailOk && unameOk && !!namesOk && phoneOk && companyOk && pwdOk && matchOk && form.consent && docsOk && categoriesOk;
+    const categoriesOk = picked.size >= 1;
+    return emailOk && unameOk && namesOk && phoneOk && companyOk && pwdOk && matchOk && form.consent && docsOk && categoriesOk;
   }, [form, files, pwdOk, picked]);
 
-  const onPick = (fileList) => {
+  // File handling
+  const handleFilePick = (fileList) => {
     const incoming = Array.from(fileList ?? []).slice(0, MAX_FILES - files.length);
-    const safe = incoming
+    const validFiles = incoming
       .filter((f) => f.size <= MAX_BYTES)
       .filter((f) => ACCEPT.split(",").some((ext) => f.name.toLowerCase().endsWith(ext.trim())))
       .map((f) => ({ file: f, id: `${f.name}-${f.size}-${Math.random().toString(36).slice(2)}`, name: f.name, size: f.size }));
-    setFiles((prev) => [...prev, ...safe].slice(0, MAX_FILES));
+    setFiles((prev) => [...prev, ...validFiles].slice(0, MAX_FILES));
+  };
+  const handleDrop = (e) => { e.preventDefault(); if (loading) return; handleFilePick(e.dataTransfer.files); };
+  const handleRemoveFile = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
+
+  const renderErrors = (errs) => {
+    if (!errs) return null;
+    if (Array.isArray(errs)) return errs.map((m, i) => <div key={i} className="regv-error" style={{ marginBottom: 4 }}>{m}</div>);
+    return Object.entries(errs).flatMap(([k, v]) => {
+      const items = Array.isArray(v) ? v : [v];
+      return items.map((msg, i) => (
+        <div key={`${k}-${i}`} className="regv-error" style={{ marginBottom: 4 }}>
+          {k === "non_field_errors" ? msg : `${k}: ${msg}`}
+        </div>
+      ));
+    });
   };
 
-  const onDrop = (e) => { e.preventDefault(); if (loading) return; onPick(e.dataTransfer.files); };
-  const onRemove = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
-
-  // Request OTP - Use the correct endpoint
-  const sendRequestOtp = async () => {
-    setErr("");
-    if (!EMAIL_RE.test(form.email.trim())) { 
-      setErr("Enter a valid email."); 
-      return false; 
-    }
-    
+  // Request OTP
+  const sendOtpRequest = async () => {
+    setServerErrors(null); setMessage(null);
+    if (!EMAIL_RE.test(form.email.trim())) { setServerErrors({ non_field_errors: ["Enter a valid email."] }); return false; }
     try {
       setLoading(true);
+      await ensureCsrf(API_BASE);
+      const csrftoken = getCookie("csrftoken");
+      const headers = { "Content-Type": "application/json", ...(csrftoken && { "X-CSRFToken": csrftoken }) };
       const res = await fetch(`${API_BASE}/api/register/request-otp/`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "X-CSRFToken": getCookie("csrftoken") 
-        },
-        body: JSON.stringify({ 
-          email: form.email.trim(), 
-          username: form.username.trim(),
-          investor: true 
-        }),
+        method: "POST", headers, body: JSON.stringify({ email: form.email.trim(), username: form.username.trim(), investor: true }),
         credentials: "include",
       });
-      
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(parseError(data));
-      
+      setMessage(data?.message || "OTP sent successfully");
       setResendCooldown(60);
       setStep("otp");
       return true;
-    } catch (e) {
-      setErr(e.message || "Failed to send OTP");
+    } catch (err) {
+      setServerErrors({ non_field_errors: [err.message || "Failed to send OTP"] });
       return false;
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const handleRequestOtp = async (e) => { 
-    e?.preventDefault(); 
-    setErr(""); 
-    if (!validFill || loading) return; 
-    await sendRequestOtp(); 
-  };
+  const handleOtpRequest = async (e) => { e?.preventDefault(); if (!validFill || loading) return; await sendOtpRequest(); };
+  const handleResendOtp = async () => { if (resendCooldown > 0) return; await sendOtpRequest(); };
 
-  const handleResend = async () => { 
-    setErr(""); 
-    if (resendCooldown > 0) return; 
-    await sendRequestOtp(); 
-  };
-
-  // Finish registration - Use the correct verify endpoint and then investor endpoint
-  const finishRegistration = async () => {
-    setErr("");
-    if (!otpCode.trim()) { 
-      setErr("Please enter the OTP code."); 
-      return; 
-    }
+  // Complete registration using the role_id approach
+  const completeRegistration = async () => {
+    setServerErrors(null); setMessage(null);
+    if (!otpCode.trim()) { setServerErrors({ non_field_errors: ["Please enter the OTP code."] }); return; }
 
     try {
       setLoading(true);
+      await ensureCsrf(API_BASE);
+      const csrftoken = getCookie("csrftoken");
 
-      // Step 1: Verify OTP and create user account
+      // Step 1: Verify OTP and create user account with role_id
       const verifyRes = await fetch(`${API_BASE}/api/register/verify-otp/`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "X-CSRFToken": getCookie("csrftoken") 
-        },
+        headers: { "Content-Type": "application/json", ...(csrftoken && { "X-CSRFToken": csrftoken }) },
         credentials: "include",
         body: JSON.stringify({
           email: form.email.trim(),
@@ -252,69 +239,97 @@ export default function InvestorSignUpPage() {
           username: form.username.trim(),
           first_name: form.firstName.trim(),
           last_name: form.lastName.trim(),
+          role_id: 2, // Investor role ID
         }),
       });
+      const verifyData = await verifyRes.json().catch(() => ({}));
+      if (!verifyRes.ok) throw new Error(parseError(verifyData) || "OTP verification failed");
 
-      const verifyJson = await verifyRes.json().catch(() => ({}));
-      if (!verifyRes.ok) {
-        throw new Error(parseError(verifyJson) || "OTP verification failed");
-      }
+      // Step 2: Auto-login to establish session
+      try {
+        const loginRes = await fetch(`${API_BASE}/api/login/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(csrftoken && { "X-CSRFToken": csrftoken }) },
+          credentials: "include",
+          body: JSON.stringify({ email: form.email.trim(), password: form.password }),
+        });
+        if (!loginRes.ok) console.warn("Auto-login failed, continuing with investor registration");
+      } catch (loginErr) { console.warn("Login attempt failed:", loginErr); }
 
-      // Step 2: Login to get session
-      const loginRes = await fetch(`${API_BASE}/api/login/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          email: form.email.trim(),
-          password: form.password,
-        }),
-      });
-
-      const loginJson = await loginRes.json().catch(() => ({}));
-      if (!loginRes.ok) {
-        console.warn("Auto-login failed, but continuing with investor registration");
-        // Don't throw error here, continue to investor registration
-      }
-
-      // Step 3: Submit investor-specific data and files INCLUDING CATEGORIES
+      // Step 3: Ensure CSRF again then submit investor-specific data and files using FormData
+      await ensureCsrf(API_BASE);
+      const freshToken = getCookie("csrftoken");
       const investorData = new FormData();
       investorData.append("phone", form.phone.trim());
-      investorData.append("company_name", form.companyName.trim());
+      investorData.append("company_name", form.company_name.trim());
       investorData.append("verifyType", form.verifyType);
-      
-      // Append categories from second code
-      Array.from(picked).forEach((id) => investorData.append("categoryIds[]", String(id)));
-      
-      // Append files
+      Array.from(picked).forEach((id) => investorData.append("categories", id));
       files.forEach((f) => investorData.append("docs", f.file, f.name));
 
-      const invRes = await fetch(`${API_BASE}/api/register/investor/`, {
+      const investorRes = await fetch(`${API_BASE}/api/register/investor/details/`, {
         method: "POST",
         credentials: "include",
-        headers: { "X-CSRFToken": getCookie("csrftoken") },
+        headers: { ...(freshToken && { "X-CSRFToken": freshToken }) },
         body: investorData,
       });
 
-      const invJson = await invRes.json().catch(() => ({}));
-      if (!invRes.ok) {
-        // If investor registration fails but user was created, still consider it success
-        console.warn("Investor profile creation failed, but user account was created:", parseError(invJson));
-        // Don't throw error, redirect to dashboard anyway
+      // Try to read JSON; handle 403 HTML response safely
+      let investorResult = {};
+      try { investorResult = await investorRes.json(); } catch {}
+
+      if (!investorRes.ok) {
+        const msg = parseError(investorResult) || `Investor step failed (${investorRes.status})`;
+        throw new Error(msg);
       }
 
-      // Success - redirect to investor dashboard
-      navigate("/investordashboard", { replace: true });
-      
-    } catch (e) {
-      console.error("Registration error:", e);
-      setErr(e.message || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
+      setMessage("Registration completed successfully! Redirecting...");
+      setTimeout(() => { navigate("/investordashboard", { replace: true }); }, 1200);
+
+    } catch (err) {
+      console.error("Registration error:", err);
+      setServerErrors({ non_field_errors: [err.message || "Registration failed. Please try again."] });
+    } finally { setLoading(false); }
+  };
+
+  const handleReset = () => {
+    setForm({
+      firstName: "", lastName: "", username: "", email: "", phone: "",
+      company_name: "", password: "", confirm: "", verifyType: "ownership", consent: false, role_id: 2,
+    });
+    setFiles([]); setPicked(new Set()); setSearchQuery("");
+    setServerErrors(null); setMessage(null); setStep("fill"); setOtpCode("");
+  };
+
+  // Simple form submission (alternative without OTP)
+  const handleSimpleSubmit = async (e) => {
+    e.preventDefault();
+    setServerErrors(null); setMessage(null);
+    if (!form.username.trim() || !form.email.trim() || !form.password) {
+      setServerErrors({ non_field_errors: ["Username, email and password are required."] });
+      return;
     }
+    setLoading(true);
+    try {
+      await ensureCsrf(API_BASE);
+      const csrftoken = getCookie("csrftoken");
+      const headers = { "Content-Type": "application/json", ...(csrftoken && { "X-CSRFToken": csrftoken }) };
+      const simpleFormData = {
+        firstName: form.firstName, lastName: form.lastName, username: form.username,
+        email: form.email, password: form.password, company_name: form.company_name,
+        phone: form.phone, role_id: 2,
+      };
+      const res = await fetch(`${API_BASE}/api/investor-register/`, {
+        method: "POST", headers, credentials: "include", body: JSON.stringify(simpleFormData),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(parseError(data));
+      setMessage(data?.message || "Registered successfully");
+      setServerErrors(null);
+      const next = data.next || "/investordashboard";
+      setTimeout(() => { window.location.href = next; }, 400);
+    } catch (err) {
+      setServerErrors({ non_field_errors: [err.message || "Registration failed"] });
+    } finally { setLoading(false); }
   };
 
   return (
@@ -324,143 +339,143 @@ export default function InvestorSignUpPage() {
       </Link>
 
       <main id="main" className="regv-main" role="main">
-        <section className="regv-card" aria-label="Create account with verification">
+        <section className="regv-card" aria-label="Create investor account with verification">
           <header className="regv-head">
-            <h1 className="regv-title">Get started now!</h1>
-            <p className="regv-subtitle">Create your account, choose interests, and add a verification document.</p>
+            <h1 className="regv-title">Get started as an Investor!</h1>
+            <p className="regv-subtitle">Create your account, choose investment interests, and add verification documents.</p>
           </header>
 
-          {err && <p className="regv-error" role="alert">{err}</p>}
+          {message && <div className="regv-message" role="alert">{message}</div>}
+          {serverErrors && <div className="regv-errors">{renderErrors(serverErrors)}</div>}
 
           {step === "fill" && (
-            <form className="regv-form" onSubmit={handleRequestOtp} noValidate>
+            <form className="regv-form" onSubmit={handleOtpRequest} noValidate>
               <div className="regv-grid">
                 <div className="regv-field">
-                  <input id="fn" className="regv-input" placeholder="First Name" value={form.firstName} onChange={update("firstName")} required />
+                  <input id="firstName" name="firstName" className="regv-input" placeholder="First Name *"
+                    value={form.firstName} onChange={updateForm("firstName")} required autoComplete="given-name" />
                 </div>
                 <div className="regv-field">
-                  <input id="ln" className="regv-input" placeholder="Last Name" value={form.lastName} onChange={update("lastName")} required />
+                  <input id="lastName" name="lastName" className="regv-input" placeholder="Last Name *"
+                    value={form.lastName} onChange={updateForm("lastName")} required autoComplete="family-name" />
                 </div>
                 <div className="regv-field">
-                  <input id="un" className="regv-input" placeholder="Username" minLength={3} value={form.username} onChange={update("username")} required autoComplete="username" />
+                  <input id="username" name="username" className="regv-input" placeholder="Username *" minLength={3}
+                    value={form.username} onChange={updateForm("username")} required autoComplete="username" />
                 </div>
                 <div className="regv-field">
-                  <input id="em" type="email" inputMode="email" autoComplete="email" className="regv-input" placeholder="Email" value={form.email} onChange={update("email")} required />
+                  <input id="email" name="email" type="email" inputMode="email" autoComplete="email" className="regv-input" placeholder="Email *"
+                    value={form.email} onChange={updateForm("email")} required />
                 </div>
                 <div className="regv-field">
-                  <input id="ph" type="tel" inputMode="tel" className="regv-input" placeholder="Phone Number" value={form.phone} onChange={update("phone")} required />
+                  <input id="phone" name="phone" type="tel" inputMode="tel" className="regv-input" placeholder="Phone Number *"
+                    value={form.phone} onChange={updateForm("phone")} required autoComplete="tel" />
                 </div>
                 <div className="regv-field">
-                  <input id="cn" className="regv-input" placeholder="Company Name" value={form.companyName} onChange={update("companyName")} required />
+                  <input id="company_name" name="company_name" className="regv-input" placeholder="Company Name *"
+                    value={form.company_name} onChange={updateForm("company_name")} required autoComplete="organization" />
                 </div>
                 <div className="regv-field">
-                  <input id="pw" type="password" autoComplete="new-password" className="regv-input" placeholder="Password" value={form.password} onChange={update("password")} required />
+                  <input id="password" name="password" type="password" autoComplete="new-password" className="regv-input" placeholder="Password *"
+                    value={form.password} onChange={updateForm("password")} required />
                 </div>
                 <div className="regv-field">
-                  <input id="cp" type="password" autoComplete="new-password" className="regv-input" placeholder="Confirm password" value={form.confirm} onChange={update("confirm")} required />
+                  <input id="confirm" name="confirm" type="password" autoComplete="new-password" className="regv-input" placeholder="Confirm Password *"
+                    value={form.confirm} onChange={updateForm("confirm")} required />
                 </div>
               </div>
 
-              <ul aria-live="polite" style={{ margin: "6px 0 0", paddingLeft: "18px", fontSize: ".9rem" }}>
+              {/* Password requirements */}
+              <ul aria-live="polite" className="regv-pwd-rules">
                 {pwdChecks.map((c) => (
-                  <li key={c.id} style={{ color: c.ok ? "green" : "#b91c1c" }}>
+                  <li key={c.id} className={c.ok ? "regv-pwd-valid" : "regv-pwd-invalid"}>
                     {c.ok ? "✓" : "•"} {c.label}
                   </li>
                 ))}
-                <li style={{ color: form.password && form.confirm && form.password === form.confirm ? "green" : "#b91c1c" }}>
+                <li className={form.password && form.confirm && form.password === form.confirm ? "regv-pwd-valid" : "regv-pwd-invalid"}>
                   {form.password && form.confirm && form.password === form.confirm ? "✓" : "•"} Passwords match
                 </li>
               </ul>
 
-              {/* Categories section from second code */}
-              <div className="isg-step">
-                <div className="isg-step__head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              {/* Categories section */}
+              <div className="regv-section">
+                <div className="regv-section-header">
                   <div>
-                    <p className="isg-subtitle" style={{ margin: 0 }}>Choose your investment interests</p>
-                    <p className="isg-sub" style={{ margin: 0, fontSize: ".85rem", color: "#6b7280" }}>Pick at least one category.</p>
+                    <p className="regv-section-title">Choose your investment interests</p>
+                    <p className="regv-section-subtitle">Pick at least one category.</p>
                   </div>
                 </div>
 
-                <div className="isg-searchrow">
-                  <input
-                    className="isg-search"
-                    placeholder="Search categories…"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                  />
+                <div className="regv-search-row">
+                  <input className="regv-search" placeholder="Search categories…" value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
 
-                <div className="isg-actions">
-                  <button type="button" className="isg-selectall" onClick={toggleSelectAllVisible}>
+                <div className="regv-cat-actions">
+                  <button type="button" className="regv-select-all" onClick={toggleSelectAllVisible}>
                     {allVisibleSelected ? "Unselect visible" : "Select all visible"}
                   </button>
-                  <span className="isg-pickedcount">{picked.size} selected</span>
+                  <span className="regv-selected-count">{picked.size} selected</span>
                 </div>
 
-                <div className="isg-grid isg-grid--cards">
-                  {filteredCats.map((c) => {
-                    const on = picked.has(c.id);
+                <div className="regv-cat-grid">
+                  {filteredCats.map((cat) => {
+                    const isSelected = picked.has(cat.id);
                     return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className={`isg-card ${on ? "is-on" : ""}`}
-                        onClick={() => togglePick(c.id)}
-                        aria-pressed={on}
-                      >
-                        <span className={`isg-dot ${on ? "is-on" : ""}`} />
-                        <span className="isg-label">{formatLabel(c.name)}</span>
+                      <button key={cat.id} type="button"
+                        className={`regv-cat-card ${isSelected ? "regv-cat-selected" : ""}`}
+                        onClick={() => toggleCategory(cat.id)} aria-pressed={isSelected}>
+                        <span className={`regv-cat-dot ${isSelected ? "regv-cat-dot-selected" : ""}`} />
+                        <span className="regv-cat-label">{formatLabel(cat.name)}</span>
                       </button>
                     );
                   })}
-                  {filteredCats.length === 0 && (
-                    <div className="isg-empty">No categories match "{q}".</div>
-                  )}
+                  {filteredCats.length === 0 && <div className="regv-no-cats">No categories match "{searchQuery}".</div>}
                 </div>
               </div>
 
-              <fieldset className="regv-verify">
-                <legend className="regv-verify__title">Verification Type</legend>
+              {/* Verification type */}
+              <fieldset className="regv-verify-type">
+                <legend className="regv-verify-legend">Verification Type</legend>
                 <label className="regv-radio">
-                  <input type="radio" name="verifyType" value="ownership" checked={form.verifyType === "ownership"} onChange={update("verifyType")} />
+                  <input type="radio" name="verifyType" value="ownership" checked={form.verifyType === "ownership"} onChange={updateForm("verifyType")} />
                   <span>Company ownership (e.g., registration certificate)</span>
                 </label>
                 <label className="regv-radio">
-                  <input type="radio" name="verifyType" value="financial" checked={form.verifyType === "financial"} onChange={update("verifyType")} />
+                  <input type="radio" name="verifyType" value="financial" checked={form.verifyType === "financial"} onChange={updateForm("verifyType")} />
                   <span>Financial proof (e.g., recent bank slip)</span>
                 </label>
               </fieldset>
 
+              {/* File upload */}
               <div className="regv-upload">
-                <div 
-                  className="regv-drop" 
-                  onDragOver={(e) => e.preventDefault()} 
-                  onDrop={onDrop} 
-                  role="button" 
-                  tabIndex={0} 
-                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && pickerRef.current?.click()} 
-                  aria-label="Upload verification documents"
-                >
-                  <p className="regv-drop__title">Upload verification document(s)</p>
-                  <p className="regv-drop__hint">
+                <div className="regv-drop-zone"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); if (!loading) handleFilePick(e.dataTransfer.files); }}
+                  role="button" tabIndex={0}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && fileInputRef.current?.click()}
+                  aria-label="Upload verification documents">
+                  <p className="regv-drop-title">Upload verification document(s)</p>
+                  <p className="regv-drop-hint">
                     Drag & drop or{" "}
-                    <button type="button" className="regv-link" onClick={() => pickerRef.current?.click()}>
+                    <button type="button" className="regv-link" onClick={() => fileInputRef.current?.click()}>
                       browse
                     </button>{" "}
                     (PDF/JPG/PNG, max {MAX_FILES} files, ≤ 10MB each)
                   </p>
-                  <input ref={pickerRef} type="file" accept={ACCEPT} multiple className="sr-only" onChange={(e) => onPick(e.target.files)} />
+                  <input ref={fileInputRef} type="file" accept={ACCEPT} multiple className="regv-file-input"
+                    onChange={(e) => handleFilePick(e.target.files)} />
                 </div>
 
                 {files.length > 0 && (
-                  <ul className="regv-files" role="list">
+                  <ul className="regv-file-list" role="list">
                     {files.map((f) => (
-                      <li key={f.id} className="regv-file">
-                        <div className="regv-file__meta">
-                          <span className="regv-file__name">{f.name}</span>
-                          <span className="regv-file__size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                      <li key={f.id} className="regv-file-item">
+                        <div className="regv-file-info">
+                          <span className="regv-file-name">{f.name}</span>
+                          <span className="regv-file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
-                        <button type="button" className="regv-file__remove" onClick={() => onRemove(f.id)} aria-label={`Remove ${f.name}`}>
+                        <button type="button" className="regv-file-remove" onClick={() => handleRemoveFile(f.id)} aria-label={`Remove ${f.name}`}>
                           Remove
                         </button>
                       </li>
@@ -469,50 +484,54 @@ export default function InvestorSignUpPage() {
                 )}
               </div>
 
+              {/* Consent */}
               <label className="regv-consent">
-                <input type="checkbox" checked={form.consent} onChange={update("consent")} />
+                <input type="checkbox" checked={form.consent} onChange={updateForm("consent")} required />
                 <span>I confirm these documents are mine and I consent to secure processing for verification.</span>
               </label>
 
-              <button type="submit" className="regv-btn" disabled={!validFill || loading}>
-                {loading ? "Sending OTP..." : "Register & Send OTP"}
-              </button>
+              <div className="regv-actions">
+                <button type="submit" className="regv-btn-primary" disabled={!validFill || loading}>
+                  {loading ? "Sending OTP..." : "Register & Send OTP"}
+                </button>
+                <button type="button" className="regv-btn-secondary" onClick={handleReset} disabled={loading}>
+                  Reset Form
+                </button>
+              </div>
+
+              {/* Hidden role_id field */}
+              <input type="hidden" name="role_id" value={2} />
             </form>
           )}
 
           {step === "otp" && (
             <div className="regv-form">
-              <p style={{ textAlign: "center" }}>
+              <p className="regv-otp-instruction">
                 An OTP was sent to <strong>{form.email}</strong>
               </p>
 
-              <input 
-                type="text" 
-                placeholder="Enter 6-digit code" 
-                value={otpCode} 
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} 
-                className="regv-input" 
-                maxLength={6} 
-              />
+              <input type="text" placeholder="Enter 6-digit code" value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="regv-input" maxLength={6} autoFocus />
 
-              <button className="regv-btn" onClick={finishRegistration} disabled={loading || otpCode.length !== 6}>
-                {loading ? "Finalizing..." : "Confirm OTP & Register"}
+              <button className="regv-btn-primary" onClick={completeRegistration} disabled={loading || otpCode.length !== 6}>
+                {loading ? "Finalizing Registration..." : "Confirm OTP & Complete Registration"}
               </button>
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
-                <button className="regv-btn regv-btn--secondary" onClick={() => { setStep("fill"); setErr(""); }}>
-                  Edit details
+              <div className="regv-otp-actions">
+                <button className="regv-btn-secondary" onClick={() => { setStep("fill"); setServerErrors(null); }} disabled={loading}>
+                  Edit Details
                 </button>
-                <button className="regv-btn regv-btn--secondary" onClick={handleResend} disabled={resendCooldown > 0}>
+                <button className="regv-btn-secondary" onClick={handleResendOtp} disabled={resendCooldown > 0 || loading}>
                   {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
                 </button>
               </div>
             </div>
           )}
 
-          <div className="regv-meta">
+          <div className="regv-footer">
             <p>Already a user? <Link to="/login" className="regv-link">Log in here</Link></p>
-            <p className="regv-fine">Password must meet the rules above.</p>
+            <p className="regv-terms">By registering, you agree to our Terms of Service and Privacy Policy.</p>
           </div>
         </section>
       </main>

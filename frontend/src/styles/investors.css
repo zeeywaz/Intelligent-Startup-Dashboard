@@ -266,3 +266,27 @@
   border:1px dashed var(--border);
   border-radius:14px; padding:18px;
 }
+
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 18, 25, 0.45);
+  z-index: 9999;
+}
+.confirm-box {
+  background: #fff;
+  padding: 18px;
+  border-radius: 8px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+}
+.confirm-message { font-size: 15px; color: #111; }
+.confirm-actions { margin-top: 12px; }
+.confirm-btn { padding: 8px 12px; border-radius: 8px; }
+.confirm-btn.confirm { background: #1f6feb; color: white; border: none; }
+.confirm-btn.cancel { background: transparent; border: 1px solid #ddd; }

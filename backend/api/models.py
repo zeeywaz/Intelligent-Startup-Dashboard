@@ -10,20 +10,26 @@ from django.db.models import Q
 # --- Investor verification ---
 
 class InvestorProfile(models.Model):
-    id = models.BigAutoField(primary_key=True)
+    investor_id = models.BigAutoField(primary_key=True)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         db_column="user_id",
-        related_name="investor_profile",
+        related_name="investor_profile"
     )
-    company = models.CharField(max_length=120, default="", blank=True)
+    investor_name = models.CharField(max_length=150, default="", blank=True)
+    company_name = models.CharField(max_length=150, default="", blank=True)
+    credit_score = models.IntegerField(default=0)
+    verification_status = models.CharField(
+        max_length=20,
+        choices=[("approved", "Approved"), ("pending", "Pending"), ("rejected", "Rejected")],
+        default="pending",
+    )
+    email_address = models.EmailField(default="", blank=True)
     phone = models.CharField(max_length=40, default="", blank=True)
-    role = models.CharField(max_length=80, default="", blank=True)
-    verify_type = models.CharField(max_length=40, default="", blank=True)
 
     class Meta:
-        db_table = "api_investorprofile"
+        db_table = "investor_details"
         managed = False
 
 
@@ -147,18 +153,43 @@ class BusinessIdea(models.Model):
 
 class InvestorDetails(models.Model):
     investor_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column="auth_user_id")
     investor_name = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255, blank=True, null=True)
     credit_score = models.IntegerField(blank=True, null=True)
     verification_status = models.CharField(max_length=64, default="pending")
     email_address = models.CharField(max_length=255, unique=True)
     phone = models.CharField(max_length=40)
+    user = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.CASCADE,
+    db_column="user_id",    # map to the NOT NULL user_id column in the DB
+    related_name="investor_details",
+)
 
     class Meta:
         db_table = "investor_details"
         managed = False
 
+
+class InvestorInterest(models.Model):
+    investor = models.ForeignKey(
+        "InvestorDetails",
+        on_delete=models.CASCADE,
+        db_column="investor_id"
+    )
+    category = models.ForeignKey(
+        "BusinessCategory",
+        on_delete=models.CASCADE,
+        db_column="category_id"
+    )
+
+    class Meta:
+        db_table = "investor_interest"
+        managed = False  # we’re mapping an existing table
+        unique_together = (("investor", "category"),)  # 👈 this tells Django it's a composite key
+
+    def _str_(self):
+        return f"Investor {self.investor_id} -> Category {self.category_id}"
 
 class InvestorInterest(models.Model):
     id = models.AutoField(primary_key=True)
@@ -213,54 +244,40 @@ class EmailOTP(models.Model):
     
 # models.py  (Bookmark)
 class Bookmark(models.Model):
-    bookmark_id = models.BigAutoField(primary_key=True, db_column="bookmark_id")
+    bookmark_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        db_column="user_id",
-        related_name="bookmarks",
+        related_name="bookmarks"
     )
-    resource_id   = models.BigIntegerField(null=True, blank=True)
-    competitor_id = models.BigIntegerField(null=True, blank=True)
-    investor_id   = models.BigIntegerField(null=True, blank=True)
 
-    # NEW
-    idea_id       = models.IntegerField(null=True, blank=True)
-
-    created_date = models.DateTimeField(default=timezone.now, db_column="created_date")
+    # existing FKs
+    investor = models.ForeignKey("InvestorProfile",null=True, blank=True,on_delete=models.CASCADE,related_name="investor_bookmarks")
+    resource = models.ForeignKey("Resource",on_delete=models.CASCADE,null=True, blank=True)
+    competitor = models.ForeignKey("Competitor",on_delete=models.CASCADE,null=True, blank=True,related_name="competitor_bookmarks")
+    idea = models.ForeignKey("BusinessIdea",on_delete=models.CASCADE,null=True, blank=True,related_name="idea_bookmarks")
+    created_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        unique_together = (
+            ("user", "investor"),
+            ("user", "resource"),
+            ("user", "competitor"),
+            ("user", "idea"),
+        )
         db_table = "bookmark"
-        indexes = [
-            models.Index(fields=["user", "resource_id"]),
-            models.Index(fields=["user", "competitor_id"]),
-            models.Index(fields=["user", "investor_id"]),
-            # NEW
-            models.Index(fields=["user", "idea_id"]),
-        ]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "resource_id"],
-                condition=Q(resource_id__isnull=False),
-                name="uniq_user_resource_bookmark",
-            ),
-            models.UniqueConstraint(
-                fields=["user", "competitor_id"],
-                condition=Q(competitor_id__isnull=False),
-                name="uniq_user_competitor_bookmark",
-            ),
-            models.UniqueConstraint(
-                fields=["user", "investor_id"],
-                condition=Q(investor_id__isnull=False),
-                name="uniq_user_investor_bookmark",
-            ),
-            # NEW: one bookmark per (user, idea_id)
-            models.UniqueConstraint(
-                fields=["user", "idea_id"],
-                condition=Q(idea_id__isnull=False),
-                name="uniq_user_idea_bookmark",
-            ),
-        ]
+
+    def __str__(self):
+        parts = []
+        if self.investor:
+            parts.append(f"investor {getattr(self.investor,'investor_name',self.investor)}")
+        if self.resource:
+            parts.append(f"resource {getattr(self.resource,'name',self.resource)}")
+        if self.competitor:
+            parts.append(f"competitor {getattr(self.competitor,'name',self.competitor)}")
+        if self.idea:
+            parts.append(f"idea {getattr(self.idea,'title',self.idea)}")
+        return f"Bookmark {self.bookmark_id} — user {self.user.username}, " + ", ".join(parts)
 
 
 class Notification(models.Model):

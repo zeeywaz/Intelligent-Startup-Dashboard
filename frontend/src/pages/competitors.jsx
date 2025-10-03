@@ -56,6 +56,37 @@ async function getJSON(url) {
   return res.json();
 }
 
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    for (const c of document.cookie.split(";")) {
+      const cookie = c.trim();
+      if (cookie.startsWith(name + "=")) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+/* ------------------ Confirm modal (Promise-based) ------------------ */
+function ConfirmModal({ state, onClose }) {
+  if (!state) return null;
+  const { message } = state;
+  return (
+    <div className="confirm-overlay" role="dialog" aria-modal="true" aria-label="Confirm dialog">
+      <div className="confirm-box" role="document">
+        <div className="confirm-message">{message}</div>
+        <div className="confirm-actions" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+          <button onClick={() => onClose(false)} className="confirm-btn cancel">Cancel</button>
+          <button onClick={() => onClose(true)} className="confirm-btn confirm">Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- UI bits ---------- */
 function StrengthBadge({ strength }) {
   const s = String(strength || "").toLowerCase();
@@ -64,10 +95,11 @@ function StrengthBadge({ strength }) {
   return <span className={`cmp-strength ${cls}`}>{label}</span>;
 }
 
-function CompetitorCard({ item, bookmarked, onBookmark }) {
+function CompetitorCard({ item, bookmarked, onBookmark, isSuper, onEdit, onDelete }) {
   const cat = item?.category?.name || item?.category_name || "Uncategorized";
   const site =
     item.website && /^https?:\/\//i.test(item.website) ? item.website : item.website ? `https://${item.website}` : null;
+  const id = item?.competitor_id ?? item?.id ?? item?.pk;
 
   return (
     <article className="cmp-card" role="listitem">
@@ -101,6 +133,13 @@ function CompetitorCard({ item, bookmarked, onBookmark }) {
         <a className="cmp-btn cmp-btn--primary" href={site} target="_blank" rel="noreferrer">
           Visit website
         </a>
+      )}
+
+      {isSuper && (
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button className="cmp-btn" onClick={() => onEdit(id)}>Edit</button>
+          <button className="cmp-btn" onClick={() => onDelete(id)}>Delete</button>
+        </div>
       )}
     </article>
   );
@@ -158,6 +197,9 @@ export default function CompetitorsPage() {
   const dq = useDebounced(q, 350);
   const [onlyBookmarks, setOnlyBookmarks] = useState(false);
 
+  // admin flag
+  const [isSuper, setIsSuper] = useState(false);
+
   // Server bookmarks, per kind
   const ideaBms = useServerBookmarks("idea");
   const cmpBms  = useServerBookmarks("competitor");
@@ -178,7 +220,6 @@ export default function CompetitorsPage() {
     return row?.competitor_id ?? row?.id ?? row?.pk;
   }
 
-  // category helpers for sorting
   const catNameOf = (row) => {
     if (mode === "ideas") return String(row?.category_name || "").trim();
     return String(row?.category?.name || row?.category_name || "").trim();
@@ -212,7 +253,6 @@ export default function CompetitorsPage() {
     setStatus("ready");
   }
 
-  // load on search/mode change
   useEffect(() => {
     let cancel = false;
     (async () => {
@@ -231,6 +271,23 @@ export default function CompetitorsPage() {
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dq, mode]);
+
+  // fetch current user once to learn is_superuser
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/me/`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        if (!mounted) return;
+        setIsSuper(Boolean(data?.user?.is_superuser || data?.is_superuser));
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // infinite scroll
   const loaderRef = useRef(null);
@@ -257,14 +314,12 @@ export default function CompetitorsPage() {
   const filteredRows = useMemo(() => {
     const base = onlyBookmarks ? rows.filter((r) => isBookmarked(getRowId(r))) : rows;
 
-    // decorate to keep original order among same group (stable-ish)
     const decorated = base.map((r, i) => ({
       r,
       i,
       uncat: isUncategorized(catNameOf(r)),
     }));
 
-    // sort: non-uncat first, then uncat; keep original order within groups
     decorated.sort((a, b) => (a.uncat - b.uncat) || (a.i - b.i));
 
     return decorated.map((x) => x.r);
@@ -276,6 +331,67 @@ export default function CompetitorsPage() {
       : "Browse competing companies. Scroll to load more."),
     [dq, mode]
   );
+
+  // Confirm modal state
+  const [confirmState, setConfirmState] = useState(null);
+  const showConfirm = (message) =>
+    new Promise((resolve) => setConfirmState({ message, resolve }));
+  const handleConfirmClose = (result) => {
+    if (confirmState && typeof confirmState.resolve === "function") {
+      confirmState.resolve(Boolean(result));
+    }
+    setConfirmState(null);
+  };
+
+  // ---------------- admin handlers ----------------
+  async function handleDeleteCompetitor(id) {
+    const ok = await showConfirm("Delete this competitor permanently?");
+    if (!ok) return;
+    try {
+      const res = await fetch(`${API}/${"competitors"}/${id}/`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (!(res.ok || res.status === 204)) {
+        const j = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(j.detail || `Failed (${res.status})`);
+      }
+      setRows((prev) => prev.filter((r) => {
+        const rid = r?.competitor_id ?? r?.id ?? r?.pk;
+        return rid !== id;
+      }));
+    } catch (err) {
+      alert("Delete failed: " + (err.message || "unknown"));
+    }
+  }
+
+  async function handleEditCompetitor(id) {
+    const newName = window.prompt ? window.prompt("New competitor name (leave empty to cancel):") : "";
+    if (newName == null || String(newName).trim() === "") return;
+    try {
+      const res = await fetch(`${API}/${"competitors"}/${id}/`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(j.detail || `Failed (${res.status})`);
+      }
+      const updated = await res.json();
+      setRows((prev) => prev.map((r) => {
+        const rid = r?.competitor_id ?? r?.id ?? r?.pk;
+        return rid === id ? { ...r, ...updated } : r;
+      }));
+    } catch (err) {
+      alert("Edit failed: " + (err.message || "unknown"));
+    }
+  }
 
   return (
     <div className="cmp-app">
@@ -315,7 +431,6 @@ export default function CompetitorsPage() {
                   </svg>
                 </button>
               )}
-              {/* Bookmarks filter toggle */}
               <button
                 type="button"
                 className={`cmp-bookmarks-link ${onlyBookmarks ? "is-on" : ""}`}
@@ -327,7 +442,6 @@ export default function CompetitorsPage() {
             </div>
           </div>
 
-          {/* Mode tabs */}
           <div className="cmp-mode-tabs" role="tablist" aria-label="Competitor modes">
             <button
               role="tab"
@@ -349,12 +463,10 @@ export default function CompetitorsPage() {
             </button>
           </div>
 
-          {/* Errors */}
           {status === "error" && filteredRows.length === 0 && (
             <div className="state error">Error: {errMsg}</div>
           )}
 
-          {/* Grid */}
           <div className="cmp-grid" role="list">
             {filteredRows.map((row) => {
               const rid = getRowId(row);
@@ -371,15 +483,16 @@ export default function CompetitorsPage() {
                   item={row}
                   bookmarked={isBookmarked(rid)}
                   onBookmark={() => toggleBookmark(rid).catch(() => {})}
+                  isSuper={isSuper}
+                  onEdit={handleEditCompetitor}
+                  onDelete={handleDeleteCompetitor}
                 />
               );
             })}
           </div>
 
-          {/* Infinite-scroll sentinel */}
           <div ref={loaderRef} style={{ height: 1 }} />
 
-          {/* Footer state line */}
           <div className="state">
             {status === "loading" && <span>Loading…</span>}
             {!hasMore && filteredRows.length > 0 && (
@@ -394,6 +507,9 @@ export default function CompetitorsPage() {
           </div>
         </section>
       </main>
+
+      {/* Confirm modal rendered here */}
+      <ConfirmModal state={confirmState} onClose={handleConfirmClose} />
 
       <Footer />
     </div>

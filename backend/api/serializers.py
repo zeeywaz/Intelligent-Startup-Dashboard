@@ -109,12 +109,8 @@ class InvestorRegisterSerializer(RegisterSerializer):
 
         return user
 
-class InvestorInterestSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source="category.name", read_only=True)
 
-    class Meta:
-        model = InvestorInterest
-        fields = ["id", "investor_id", "category_id", "category_name"]
+
 # ---------- Profile ----------
 class ProfileSerializer(serializers.ModelSerializer):
     firstName = serializers.CharField(source="first_name")
@@ -339,3 +335,5 @@ class CompetitorIdeaSerializer(serializers.ModelSerializer):
             return obj.category.name if obj.category else None
         except Exception:
             return None
+
+

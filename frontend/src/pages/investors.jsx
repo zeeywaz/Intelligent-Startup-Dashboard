@@ -44,7 +44,6 @@ function normalizeBookmarks(raw) {
 function Avatar({ name }) {
   const letter = (name || "?").trim().charAt(0).toUpperCase() || "?";
 
-  // bucket 0..4 so avatars rotate through the brand palette
   const bucket = (() => {
     const s = String(name || "?");
     let h = 0;
@@ -137,8 +136,25 @@ function RatingRange({ min = 0, max = 1000, step = 10, valueMin, valueMax, onCha
   );
 }
 
+/* ------------------ Confirm modal (Promise-based) ------------------ */
+function ConfirmModal({ state, onClose }) {
+  if (!state) return null;
+  const { message } = state;
+  return (
+    <div className="confirm-overlay" role="dialog" aria-modal="true" aria-label="Confirm dialog">
+      <div className="confirm-box" role="document">
+        <div className="confirm-message">{message}</div>
+        <div className="confirm-actions" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+          <button onClick={() => onClose(false)} className="confirm-btn cancel">Cancel</button>
+          <button onClick={() => onClose(true)} className="confirm-btn confirm">Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- card ---------- */
-function InvestorCard({ item, isBookmarked, onToggle, busy }) {
+function InvestorCard({ item, isBookmarked, onToggle, busy, isSuper, onEdit, onDelete }) {
   const name = item.investor_name || item.company_name || "Investor";
   const phone = item.phone;
   const email = item.email_address;
@@ -214,6 +230,13 @@ function InvestorCard({ item, isBookmarked, onToggle, busy }) {
           Visit website
         </a>
       )}
+
+      {isSuper && (
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button className="cmp-btn" onClick={() => onEdit(investorId)}>Edit</button>
+          <button className="cmp-btn" onClick={() => onDelete(investorId)}>Delete</button>
+        </div>
+      )}
     </article>
   );
 }
@@ -230,6 +253,8 @@ export default function InvestorsPage() {
   const [processing, setProcessing] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+
+  const [isSuper, setIsSuper] = useState(false);
 
   const getBookmarkFor = (id) => bookmarks.find((b) => Number(b.investor_id) === Number(id));
 
@@ -265,6 +290,23 @@ export default function InvestorsPage() {
     })();
     return () => { ok = false; };
   }, [fetchBookmarks]);
+
+  // fetch me for superuser flag
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/me/`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        if (!mounted) return;
+        setIsSuper(Boolean(data?.user?.is_superuser || data?.is_superuser));
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const toggleBookmark = useCallback(
     async (investorId) => {
@@ -305,8 +347,63 @@ export default function InvestorsPage() {
         setProcessing((s) => s.filter((x) => x !== investorId));
       }
     },
-    [processing, fetchBookmarks] // getBookmarkFor is stable enough for this case
+    [processing, fetchBookmarks]
   );
+
+  // Confirm modal for investors
+  const [confirmState, setConfirmState] = useState(null);
+  const showConfirm = (message) =>
+    new Promise((resolve) => setConfirmState({ message, resolve }));
+  const handleConfirmClose = (result) => {
+    if (confirmState && typeof confirmState.resolve === "function") {
+      confirmState.resolve(Boolean(result));
+    }
+    setConfirmState(null);
+  };
+
+  // Admin actions for investors
+  async function handleDeleteInvestor(id) {
+    const ok = await showConfirm("Delete this investor permanently?");
+    if (!ok) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/investors/${id}/`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (!(res.ok || res.status === 204)) {
+        const j = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(j.detail || `Failed (${res.status})`);
+      }
+      setList((prev) => prev.filter((it) => (it.investor_id ?? it.id ?? it.pk) !== id));
+    } catch (err) {
+      alert("Delete failed: " + (err.message || "unknown"));
+    }
+  }
+
+  async function handleEditInvestor(id) {
+    const newName = window.prompt ? window.prompt("New investor/company name (leave empty to cancel):") : "";
+    if (newName == null || String(newName).trim() === "") return;
+    try {
+      const res = await fetch(`${API_BASE}/api/investors/${id}/`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({ investor_name: newName, company_name: newName }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(j.detail || `Failed (${res.status})`);
+      }
+      const updated = await res.json();
+      setList((prev) => prev.map((it) => ((it.investor_id ?? it.id ?? it.pk) === id ? { ...it, ...updated } : it)));
+    } catch (err) {
+      alert("Edit failed: " + (err.message || "unknown"));
+    }
+  }
 
   const filtered = useMemo(() => {
     let rows = list.slice();
@@ -438,7 +535,15 @@ export default function InvestorsPage() {
             const busy = processing.includes(id);
             return (
               <div className="inv-grid__item" key={`${id}-${it.email_address || ""}`} role="listitem">
-                <InvestorCard item={it} isBookmarked={Boolean(bm)} onToggle={toggleBookmark} busy={busy} />
+                <InvestorCard
+                  item={it}
+                  isBookmarked={Boolean(bm)}
+                  onToggle={toggleBookmark}
+                  busy={busy}
+                  isSuper={isSuper}
+                  onEdit={handleEditInvestor}
+                  onDelete={handleDeleteInvestor}
+                />
               </div>
             );
           })}
@@ -447,6 +552,9 @@ export default function InvestorsPage() {
           )}
         </div>
       </main>
+
+      {/* Confirm modal */}
+      <ConfirmModal state={confirmState} onClose={handleConfirmClose} />
 
       <Footer />
     </div>
