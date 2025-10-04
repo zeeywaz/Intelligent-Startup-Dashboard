@@ -1,0 +1,446 @@
+/* Investor Interest App - Unique CSS Classes */
+.ii-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ii-container {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.ii-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+  .ii-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .ii-container {
+    padding: 1rem;
+  }
+}
+
+/* Page Head */
+.ii-pagehead {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem 0;
+}
+
+.ii-pagehead__title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: #1a202c;
+}
+
+.ii-pagehead__subtitle {
+  font-size: 1.125rem;
+  color: #718096;
+  margin: 0;
+}
+
+/* Panel */
+.ii-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.ii-panel__header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ii-panel__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1a202c;
+  flex: 1;
+}
+
+.ii-panel__footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+/* Cards */
+.ii-cards {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.ii-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.ii-card:hover {
+  border-color: #4299e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.ii-card:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.ii-card__content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ii-card__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ii-card__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #1a202c;
+  line-height: 1.4;
+}
+
+.ii-card__sub {
+  font-size: 0.875rem;
+  color: #718096;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.ii-card__desc {
+  font-size: 0.875rem;
+  color: #4a5568;
+  margin: 0.5rem 0 0 0;
+  line-height: 1.5;
+}
+
+.ii-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* Buttons */
+.ii-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.ii-btn:hover {
+  background: #3182ce;
+  transform: translateY(-1px);
+}
+
+.ii-btn--ghost {
+  background: transparent;
+  color: #4299e1;
+  border: 1px solid #4299e1;
+}
+
+.ii-btn--ghost:hover {
+  background: #4299e1;
+  color: white;
+}
+
+.ii-btn--tiny {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Star / Bookmark */
+.ii-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #cbd5e0;
+}
+
+.ii-star:hover {
+  color: #ecc94b;
+  background: rgba(236, 201, 75, 0.1);
+}
+
+.ii-star--active {
+  color: #ecc94b;
+}
+
+.ii-star__glyph {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* Chip / Badge */
+.ii-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background: #edf2f7;
+  color: #4a5568;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Pills */
+.ii-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ii-pill--high {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.ii-pill--medium {
+  background: #feebc8;
+  color: #d69e2e;
+}
+
+.ii-pill--low {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+.ii-pill--soft {
+  background: #e6fffa;
+  color: #234e52;
+}
+
+/* Modal */
+.ii-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.ii-modal__panel {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.ii-modal__header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ii-modal__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1a202c;
+  flex: 1;
+}
+
+.ii-modal__close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  color: #718096;
+  transition: all 0.2s ease;
+}
+
+.ii-modal__close:hover {
+  color: #1a202c;
+  background: #edf2f7;
+}
+
+.ii-modal__body {
+  padding: 1.5rem;
+}
+
+.ii-modal__footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: right;
+}
+
+.ii-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.ii-modal-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ii-modal-grid-full {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ii-modal-grid strong {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.875rem;
+}
+
+.ii-modal-grid a {
+  color: #4299e1;
+  text-decoration: none;
+}
+
+.ii-modal-grid a:hover {
+  text-decoration: underline;
+}
+
+/* Actions */
+.ii-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  padding: 1.5rem;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ii-actions--sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+}
+
+/* Utility Classes */
+.ii-thinking {
+  text-align: center;
+  font-size: 1.125rem;
+  color: #718096;
+  padding: 3rem;
+}
+
+.ii-err {
+  text-align: center;
+  font-size: 1.125rem;
+  color: #e53e3e;
+  padding: 3rem;
+  background: #fed7d7;
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.ii-muted {
+  color: #a0aec0;
+  text-align: center;
+  padding: 2rem;
+  font-style: italic;
+}
+
+.ii-small {
+  font-size: 0.875rem;
+}
+
+.ii-link {
+  color: #4299e1;
+  text-decoration: none;
+}
+
+.ii-link:hover {
+  text-decoration: underline;
+}
+
+/* Focus styles for accessibility */
+.ii-btn:focus-visible,
+.ii-star:focus-visible,
+.ii-card:focus-visible {
+  outline: 2px solid #4299e1;
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling for cards container */
+.ii-cards::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ii-cards::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.ii-cards::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.ii-cards::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}

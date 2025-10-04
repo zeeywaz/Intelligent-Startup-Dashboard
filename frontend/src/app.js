@@ -17,6 +17,7 @@ import AdminUser from "./pages/admin_user.jsx";
 import AdminDashboard from "./pages/admindashboard.jsx";
 import About from "./pages/About.jsx";
 import Contact from "./pages/Contact.jsx";
+import InvestorInterest from "./pages/InvestorInterest.jsx";
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
       {/* NEW routes */}
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/interests" element={<InvestorInterest />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

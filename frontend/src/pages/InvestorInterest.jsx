@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import "./InvestorInterest.css";
+import "../styles/InvestorInterest.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
 import api, { API_BASE } from "../lib/api";
@@ -23,7 +22,7 @@ function useDots(on) {
 
 /* ---------- Badge chip ---------- */
 function Badge({ children }) {
-  return <span className="chip">{children}</span>;
+  return <span className="ii-chip">{children}</span>;
 }
 
 /* ---------- Bookmark star ---------- */
@@ -31,8 +30,8 @@ function Bookmark({ active, onClick, label = "Bookmark" }) {
   return (
     <button
       type="button"
-      className={cx("star", active && "star--active")}
-      aria-pressed={active}
+      className={cx("ii-star", active && "ii-star--active")}
+      aria-pressed={!!active}
       aria-label={label}
       title={label}
       onClick={(e) => {
@@ -40,7 +39,9 @@ function Bookmark({ active, onClick, label = "Bookmark" }) {
         onClick?.();
       }}
     >
-      <span aria-hidden className="star__glyph">★</span>
+      <span aria-hidden className="ii-star__glyph">
+        ★
+      </span>
     </button>
   );
 }
@@ -49,7 +50,7 @@ function Bookmark({ active, onClick, label = "Bookmark" }) {
 function Card({ onClick, children }) {
   return (
     <article
-      className="card"
+      className="ii-card"
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
@@ -72,12 +73,12 @@ function PriorityPill({ level }) {
   if (!lv) return null;
   const cls =
     lv === "high"
-      ? "pill pill--high"
+      ? "ii-pill ii-pill--high"
       : lv === "medium"
-      ? "pill pill--medium"
+      ? "ii-pill ii-pill--medium"
       : lv === "low"
-      ? "pill pill--low"
-      : "pill";
+      ? "ii-pill ii-pill--low"
+      : "ii-pill";
   const label = lv.charAt(0).toUpperCase() + lv.slice(1);
   return <span className={cls}>{label}</span>;
 }
@@ -94,7 +95,7 @@ function Modal({ open, title, children, onClose }) {
   if (!open) return null;
   return (
     <div
-      className="modal"
+      className="ii-modal"
       role="dialog"
       aria-modal="true"
       ref={ref}
@@ -102,16 +103,16 @@ function Modal({ open, title, children, onClose }) {
         if (e.target === ref.current) onClose();
       }}
     >
-      <div className="modal__panel" role="document">
-        <header className="modal__header">
-          <h2 className="modal__title">{title}</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close">
+      <div className="ii-modal__panel" role="document">
+        <header className="ii-modal__header">
+          <h2 className="ii-modal__title">{title}</h2>
+          <button className="ii-modal__close" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </header>
-        <div className="modal__body">{children}</div>
-        <footer className="modal__footer">
-          <button className="btn btn--ghost" onClick={onClose}>
+        <div className="ii-modal__body">{children}</div>
+        <footer className="ii-modal__footer">
+          <button className="ii-btn ii-btn--ghost" onClick={onClose}>
             Close
           </button>
         </footer>
@@ -122,9 +123,6 @@ function Modal({ open, title, children, onClose }) {
 
 /* ---------------- Page ---------------- */
 export default function InvestorInterest() {
-  const navigate = useNavigate();
-
-  const [idea, setIdea] = useState(null);
   const [competitors, setCompetitors] = useState([]);
   const [competitorsMeta, setCompetitorsMeta] = useState({
     total: 0,
@@ -133,7 +131,7 @@ export default function InvestorInterest() {
   });
   const [competitorsBusy, setCompetitorsBusy] = useState(false);
 
-  // Server bookmark id sets
+  // Server bookmark id sets (only competitor kind required here)
   const [bmIds, setBmIds] = useState({
     competitor: new Set(),
   });
@@ -145,51 +143,44 @@ export default function InvestorInterest() {
   const [focusItem, setFocusItem] = useState(null);
 
   const dots = useDots(loading);
-  const isBookmarked = (kind, id) => bmIds[kind]?.has(id);
+  const isBookmarked = (id) => bmIds.competitor?.has(id);
 
-  const refreshBookmarkIds = async (kind) => {
+  const refreshBookmarkIds = async () => {
     try {
-      const data = await api.bookmarkIds(kind);
+      const data = await api.bookmarkIds("competitor");
       if (Array.isArray(data?.ids)) {
-        setBmIds((prev) => ({ ...prev, [kind]: new Set(data.ids) }));
+        setBmIds({ competitor: new Set(data.ids) });
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error("bookmarkIds failed", e);
     }
   };
 
-  const toggleBookmark = async (kind, id) => {
+  const toggleBookmark = async (id) => {
     try {
-      await api.toggleBookmark(kind, id);
-      await refreshBookmarkIds(kind);
+      await api.toggleBookmark("competitor", id);
+      await refreshBookmarkIds();
     } catch (e) {
+      // eslint-disable-next-line no-alert
       alert(e?.message || "Failed to toggle bookmark.");
     }
   };
 
-  // Fetch competitors based on investor interests
-  const fetchCompetitorsByInterest = async (offset = null) => {
+  // Fetch all competitors (no idea dependency) - paginated
+  const fetchCompetitors = async (offset = null, limit = 12) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (offset != null) params.set("offset", String(offset));
     try {
-      const params = new URLSearchParams({
-        limit: "8",
-        by_interest: "1", // Special parameter for investor interest based filtering
-      });
-      
-      if (offset) {
-        params.set("offset", String(offset));
-      }
-      
-      const res = await fetch(`${API_BASE}/api/competitors/?${params}`, {
+      const res = await fetch(`${API_BASE}/api/competitors/?${params.toString()}`, {
         credentials: "include",
       });
-      
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      
       const data = await res.json();
       return data;
-    } catch (error) {
-      console.error("Failed to fetch competitors by interest:", error);
-      throw error;
+    } catch (err) {
+      console.error("fetchCompetitors error", err);
+      throw err;
     }
   };
 
@@ -198,55 +189,44 @@ export default function InvestorInterest() {
       try {
         setLoading(true);
         setErr("");
-
-        // Make sure CSRF cookie exists
         await api.csrf().catch(() => {});
 
-        // Get latest idea
-        const rIdeas = await fetch(`${API_BASE}/api/ideas/mine/`, {
-          credentials: "include",
-        });
-        const ideas = await rIdeas.json();
-        if (!Array.isArray(ideas) || ideas.length === 0) {
-          setErr("You don't have any saved ideas yet.");
-          return;
-        }
-        const latest = ideas[0];
-        setIdea(latest);
-
-        // Fetch competitors based on investor interests
-        const competitorsData = await fetchCompetitorsByInterest();
-        
-        setCompetitors(competitorsData.items || competitorsData.competitors || []);
+        // initial competitors page
+        const data = await fetchCompetitors(null, 12);
+        const items = Array.isArray(data) ? data : data.items || [];
+        setCompetitors(items);
         setCompetitorsMeta({
-          total: competitorsData.total || 0,
-          next_offset: competitorsData.next_offset || null,
-          fallback: competitorsData.fallback || false,
+          total: data.total || items.length,
+          next_offset: data.next_offset ?? null,
+          fallback: data.fallback ?? false,
         });
 
-        // Fetch server bookmark ids for competitors
-        await refreshBookmarkIds("competitor");
+        // bookmark ids for competitors
+        await refreshBookmarkIds();
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.error(e);
-        setErr("Failed to load investor interest data.");
+        setErr("Failed to load competitors.");
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, []); // run once
 
   const loadMoreCompetitors = async () => {
     if (competitorsBusy || competitorsMeta.next_offset == null) return;
     try {
       setCompetitorsBusy(true);
-      const data = await fetchCompetitorsByInterest(competitorsMeta.next_offset);
-      setCompetitors((prev) => [...prev, ...(data.items || data.competitors || [])]);
+      const data = await fetchCompetitors(competitorsMeta.next_offset, 12);
+      const items = Array.isArray(data) ? data : data.items || [];
+      setCompetitors((prev) => [...prev, ...items]);
       setCompetitorsMeta({
-        total: data.total || 0,
-        next_offset: data.next_offset || null,
-        fallback: data.fallback || false,
+        total: data.total || competitors.length + items.length,
+        next_offset: data.next_offset ?? null,
+        fallback: data.fallback ?? false,
       });
     } catch (e) {
+      // eslint-disable-next-line no-alert
       alert(e?.message || "Failed to load more competitors.");
     } finally {
       setCompetitorsBusy(false);
@@ -257,151 +237,112 @@ export default function InvestorInterest() {
     setFocusItem(obj);
     setOpen(true);
   };
-  
   const hide = () => {
     setOpen(false);
     setFocusItem(null);
   };
 
-  // Build "Bookmarked" from competitors
+  // Build "Bookmarked" from currently loaded competitors
   const bookmarkedCards = useMemo(() => {
-    const out = [];
-    for (const c of competitors) {
-      if (bmIds.competitor.has(c.id)) {
-        out.push({ key: `competitor-${c.id}`, kind: "competitor", obj: c });
-      }
-    }
-    return out;
+    return competitors
+      .filter((c) => c?.id != null && isBookmarked(c.id))
+      .map((c) => ({ key: `competitor-${c.id}`, kind: "competitor", obj: c }));
   }, [competitors, bmIds]);
 
   return (
     <>
       <Header />
-      <div className="investor-interest-app">
-        <main className="container">
-          <section className="pagehead">
-            <h1 className="pagehead__title">
-              Investor Interest: {idea ? idea.title : "Loading"}
-              {dots}
-            </h1>
-            <p className="pagehead__subtitle">
-              Competitors matching investor interests in your business category
-            </p>
+      <div className="ii-app">
+        <main className="ii-container">
+          <section className="ii-pagehead">
+            <h1 className="ii-pagehead__title">Investor Interests {loading ? dots : ""}</h1>
+            <p className="ii-pagehead__subtitle">All competitors — plus your bookmarked ones</p>
           </section>
 
-          {loading && <p className="thinking">Loading{dots}</p>}
-          {err && <p className="err">{err}</p>}
+          {loading && <p className="ii-thinking">Loading{dots}</p>}
+          {err && <p className="ii-err">{err}</p>}
 
           {!loading && !err && (
-            <div className="investor-interest-grid">
-              {/* Recommended Competitors */}
-              <section className="panel">
-                <header className="panel__header">
-                  <h3 className="panel__title">Recommended Competitors</h3>
-                  <Badge>
-                    {competitorsMeta.fallback
-                      ? "Showing all categories"
-                      : idea?.category
-                      ? `Category: ${idea.category}`
-                      : "Category: —"}
-                  </Badge>
+            <div className="ii-grid">
+              {/* All Competitors */}
+              <section className="ii-panel">
+                <header className="ii-panel__header">
+                  <h3 className="ii-panel__title">All Competitors</h3>
                 </header>
 
                 {competitors.length === 0 ? (
-                  <p className="muted">No competitors found matching investor interests.</p>
+                  <p className="ii-muted">No competitors listed.</p>
                 ) : (
                   <>
-                    <div className="cards">
-                      {competitors.map((it) => {
-                        const id = it.id;
-                        const active = isBookmarked("competitor", id);
-                        return (
-                          <Card
-                            key={`competitor-${id}`}
-                            onClick={() => show(it)}
-                          >
-                            <div className="card__content">
-                              <div className="card__main">
-                                <h4 className="card__title">{it.name}</h4>
-                                <p className="card__sub">{it.description}</p>
-                                {it.investor_match_reason && (
-                                  <p className="card__desc">
-                                    <strong>Investor Interest:</strong> {it.investor_match_reason}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="card__meta">
-                                {it.website && (
-                                  <a
-                                    href={it.website}
-                                    className="btn btn--tiny"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    Website
-                                  </a>
-                                )}
-                                <PriorityPill level={it.strength} />
-                                <Bookmark
-                                  active={active}
-                                  onClick={() => toggleBookmark("competitor", id)}
-                                />
-                              </div>
+                    <div className="ii-cards">
+                      {competitors.map((it) => (
+                        <Card key={`competitor-${it.id}`} onClick={() => show(it)}>
+                          <div className="ii-card__content">
+                            <div className="ii-card__main">
+                              <h4 className="ii-card__title">{it.name}</h4>
+                              <p className="ii-card__sub">{it.description}</p>
                             </div>
-                          </Card>
-                        );
-                      })}
+                            <div className="ii-card__meta">
+                              {it.website && (
+                                <a
+                                  href={it.website}
+                                  className="ii-btn ii-btn--tiny"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Website
+                                </a>
+                              )}
+                              <PriorityPill level={it.strength} />
+                              <Bookmark active={isBookmarked(it.id)} onClick={() => toggleBookmark(it.id)} />
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
                     </div>
-                    <div className="panel__footer">
+
+                    <div className="ii-panel__footer">
                       {competitorsMeta.next_offset != null ? (
                         <button
-                          className="btn btn--ghost"
+                          className="ii-btn ii-btn--ghost"
                           onClick={loadMoreCompetitors}
                           disabled={competitorsBusy}
                         >
-                          {competitorsBusy ? "Loading…" : "Load more competitors"}
+                          {competitorsBusy ? "Loading…" : "Load more"}
                         </button>
                       ) : (
-                        <span className="muted small">End of list</span>
+                        <span className="ii-muted ii-small">End of list</span>
                       )}
                     </div>
                   </>
                 )}
               </section>
 
-              {/* Bookmarked */}
-              <section className="panel">
-                <header className="panel__header">
-                  <h3 className="panel__title">Bookmarked Competitors</h3>
+              {/* Bookmarked Competitors */}
+              <section className="ii-panel">
+                <header className="ii-panel__header">
+                  <h3 className="ii-panel__title">Bookmarked Competitors</h3>
                 </header>
 
                 {bookmarkedCards.length === 0 ? (
-                  <p className="muted">No bookmarks yet. Tap ★ on any competitor to save.</p>
+                  <p className="ii-muted">No bookmarked competitors yet. Tap ★ to save one.</p>
                 ) : (
-                  <div className="cards">
+                  <div className="ii-cards">
                     {bookmarkedCards.map((bm) => {
                       const o = bm.obj;
                       return (
-                        <Card
-                          key={bm.key}
-                          onClick={() => show(o)}
-                        >
-                          <div className="card__content">
-                            <div className="card__main">
-                              <h4 className="card__title">{o.name}</h4>
-                              <p className="card__sub">{o.description}</p>
-                              {o.investor_match_reason && (
-                                <p className="card__desc">
-                                  <strong>Investor Interest:</strong> {o.investor_match_reason}
-                                </p>
-                              )}
+                        <Card key={bm.key} onClick={() => show(o)}>
+                          <div className="ii-card__content">
+                            <div className="ii-card__main">
+                              <h4 className="ii-card__title">{o.name}</h4>
+                              <p className="ii-card__sub">{o.description}</p>
                             </div>
-                            <div className="card__meta">
+                            <div className="ii-card__meta">
                               {o.website && (
                                 <a
                                   href={o.website}
-                                  className="btn btn--tiny"
+                                  className="ii-btn ii-btn--tiny"
                                   target="_blank"
                                   rel="noreferrer"
                                   onClick={(e) => e.stopPropagation()}
@@ -410,10 +351,7 @@ export default function InvestorInterest() {
                                 </a>
                               )}
                               <PriorityPill level={o.strength} />
-                              <Bookmark
-                                active
-                                onClick={() => toggleBookmark("competitor", o.id)}
-                              />
+                              <Bookmark active onClick={() => toggleBookmark(o.id)} />
                             </div>
                           </div>
                         </Card>
@@ -426,23 +364,15 @@ export default function InvestorInterest() {
           )}
         </main>
 
-        {/* Always-visible actions */}
-        <div className="actions actions--sticky">
-          <button className="btn" onClick={() => navigate("/mystartup")}>
-            Back to My Startup
-          </button>
-          <button className="btn btn--ghost" onClick={() => window.history.back()}>
+        <div className="ii-actions ii-actions--sticky">
+          <button className="ii-btn ii-btn--ghost" onClick={() => window.history.back()}>
             Back
           </button>
         </div>
 
-        <Modal
-          open={open}
-          title={focusItem ? focusItem.name : "Competitor Details"}
-          onClose={hide}
-        >
+        <Modal open={open} title={focusItem ? focusItem.name : "Competitor Details"} onClose={hide}>
           {focusItem && (
-            <div className="modal-grid">
+            <div className="ii-modal-grid">
               <div>
                 <strong>Name</strong>
                 <div>{focusItem.name}</div>
@@ -453,17 +383,13 @@ export default function InvestorInterest() {
               </div>
               <div>
                 <strong>Category</strong>
-                <div>{focusItem?.category?.name || "—"}</div>
+                <div>{focusItem?.category?.name || focusItem.category || "—"}</div>
               </div>
               <div>
                 <strong>Website</strong>
                 <div>
                   {focusItem.website ? (
-                    <a
-                      href={focusItem.website}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
+                    <a href={focusItem.website} target="_blank" rel="noreferrer" className="ii-link">
                       {focusItem.website}
                     </a>
                   ) : (
@@ -472,12 +398,12 @@ export default function InvestorInterest() {
                 </div>
               </div>
               {focusItem.investor_match_reason && (
-                <div style={{ gridColumn: "1 / -1" }}>
+                <div className="ii-modal-grid-full">
                   <strong>Why Investors Are Interested</strong>
                   <div>{focusItem.investor_match_reason}</div>
                 </div>
               )}
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div className="ii-modal-grid-full">
                 <strong>Description</strong>
                 <div>{focusItem.description || "—"}</div>
               </div>
