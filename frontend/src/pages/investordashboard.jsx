@@ -5,7 +5,7 @@ import Footer from "../components/footer";
 import Card from "../components/Card";
 import { Store, BrainCircuit, Wallet } from "lucide-react";
 import { PieChart, Pie, Tooltip, Cell, Legend } from "recharts";
-import "../styles/investor_dashboard.css";      // 👈 reuse the same theme
+import "../styles/investor_dashboard.css";
 import { API_BASE } from "../lib/api";
 
 // fallback palettes
@@ -22,37 +22,19 @@ const FALLBACK_PIE = [
 
 // temporary sample businesses to show until API provides real data
 const FALLBACK_BIZ = [
-  {
-    id: 1,
-    title: "EcoPack",
-    tagline: "Sustainable packaging for SMEs",
-    description: "Subscription-based biodegradable packaging for small and medium enterprises.",
-  },
-  {
-    id: 2,
-    title: "Farm2Door",
-    tagline: "Fresh local produce delivered",
-    description: "On-demand delivery connecting local farmers with urban customers.",
-  },
-  {
-    id: 3,
-    title: "Tutorly",
-    tagline: "Personalized learning on demand",
-    description: "AI-assisted tutoring marketplace focusing on STEM subjects.",
-  },
-  {
-    id: 4,
-    title: "SafeRide",
-    tagline: "Community-driven transport",
-    description: "A ride-sharing platform built for college campuses and small towns.",
-  },
-  {
-    id: 5,
-    title: "SolarHive",
-    tagline: "Affordable micro-solar solutions",
-    description: "Low-cost solar installations and pay-as-you-go energy for remote homes.",
-  },
+  { id: 1, title: "EcoPack" },
+  { id: 2, title: "Farm2Door" },
+  { id: 3, title: "Tutorly" },
+  { id: 4, title: "SafeRide" },
+  { id: 5, title: "SolarHive" },
 ];
+
+// small helpers
+const fmtDate = (s) => {
+  if (!s) return "";
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString();
+};
 
 export default function InvestorDashboard() {
   const [name, setName] = useState("");
@@ -60,8 +42,11 @@ export default function InvestorDashboard() {
   // analytics
   const [pieData, setPieData] = useState(FALLBACK_PIE);
 
-  // popular businesses (latest business_idea items)
-  const [popularBiz, setPopularBiz] = useState(FALLBACK_BIZ);
+  // popular businesses (ideas first, else competitors)
+  const [popularBiz, setPopularBiz] = useState([]);
+  const [popularKind, setPopularKind] = useState("ideas"); // "ideas" | "competitors"
+  const [loadingPopular, setLoadingPopular] = useState(true);
+  const [popularErr, setPopularErr] = useState("");
 
   // fetch name
   useEffect(() => {
@@ -96,25 +81,55 @@ export default function InvestorDashboard() {
     })();
   }, []);
 
-  // fetch latest business ideas for "Popular Businesses For The Month"
+  // fetch "Popular Businesses For The Month"
+  // 1) try latest ideas for current month
+  // 2) if none, fallback to latest competitors
   useEffect(() => {
     (async () => {
       try {
-        // NOTE: endpoint name is a best-effort guess. If your API uses a different route,
-        // update this path to match your backend (e.g. /api/business_ideas/ or /api/ideas/).
-        const r = await fetch(`${API_BASE}/api/business-ideas/?limit=5`, {
+        setLoadingPopular(true);
+        setPopularErr("");
+
+        // Try ideas first
+        const r1 = await fetch(`${API_BASE}/api/analytics/popular-businesses/?kind=ideas&limit=5`, {
           credentials: "include",
         });
-        if (r.ok) {
-          const j = await r.json();
-          // expect either array or { results: [] }
-          const items = Array.isArray(j) ? j : Array.isArray(j?.results) ? j.results : [];
-          setPopularBiz(items.slice(0, 5));
-        } else {
-          // keep fallback
+
+        if (r1.ok) {
+          const j1 = await r1.json();
+          const items = Array.isArray(j1?.items) ? j1.items : [];
+          if (items.length) {
+            setPopularBiz(items);
+            setPopularKind("ideas");
+            setLoadingPopular(false);
+            return;
+          }
         }
+
+        // Fallback to competitors
+        const r2 = await fetch(`${API_BASE}/api/analytics/popular-businesses/?kind=competitors&limit=5`, {
+          credentials: "include",
+        });
+        if (r2.ok) {
+          const j2 = await r2.json();
+          const items = Array.isArray(j2?.items) ? j2.items : [];
+          if (items.length) {
+            setPopularBiz(items);
+            setPopularKind("competitors");
+            setLoadingPopular(false);
+            return;
+          }
+        }
+
+        // absolute fallback
+        setPopularBiz(FALLBACK_BIZ);
+        setPopularKind("ideas");
+        setLoadingPopular(false);
       } catch {
-        // keep fallback
+        setPopularBiz(FALLBACK_BIZ);
+        setPopularKind("ideas");
+        setLoadingPopular(false);
+        setPopularErr("Showing sample data until analytics loads.");
       }
     })();
   }, []);
@@ -126,67 +141,100 @@ export default function InvestorDashboard() {
       {/* SAME wrappers as user dashboard */}
       <div className="dashboard-app">
         <div className="container">
-          {/* Same welcome styling */}
+          {/* Welcome */}
           <div className="dash-welcome">
-            <h2>Welcome, {name || "there"} <span aria-hidden>👋</span></h2>
+            <h2>
+              Welcome, {name || "there"} <span aria-hidden>👋</span>
+            </h2>
             <p className="dash-sub">Business Insight — Get ahead of your competition</p>
           </div>
 
-          {/* Same cards row + your shared Card component */}
+          {/* Quick links */}
           <div className="ud-cards" style={{ marginTop: 8, marginBottom: 8 }}>
             <Card icon={Store} label="Business & Startups" to="/competitors" />
-            <Card icon={Wallet} label=" Sponsors and Investors" to="/investors" />
+            <Card icon={Wallet} label="Sponsors and Investors" to="/investors" />
             <Card icon={BrainCircuit} label="My interest" to="/interests" />
           </div>
 
-          {/* Panel grid: Pie + Popular Businesses */}
-          <div className="charts-grid">
+          {/* -------- Sleek Analysis Section (only this block changed) -------- */}
+          <div className="charts-grid charts-grid--sleek">
+            {/* Donut */}
             <section className="panel">
-              <h3>Popular Niches For The Month</h3>
-              <div className="panel-body">
-                <PieChart width={420} height={320}>
-                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={120} innerRadius={65} dataKey="value">
-                    {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              <div className="panel-head">
+                <h3>Popular Niches For The Month</h3>
+              </div>
+              <div className="panel-body panel-body--center">
+                <PieChart width={440} height={330}>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={120}
+                    innerRadius={70}
+                    dataKey="value"
+                    paddingAngle={1}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
                   </Pie>
                   <Tooltip />
-                  <Legend wrapperStyle={{ paddingTop: 18 }} />
+                  <Legend wrapperStyle={{ paddingTop: 12 }} />
                 </PieChart>
               </div>
             </section>
 
+            {/* Popular Businesses */}
             <section className="panel">
-              <h3>Popular Businesses For The Month</h3>
+              <div className="panel-head">
+                <h3>
+                  Popular Businesses{" "}
+                  {popularKind === "ideas" ? "(This Month — Latest Ideas)" : "(Latest Competitors)"}
+                </h3>
+                <div className="panel-sub">Name • Owner • Added date</div>
+              </div>
+
               <div className="panel-body">
-                <ul className="id-list" role="list">
-                  {popularBiz.length ? (
-                    popularBiz.map((biz, i) => (
-                      <li className="id-list__item" key={biz.id || i}>
-                        <div className="id-avatar" aria-hidden />
+                {loadingPopular ? (
+                  <ul className="id-list" role="list">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <li className="id-list__item is-skeleton" key={i}>
+                        <span className="id-avatar shimmer" />
                         <div className="id-list__body">
-                          <div className="id-quote">{biz.tagline || biz.summary || '“Great idea”'}</div>
-                          <div className="id-title">{biz.title || biz.name || 'Untitled'}</div>
-                          <div className="id-desc">{biz.description || biz.short_description || ''}</div>
+                          <div className="id-title shimmer" />
+                          <div className="id-meta shimmer" />
                         </div>
                       </li>
-                    ))
-                  ) : (
-                    // fallback: show 3 placeholders
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <li className="id-list__item" key={i}>
-                        <div className="id-avatar" aria-hidden />
-                        <div className="id-list__body">
-                          <div className="id-quote">“Quote”</div>
-                          <div className="id-title">Title</div>
-                          <div className="id-desc">Description</div>
-                        </div>
-                      </li>
-                    ))
-                  )}
-                </ul>
+                    ))}
+                  </ul>
+                ) : (
+                  <ul className="id-list" role="list">
+                    {popularBiz.map((biz, i) => {
+                      const title = biz.title || biz.name || `Item #${biz.id ?? i + 1}`;
+                      const added = biz.submission_date || biz.created_at || biz.created || null;
+                      const byUser = biz.user?.username || biz.owner?.username || "Unknown";
+
+                      return (
+                        <li className="id-list__item is-compact" key={biz.id || i}>
+                          <span className="id-avatar" aria-hidden />
+                          <div className="id-list__body">
+                            <div className="id-title">{title}</div>
+                            <div className="id-meta">
+                              <span>by {byUser}</span>
+                              {added && <span> • Added {fmtDate(added)}</span>}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {popularErr && <div className="inline-hint">{popularErr}</div>}
               </div>
             </section>
-
           </div>
+          {/* -------- /Sleek Analysis Section -------- */}
         </div>
       </div>
 

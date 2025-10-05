@@ -19,35 +19,53 @@ import About from "./pages/About.jsx";
 import Contact from "./pages/Contact.jsx";
 import InvestorInterest from "./pages/InvestorInterest.jsx";
 
+import { AuthProvider } from "./auth/AuthProvider.jsx";
+import { RequireAuth, RequireRole, PublicOnly } from "./auth/RouteGuards.jsx";
+
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/investor_signup" element={<InvestorSignUp />} />
-      <Route path="/userdashboard" element={<UserDashboard />} />
+    <AuthProvider>
+      <Routes>
+        {/* Public routes (available to everyone) */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
 
-      {/* Categories grid */}
-      <Route path="/resources" element={<ResourcesPage />} />
-      {/* Directory list (receives ?type=...) */}
-      <Route path="/resources/directory" element={<ResourcesDirectory />} />
+        {/* Only show when NOT logged in */}
+        <Route element={<PublicOnly />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/investor_signup" element={<InvestorSignUp />} />
+        </Route>
 
-      <Route path="/competitors" element={<Competitors />} />
-      <Route path="/investors" element={<Investors />} />
-      <Route path="/mystartup" element={<MyStartup />} />
-      <Route path="/chatbot" element={<ChatPage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/investordashboard" element={<InvestorDashboard />} />
-      <Route path="/admin_user" element={<AdminUser />} />
-      <Route path="/admindashboard" element={<AdminDashboard />} />
+        {/* General protected pages (must be logged in) */}
+        <Route element={<RequireAuth />}>
+          <Route path="/resources" element={<ResourcesPage />} />
+          <Route path="/resources/directory" element={<ResourcesDirectory />} />
+          <Route path="/competitors" element={<Competitors />} />
+          <Route path="/investors" element={<Investors />} />
+          <Route path="/mystartup" element={<MyStartup />} />
+          <Route path="/chatbot" element={<ChatPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/interests" element={<InvestorInterest />} />
+        </Route>
 
-      {/* NEW routes */}
-      <Route path="/about" element={<About />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/interests" element={<InvestorInterest />} />
+        {/* Role-locked dashboards */}
+        <Route element={<RequireRole role="user" />}>
+          <Route path="/userdashboard" element={<UserDashboard />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route element={<RequireRole role="investor" />}>
+          <Route path="/investordashboard" element={<InvestorDashboard />} />
+        </Route>
+
+        <Route element={<RequireRole role="admin" />}>
+          <Route path="/admindashboard" element={<AdminDashboard />} />
+          <Route path="/admin_user" element={<AdminUser />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 }

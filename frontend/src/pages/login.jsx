@@ -1,10 +1,15 @@
+// login.jsx
 import React, { useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import "../styles/login.css";
 import { API_BASE, getCookie } from "../lib/api";
+import { useAuth } from "../auth/AuthProvider"; // 👈 NEW
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();              // 👈 NEW
+  const auth = useAuth();                      // 👈 NEW
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
   const [err, setErr] = useState("");
@@ -52,7 +57,14 @@ export default function LoginPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "Incorrect email or password.");
-      navigate(data?.next || "/userdashboard");
+
+      // ⬇️ Critical: refresh auth context so guards see the new session
+      await auth.refresh();
+
+      // Prefer the page the guard sent us from, else backend-provided next, else a safe default
+      const from = location.state?.from?.pathname;
+      const dest = from || data?.next || "/userdashboard";
+      navigate(dest, { replace: true }); // replace avoids going back to login
     } catch (e2) {
       setErr(e2.message || "Incorrect email or password.");
     } finally {
@@ -144,7 +156,6 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "Failed to reset password");
 
-      // success → go back to login
       alert("Password reset successful. You can now log in.");
       setStep("login");
     } catch (e) {

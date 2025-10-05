@@ -79,6 +79,9 @@ urlpatterns = [
     path("admin/investor/<int:investor_id>/docs/", inv.admin_investor_docs, name="admin-investor-docs"),
     path("admin/investor/<int:investor_id>/approve/", inv.admin_approve_investor, name="admin-approve-investor"),
     path("admin/investor/<int:investor_id>/reject/", inv.admin_reject_investor, name="admin-reject-investor"),
+    path("analytics/popular-businesses/", views.analytics_popular_businesses, name="analytics-popular-businesses"),
 
-    
+    # urls.py
+    path("resources/<int:pk>/", views.resource_detail_admin, name="api-resource-detail"),
+
 ]

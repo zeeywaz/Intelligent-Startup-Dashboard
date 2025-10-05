@@ -294,31 +294,47 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
 
 
-class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
+# ---- Competitors: public read, admin write ----
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.response import Response
+from django.db.models import Q
+
+class CompetitorViewSet(viewsets.ModelViewSet):
     """
     GET /api/competitors/?search=...&strength=low|medium|high
-                          &category_id=...|&category=Name
+                          &category_id=... | &category=Name
                           &page=1&page_size=15 (or limit/offset)
                           &fallback=1 (default)
     Returns: {items, total, limit, offset, next_offset, fallback}
-    """
-    queryset = Competitor.objects.select_related("category").all()
-    serializer_class = CompetitorSerializer
-    permission_classes = [AllowAny]
 
+    - Anyone can list/retrieve.
+    - Only admins can create/update/delete (all fields allowed by serializer).
+    """
+    queryset = Competitor.objects.select_related("category").all().order_by("id")
+    serializer_class = CompetitorSerializer
+
+    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsAdminUser()]
+        return [AllowAny()]
+
+    # keep your filtering/pagination behavior
     def list(self, request, *args, **kwargs):
         default_ps = _int(request, "page_size", 15)
-        limit = _int(request, "limit", default_ps)
-        page = max(_int(request, "page", 1), 1)
+        limit  = _int(request, "limit", default_ps)
+        page   = max(_int(request, "page", 1), 1)
         offset = _int(request, "offset", (page - 1) * limit)
 
-        search = (request.GET.get("search") or request.GET.get("q") or "").strip()
+        search   = (request.GET.get("search") or request.GET.get("q") or "").strip()
         strength = (request.GET.get("strength") or "").strip().lower()
-        cat_id = request.GET.get("category_id")
+        cat_id   = request.GET.get("category_id")
         cat_name = (request.GET.get("category") or "").strip()
         do_fallback = request.GET.get("fallback", "1") != "0"
 
-        base = self.get_queryset().order_by("id")
+        base = self.get_queryset()
 
         if search:
             base = base.filter(Q(name__icontains=search) | Q(description__icontains=search))
@@ -333,14 +349,13 @@ class CompetitorViewSet(viewsets.ReadOnlyModelViewSet):
             cand = base
 
         fallback_used = False
+        qs = cand
         if (cat_id or cat_name) and not cand.exists() and do_fallback:
             qs = base
             fallback_used = True
-        else:
-            qs = cand
 
         total = qs.count()
-        rows = list(qs[offset : offset + limit])
+        rows = list(qs.order_by("id")[offset : offset + limit])
         data = self.get_serializer(rows, many=True).data
         next_offset = offset + len(rows) if (offset + len(rows)) < total else None
 
@@ -1113,18 +1128,28 @@ def register_verify_otp(request):
 
 
 
-# backend/api/views.py
-from rest_framework import viewsets, filters
-from .serializers import InvestorSerializer
+# ---- Investors: public read, admin write ----
+from rest_framework import viewsets, filters as drf_filters
+from rest_framework.permissions import AllowAny, IsAdminUser
 
-class InvestorViewSet(viewsets.ReadOnlyModelViewSet):
+class InvestorViewSet(viewsets.ModelViewSet):
+    """
+    Public list/retrieve; admin can create/update/delete (all serializer fields).
+    """
     queryset = InvestorDetails.objects.all().order_by("investor_name")
     serializer_class = InvestorSerializer
-    permission_classes = [AllowAny]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["investor_name", "company_name", "email_address"]
+
+    filter_backends = [drf_filters.SearchFilter, drf_filters.OrderingFilter]
+    search_fields   = ["investor_name", "company_name", "email_address", "phone"]
     ordering_fields = ["investor_name", "company_name", "credit_score"]
-    ordering = ["investor_name"]
+    ordering        = ["investor_name"]
+
+    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsAdminUser()]
+        return [AllowAny()]
 
 
 
@@ -1508,3 +1533,104 @@ def admin_user_delete(request, user_id):
 
 
 
+# --- helpers (put near _month_bounds/_label_month) ---
+def _parse_month_str(month_str: str):
+    """
+    Parse 'YYYY-MM' -> (month_start, next_month_start) tz-aware.
+    If invalid, return current month bounds.
+    """
+    try:
+        y, m = month_str.split("-", 1)
+        dt = datetime(int(y), int(m), 1)
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt)
+        return _month_bounds(dt)
+    except Exception:
+        return _month_bounds(timezone.now())
+
+
+# --- Popular Businesses for the Month ---
+from .serializers import CompetitorIdeaSerializer
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def analytics_popular_businesses(request):
+    """
+    GET /api/analytics/popular-businesses/?kind=ideas|competitors&limit=5&month=YYYY-MM
+
+    - kind=ideas (default): latest ideas for the given month (or current month).
+      Falls back to latest overall if this month is empty.
+    - kind=competitors: latest added competitors (by id desc).
+
+    Returns:
+      { kind: "ideas"|"competitors", items: [...] }
+      (ideas use CompetitorIdeaSerializer; competitors are normalized: {id, name, description, category_name})
+    """
+    kind = (request.GET.get("kind") or "ideas").strip().lower()
+    limit = max(1, min(12, int(request.GET.get("limit", 5) or 5)))
+
+    if kind in {"ideas", "idea", "business_ideas"}:
+        month_str = (request.GET.get("month") or "").strip()
+        start, end = _parse_month_str(month_str) if month_str else _month_bounds(timezone.now())
+
+        qs = (
+            BusinessIdea.objects
+            .select_related("category", "user")
+            .filter(submission_date__gte=start, submission_date__lt=end)
+            .order_by("-submission_date")[:limit]
+        )
+
+        items = list(qs)
+        if not items:
+            # fallback to latest overall if the month is empty
+            items = list(
+                BusinessIdea.objects
+                .select_related("category", "user")
+                .order_by("-submission_date")[:limit]
+            )
+
+        data = CompetitorIdeaSerializer(items, many=True).data
+        return Response({"kind": "ideas", "items": data}, status=200)
+
+    # competitors fallback / alternative
+    qs = (
+        Competitor.objects
+        .select_related("category")
+        .order_by("-id")[:limit]
+    )
+    data = [
+        {
+            "id": c.id,
+            "name": c.name,
+            "description": c.description,
+            "category_name": getattr(c.category, "name", None),
+        }
+        for c in qs
+    ]
+    return Response({"kind": "competitors", "items": data}, status=200)
+
+
+
+# views.py
+from rest_framework.permissions import IsAdminUser
+from django.shortcuts import get_object_or_404
+from rest_framework.parsers import JSONParser
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAdminUser])
+@parser_classes([JSONParser])
+def resource_detail_admin(request, pk: int):
+    """
+    Admin-only edit/delete for resources.
+    Front-end calls: PATCH/DELETE /api/resources/<id>/
+    """
+    obj = get_object_or_404(Resource, pk=pk)
+    if request.method == "PATCH":
+      ser = ResourceSerializer(obj, data=request.data, partial=True)
+      if ser.is_valid():
+          ser.save()
+          return Response(ser.data, status=200)
+      return Response({"detail": ser.errors}, status=400)
+    # DELETE
+    obj.delete()
+    return Response(status=204)
