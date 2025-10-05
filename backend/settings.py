@@ -43,3 +43,13 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "ideaforgesrilanka@gmail.com"
 EMAIL_HOST_PASSWORD = "roqy skpb kmrq gfre"
+
+
+
+STATIC_URL = "/static/"
+# optional if you use a collected static directory
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# media/static (add or replace existing lines)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

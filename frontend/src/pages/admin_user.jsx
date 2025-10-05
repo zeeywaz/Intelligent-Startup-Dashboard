@@ -1,22 +1,9 @@
+// src/pages/AdminUser.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
+import { API_BASE, getCookie } from "../lib/api"; // adjust path if necessary
 import "../styles/admin_user.css";
-
-/* ---- CONFIG ----
-   Default backend API base. Change this if your Django server runs somewhere else.
-   Example: "http://127.0.0.1:8000/api" or "https://api.myapp.com/api"
-*/
-const API_BASE = (typeof window !== "undefined" && window.__API_BASE__) || "http://localhost:8000/api";
-
-/* Cookie helper to read CSRF token (Django default cookie name: csrftoken) */
-function getCookie(name) {
-  if (typeof document === "undefined") return null;
-  const matches = document.cookie.match(new RegExp(
-    "(?:^|; )" + name.replace(/([$?*|{}()[\]\\/+^])/g, "\\$1") + "=([^;]*)"
-  ));
-  return matches ? decodeURIComponent(matches[1]) : null;
-}
 
 /* Small UI helpers */
 function Badge({ kind = "pending", children }) {
@@ -30,7 +17,7 @@ function SmallButton({ kind = "ghost", children, ...props }) {
   );
 }
 
-/* Simple modal for viewing attached docs */
+/* Modal */
 function Modal({ open, title, onClose, children }) {
   if (!open) return null;
   return (
@@ -47,143 +34,185 @@ function Modal({ open, title, onClose, children }) {
 }
 
 export default function AdminUser() {
-  /* ---- Pending investors (sample data until you wire real API) ---- */
-  const [pending, setPending] = useState([
-    { id: 1, name: "Akil Sabry", email: "akilsabry69@gmail.com", date: "August 22, 2025", status: "pending", docName: "Bank Slip (PDF)", docUrl: "/docs/akil-slip.pdf" },
-    { id: 2, name: "Bill Gates", email: "billgates@gmail.com", date: "August 26, 2025", status: "pending", docName: "Company Ownership (Image)", docUrl: "/docs/bill-ownership.png" },
-    { id: 3, name: "Elon Musk", email: "elonmusk@gmail.com", date: "August 29, 2025", status: "pending", docName: "Proof of Funds (PDF)", docUrl: "/docs/elon-proof.pdf" },
-  ]);
-
-  /* ---- Users fetched from backend ---- */
+  const [pending, setPending] = useState([]);
   const [users, setUsers] = useState([]);
-  const [usersLoading, setUsersLoading] = useState(true);
-  const [usersError, setUsersError] = useState("");
 
-  /* ---- Search ---- */
+  // search
   const [qPending, setQPending] = useState("");
   const [qUsers, setQUsers] = useState("");
+
+  // doc modal state
+  const [docOpen, setDocOpen] = useState(false);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docList, setDocList] = useState([]); // [{file_name, url}]
+  const [docTitle, setDocTitle] = useState("");
+
+  const fetchPending = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/pending-investors/`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed (${res.status})`);
+      }
+      const data = await res.json();
+      setPending(data || []);
+    } catch (e) {
+      console.error("Failed to load pending:", e);
+      setPending([]);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed (${res.status})`);
+      }
+      const data = await res.json();
+      setUsers(data || []);
+    } catch (e) {
+      console.error("Failed to load users:", e);
+      setUsers([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchPending();
+    fetchUsers();
+  }, []);
 
   const filteredPending = useMemo(() => {
     const q = qPending.trim().toLowerCase();
     if (!q) return pending;
-    return pending.filter(r => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || r.date.toLowerCase().includes(q));
+    return pending.filter(
+      (r) =>
+        (r.investor_name || r.name || "").toLowerCase().includes(q) ||
+        (r.email_address || r.email || "").toLowerCase().includes(q) ||
+        (r.company_name || r.company || "").toLowerCase().includes(q)
+    );
   }, [pending, qPending]);
 
   const filteredUsers = useMemo(() => {
     const q = qUsers.trim().toLowerCase();
     if (!q) return users;
-    return users.filter(r => {
-      const fullName = `${r.first_name || ""} ${r.last_name || ""}`.trim().toLowerCase();
-      return fullName.includes(q) || (r.email || "").toLowerCase().includes(q) || (r.date_joined || "").toLowerCase().includes(q);
-    });
+    return users.filter(
+      (r) =>
+        (r.first_name || r.name || "").toLowerCase().includes(q) ||
+        (r.email || "").toLowerCase().includes(q)
+    );
   }, [users, qUsers]);
 
-  /* ---- Fetch users from backend ---- */
-  async function fetchUsers() {
-    setUsersLoading(true);
-    setUsersError("");
-    try {
-      // Use absolute URL to avoid React dev-server intercepting /api/ requests
-      const resp = await fetch(`${API_BASE}/admin/users/`, {
-        method: "GET",
-        credentials: "include", // include cookies for session auth
-        headers: { Accept: "application/json" },
-      });
-
-      if (resp.status === 403) {
-        // Permission error - your session may not be an admin
-        setUsersError("403 Forbidden — you must be an admin (or authenticate) to view users.");
-        setUsers([]);
-        return;
-      }
-      if (!resp.ok) {
-        const txt = await resp.text().catch(() => null);
-        throw new Error(txt || `HTTP ${resp.status}`);
-      }
-      const data = await resp.json();
-      if (!Array.isArray(data)) {
-        // In case your view returns {"users": [...] } adjust here accordingly
-        console.warn("Unexpected users payload:", data);
-        setUsers(Array.isArray(data.users) ? data.users : []);
-      } else {
-        setUsers(data);
-      }
-    } catch (err) {
-      console.error("fetchUsers error:", err);
-      setUsersError(err.message || "Failed to fetch users.");
-    } finally {
-      setUsersLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   /* ---- Actions ---- */
-  const setInvestorStatus = (id, status) =>
-    setPending(rows => rows.map(r => (r.id === id ? { ...r, status } : r)));
-
-  async function deleteUser(id) {
-    const ok = window.confirm("Are you sure you want to delete this account? This action cannot be undone.");
-    if (!ok) return;
+  const approveInvestor = async (investor_id) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!window.confirm("Approve this investor?")) return;
 
     try {
-      const csrftoken = getCookie("csrftoken"); // Django CSRF cookie name
-      const resp = await fetch(`${API_BASE}/admin/users/${id}/delete/`, {
+      const res = await fetch(`${API_BASE}/api/admin/investor/${investor_id}/approve/`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "Failed to approve");
+      }
+      await fetchPending();
+    } catch (e) {
+      console.error(e);
+      alert("Approve failed.");
+    }
+  };
+
+  const rejectInvestor = async (investor_id) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!window.confirm("Reject and delete this investor (including account)?")) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/investor/${investor_id}/reject/`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "Failed to reject");
+      }
+      await fetchPending();
+      await fetchUsers();
+    } catch (e) {
+      console.error(e);
+      alert("Reject failed.");
+    }
+  };
+
+  /* ---- Doc modal / view ---- */
+  const openDoc = async (row) => {
+    // row must contain investor_id
+    const investor_id = row.investor_id || row.id || row.user_id;
+    if (!investor_id) {
+      alert("No investor id available.");
+      return;
+    }
+    setDocLoading(true);
+    setDocTitle(`${row.investor_name || row.name || row.email || "Investor"} — documents`);
+    setDocList([]);
+    setDocOpen(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/investor/${investor_id}/docs/`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || `Failed (${res.status})`);
+      }
+      const data = await res.json();
+      // data expected: [{ file_name, url }, ...]
+      setDocList(data || []);
+    } catch (e) {
+      console.error("Failed to load docs:", e);
+      setDocList([]);
+      alert("Could not load documents. Check server logs.");
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const openInNewTab = (url) => {
+    if (!url) return;
+    window.open(url, "_blank", "noopener");
+  };
+
+  const deleteUser = async (userId) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!window.confirm("Delete account? This is destructive.")) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/`, {
         method: "DELETE",
         credentials: "include",
-        headers: {
-          "Accept": "application/json",
-          // include CSRF token for unsafe request if using session auth
-          ...(csrftoken ? { "X-CSRFToken": csrftoken } : {}),
-        },
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
       });
-
-      if (resp.status === 204 || resp.status === 200) {
-        // success — remove locally
-        setUsers(rows => rows.filter(r => r.id !== id));
-        return;
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "Failed to delete");
       }
-
-      if (resp.status === 403) {
-        const j = await resp.json().catch(() => null);
-        alert((j && (j.detail || j.error)) || "Forbidden (not allowed to delete). Are you logged in as admin?");
-        return;
-      }
-
-      // Try parse error
-      let errMsg = `Delete failed (status ${resp.status})`;
-      try {
-        const j = await resp.json();
-        errMsg = j.error || j.detail || JSON.stringify(j);
-      } catch (e) {
-        const txt = await resp.text().catch(() => "");
-        if (txt) errMsg = txt;
-      }
-      alert(errMsg);
-    } catch (err) {
-      console.error("deleteUser error:", err);
-      alert(err.message || "Delete failed");
+      fetchUsers();
+      fetchPending();
+    } catch (e) {
+      console.error(e);
+      alert("Delete failed.");
     }
-  }
-
-  /* ---- Doc modal ---- */
-  const [docOpen, setDocOpen] = useState(false);
-  const [docTitle, setDocTitle] = useState("");
-  const [docUrl, setDocUrl] = useState("");
-
-  const openDoc = (row) => {
-    setDocTitle(`${row.name} — ${row.docName || "Attached Document"}`);
-    setDocUrl(row.docUrl || "");
-    setDocOpen(true);
   };
 
   return (
     <div className="app">
       <Header />
-
       <main className="ad-main">
         <div className="ad-container">
           <h1 className="ad-h1">Admin Dashboard</h1>
@@ -194,38 +223,48 @@ export default function AdminUser() {
               <h2 className="ad-panel__title">Pending Investors</h2>
               <div className="ad-search">
                 <span aria-hidden>🔎</span>
-                <input value={qPending} onChange={(e) => setQPending(e.target.value)} placeholder="Search" aria-label="Search pending investors" />
+                <input
+                  value={qPending}
+                  onChange={(e) => setQPending(e.target.value)}
+                  placeholder="Search pending investors"
+                  aria-label="Search pending investors"
+                />
               </div>
             </div>
 
             <div className="ad-table" role="table" aria-label="Pending investors">
               <div className="ad-tr ad-tr--head" role="row">
                 <div className="ad-th" role="columnheader">Name</div>
-                <div className="ad-th" role="columnheader">Email</div>
-                <div className="ad-th" role="columnheader">Date</div>
+                <div className="ad-th" role="columnheader">Email / Company</div>
+                <div className="ad-th" role="columnheader">Phone</div>
                 <div className="ad-th" role="columnheader">Status</div>
                 <div className="ad-th ad-th--actions" role="columnheader"></div>
               </div>
 
-              {filteredPending.map((r) => (
-                <div className="ad-tr" role="row" key={r.id}>
-                  <div className="ad-td" role="cell">{r.name}</div>
-                  <div className="ad-td" role="cell">{r.email}</div>
-                  <div className="ad-td" role="cell">{r.date}</div>
-                  <div className="ad-td" role="cell">
-                    <Badge kind={r.status === "pending" ? "pending" : r.status === "approved" ? "active" : "pending"}>
-                      {r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : "Pending"}
-                    </Badge>
+              {filteredPending.length === 0 && (
+                <div className="ad-tr" role="row">
+                  <div className="ad-td" role="cell" style={{ padding: "1rem" }}>
+                    No pending investors.
                   </div>
+                </div>
+              )}
+
+              {filteredPending.map((r) => (
+                <div className="ad-tr" role="row" key={r.investor_id || r.user_id || r.id}>
+                  <div className="ad-td" role="cell">{r.investor_name || r.name || "—"}</div>
+                  <div className="ad-td" role="cell">
+                    <div style={{ fontWeight: 700 }}>{r.email_address || r.email || "—"}</div>
+                    <div style={{ color: "#6b7280", fontSize: ".9rem" }}>{r.company_name || r.company || ""}</div>
+                  </div>
+                  <div className="ad-td" role="cell">{r.phone || "—"}</div>
+                  <div className="ad-td" role="cell"><Badge kind={r.verification_status === "approved" ? "active" : "pending"}>{r.verification_status || "pending"}</Badge></div>
                   <div className="ad-td ad-td--actions" role="cell">
                     <SmallButton kind="ghost" onClick={() => openDoc(r)}>View Attached Doc</SmallButton>
-                    <SmallButton kind="outline" onClick={() => setInvestorStatus(r.id, "rejected")}>Reject</SmallButton>
-                    <SmallButton kind="primary" onClick={() => setInvestorStatus(r.id, "approved")}>Approve</SmallButton>
+                    <SmallButton kind="outline" onClick={() => rejectInvestor(r.investor_id)}>Reject</SmallButton>
+                    <SmallButton kind="primary" onClick={() => approveInvestor(r.investor_id)}>Approve</SmallButton>
                   </div>
                 </div>
               ))}
-
-              {filteredPending.length === 0 && <p style={{ padding: "1rem" }}>No pending investors.</p>}
             </div>
           </section>
 
@@ -235,7 +274,12 @@ export default function AdminUser() {
               <h2 className="ad-panel__title">Manage Users</h2>
               <div className="ad-search">
                 <span aria-hidden>🔎</span>
-                <input value={qUsers} onChange={(e) => setQUsers(e.target.value)} placeholder="Search users" aria-label="Search users" />
+                <input
+                  value={qUsers}
+                  onChange={(e) => setQUsers(e.target.value)}
+                  placeholder="Search users"
+                  aria-label="Search users"
+                />
               </div>
             </div>
 
@@ -244,24 +288,29 @@ export default function AdminUser() {
                 <div className="ad-th" role="columnheader">Name</div>
                 <div className="ad-th" role="columnheader">Email</div>
                 <div className="ad-th" role="columnheader">Date Created</div>
+                <div className="ad-th" role="columnheader">Status</div>
                 <div className="ad-th ad-th--actions" role="columnheader"></div>
               </div>
 
-              {usersLoading && <p style={{ padding: "1rem" }}>Loading users...</p>}
-              {usersError && <p style={{ padding: "1rem", color: "crimson" }}>{usersError}</p>}
+              {filteredUsers.length === 0 && (
+                <div className="ad-tr" role="row">
+                  <div className="ad-td" role="cell" style={{ padding: "1rem" }}>
+                    No users available (implement /api/admin/users/ to populate).
+                  </div>
+                </div>
+              )}
 
-              {!usersLoading && !usersError && filteredUsers.map((r) => (
+              {filteredUsers.map((r) => (
                 <div className="ad-tr" role="row" key={r.id}>
-                  <div className="ad-td" role="cell">{(r.first_name || "") + " " + (r.last_name || "")}</div>
+                  <div className="ad-td" role="cell">{`${r.first_name || ""} ${r.last_name || ""}`.trim()}</div>
                   <div className="ad-td" role="cell">{r.email}</div>
                   <div className="ad-td" role="cell">{r.date_joined ? new Date(r.date_joined).toLocaleDateString() : "—"}</div>
+                  <div className="ad-td" role="cell"><Badge kind={r.is_active ? "active" : "pending"}>{r.is_active ? "active" : "inactive"}</Badge></div>
                   <div className="ad-td ad-td--actions" role="cell">
                     <SmallButton kind="danger" onClick={() => deleteUser(r.id)}>Delete Account</SmallButton>
                   </div>
                 </div>
               ))}
-
-              {!usersLoading && !usersError && filteredUsers.length === 0 && <p style={{ padding: "1rem" }}>No users found.</p>}
             </div>
           </section>
         </div>
@@ -269,7 +318,34 @@ export default function AdminUser() {
 
       {/* Doc Modal */}
       <Modal open={docOpen} title={docTitle} onClose={() => setDocOpen(false)}>
-        {docUrl ? <iframe title="Attached Document" src={docUrl} className="ad-doc-viewer" /> : <p>No document attached.</p>}
+        {docLoading && <div>Loading documents…</div>}
+
+        {!docLoading && docList.length === 0 && <div>No documents attached.</div>}
+
+        {!docLoading && docList.length > 0 && (
+          <div style={{ display: "grid", gap: 12 }}>
+            {docList.map((d, idx) => {
+              const ext = (d.file_name || d.url || "").split(".").pop()?.toLowerCase() || "";
+              const isImage = ["png","jpg","jpeg","gif","webp"].includes(ext);
+              return (
+                <div key={idx} style={{ borderRadius: 8, padding: 8, background: "#fafafa", display: "flex", gap: 12, alignItems: "center" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700 }}>{d.file_name}</div>
+                    <div style={{ color: "#6b7280", fontSize: ".9rem" }}>{d.url}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {isImage ? (
+                      <button className="ad-btn ad-btn--ghost" onClick={() => openInNewTab(d.url)}>Open Image</button>
+                    ) : (
+                      <button className="ad-btn ad-btn--ghost" onClick={() => openInNewTab(d.url)}>Open Document</button>
+                    )}
+                    <a className="ad-btn ad-btn--outline" href={d.url} target="_blank" rel="noopener noreferrer">Download</a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Modal>
 
       <Footer />

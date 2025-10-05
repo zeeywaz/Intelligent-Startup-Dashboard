@@ -11,7 +11,11 @@ from .models import (
     BusinessIdea,
     ChatMessage, Notification, Bookmark
 )
+from django.contrib.auth import get_user_model
+from rest_framework import serializers
+from .models import InvestorVerificationDoc, InvestorProfile, InvestorDetails
 
+User = get_user_model()
 User = get_user_model()
 
 # ---------- Registration ----------
@@ -337,3 +341,66 @@ class CompetitorIdeaSerializer(serializers.ModelSerializer):
             return None
 
 
+class InvestorDocSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InvestorVerificationDoc
+        fields = ("id", "file_url", "uploaded_at")
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if not getattr(obj, "file", None):
+            return None
+        try:
+            url = obj.file.url  # may raise if storage not configured
+        except Exception:
+            return None
+        return request.build_absolute_uri(url) if request else url
+
+
+class AdminInvestorSerializer(serializers.ModelSerializer):
+    """
+    Rich admin view of an InvestorDetails row including:
+      - minimal auth-user info
+      - attached verification docs (via InvestorProfile → InvestorVerificationDoc)
+    """
+    user = serializers.SerializerMethodField()
+    docs = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InvestorDetails
+        fields = (
+            "investor_id",
+            "investor_name",
+            "company_name",
+            "email_address",
+            "phone",
+            "credit_score",
+            "verification_status",
+            "user",
+            "docs",
+        )
+
+    def get_user(self, obj):
+        u = getattr(obj, "user", None)
+        if not u:
+            return None
+        return {
+            "id": getattr(u, "id", None),
+            "username": getattr(u, "username", ""),
+            "first_name": getattr(u, "first_name", ""),
+            "last_name": getattr(u, "last_name", ""),
+            "email": getattr(u, "email", ""),
+        }
+
+    def get_docs(self, obj):
+        # Docs are linked to InvestorProfile by user
+        u = getattr(obj, "user", None)
+        if not u:
+            return []
+        profile = InvestorProfile.objects.filter(user=u).first()
+        if not profile:
+            return []
+        qs = InvestorVerificationDoc.objects.filter(profile=profile).order_by("uploaded_at")
+        return InvestorDocSerializer(qs, many=True, context=self.context).data

@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views, investor_views as inv
+from . import investor_views as inv
 
 
 router = DefaultRouter()
@@ -71,5 +72,13 @@ urlpatterns = [
     path("register/investor/", inv.register_investor_details,   name="register-investor"),   # multipart -> writes investor_details
     path("register/investor/base/", inv.investor_register, name="investor-base-register"),
     path("register/investor/details/", inv.register_investor_details, name="register-investor-details"),
+    
+    # --- Admin: investor verification ---
+    path("admin/investors/", inv.admin_investor_list, name="admin-investor-list"),
+    path("admin/pending-investors/", inv.admin_pending_investors, name="admin-pending-investors"),
+    path("admin/investor/<int:investor_id>/docs/", inv.admin_investor_docs, name="admin-investor-docs"),
+    path("admin/investor/<int:investor_id>/approve/", inv.admin_approve_investor, name="admin-approve-investor"),
+    path("admin/investor/<int:investor_id>/reject/", inv.admin_reject_investor, name="admin-reject-investor"),
+
     
 ]

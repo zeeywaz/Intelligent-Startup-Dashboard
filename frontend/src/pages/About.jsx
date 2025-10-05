@@ -70,34 +70,62 @@ export default function About() {
             <h2>Meet Our Team</h2>
             <div className="team-grid">
               <div className="team-card">
+                <img src="user.png" alt="Zeidh Wazeer" className="avatar-img" />
                 <h3>Zeidh Wazeer</h3>
                 <p className="role">Founder & CEO</p>
                 <p className="bio">
-                  Visionary leader with experience in tech, sotfware engineering and architecture.
+                  Visionary leader with experience in tech, software engineering
+                  and architecture.
                 </p>
               </div>
+
               <div className="team-card">
+                <img src="user.png" alt="Nabeel Naushad" className="avatar-img" />
                 <h3>Nabeel Naushad</h3>
-                <p className="role">Co-Founder and Managing director</p>
+                <p className="role">Co-Founder & Managing Director</p>
                 <p className="bio">
                   Expert in AI and cloud systems, passionate about scaling
                   innovative solutions.
                 </p>
               </div>
+
               <div className="team-card">
+                <img src="user.png" alt="Mihadh Infiyaaz" className="avatar-img" />
                 <h3>Mihadh Infiyaaz</h3>
                 <p className="role">Co-Founder & Software Developer</p>
                 <p className="bio">
-                  Exploring AI, cybersecurity, and software development with a passion for 
-                  innovation and continuous learning.
+                  Exploring AI, cybersecurity, and software development with a
+                  passion for innovation and continuous learning.
                 </p>
               </div>
+
               <div className="team-card">
-                <h3>Sarah Lee</h3>
+                <img src="user.png" alt="Ashwin Jonathan" className="avatar-img" />
+                <h3>Ashwin Jonathan</h3>
                 <p className="role">Product Manager</p>
                 <p className="bio">
                   Drives product strategy and ensures user-centric design across
                   all platforms.
+                </p>
+              </div>
+
+              <div className="team-card">
+                <img src="user.png" alt="Akil Sabry" className="avatar-img" />
+                <h3>Akil Sabry</h3>
+                <p className="role">Product Manager</p>
+                <p className="bio">
+                  Drives product strategy and ensures user-centric design across
+                  all platforms.
+                </p>
+              </div>
+
+              <div className="team-card">
+                <img src="user.png" alt="Hammad" className="avatar-img" />
+                <h3>Hammad</h3>
+                <p className="role">Software Engineer</p>
+                <p className="bio">
+                  Skilled in full-stack development and passionate about
+                  building scalable applications.
                 </p>
               </div>
             </div>

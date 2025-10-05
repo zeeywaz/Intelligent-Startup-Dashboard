@@ -8,8 +8,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.db import connection
+# --- add with your other imports ---
+import os
+from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
 
-from .serializers import InvestorRegisterSerializer, InvestorSerializer
+
+from .serializers import InvestorRegisterSerializer, InvestorSerializer, AdminInvestorSerializer, InvestorDocSerializer
 from .models import (
     Role, UserRole,
     InvestorDetails, InvestorInterest, BusinessCategory,
@@ -181,3 +186,169 @@ def register_investor_details(request):
         {"message": "Investor details saved.", "investor": inv_serialized, "created_interests": created_interests, "next": "/investordashboard"},
         status=status.HTTP_201_CREATED,
     )
+    
+def _is_admin_or_staff(user):
+    return bool(getattr(user, "is_authenticated", False) and getattr(user, "is_staff", False))
+
+
+# -----------------------
+# Admin endpoints (staff)
+# -----------------------
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_pending_investors(request):
+    """
+    List investors whose verification_status is 'pending'.
+    Includes a first_doc_url (if any) and doc_count for quick triage.
+    """
+    if not _is_admin_or_staff(request.user):
+        return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+    out = []
+    qs = InvestorDetails.objects.select_related("user").filter(verification_status__iexact="pending").order_by("-investor_id")
+    for inv in qs:
+        uid = getattr(inv, "user_id", None)
+        first_doc_url = None
+        doc_count = 0
+        try:
+            profile = InvestorProfile.objects.filter(user_id=uid).first() if uid else None
+            if profile:
+                docs_qs = InvestorVerificationDoc.objects.filter(profile=profile).order_by("uploaded_at")
+                doc_count = docs_qs.count()
+                if doc_count:
+                    d = docs_qs.first()
+                    if getattr(d, "file", None):
+                        try:
+                            first_doc_url = request.build_absolute_uri(d.file.url)
+                        except Exception:
+                            first_doc_url = None
+        except Exception:
+            first_doc_url = None
+            doc_count = 0
+
+        out.append({
+            "investor_id": inv.investor_id,
+            "investor_name": inv.investor_name,
+            "company_name": inv.company_name,
+            "email_address": inv.email_address,
+            "phone": inv.phone,
+            "credit_score": inv.credit_score,
+            "verification_status": inv.verification_status,
+            "user_id": uid,
+            "doc_count": doc_count,
+            "first_doc_url": first_doc_url,
+        })
+
+    return Response(out, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_investor_docs(request, investor_id: int):
+    """
+    Get all verification documents (file name + absolute URL) for a given investor_id.
+    """
+    if not _is_admin_or_staff(request.user):
+        return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+    inv = get_object_or_404(InvestorDetails, pk=investor_id)
+    uid = getattr(inv, "user_id", None)
+
+    files = []
+    try:
+        profile = InvestorProfile.objects.filter(user_id=uid).first() if uid else None
+        if profile:
+            docs_qs = InvestorVerificationDoc.objects.filter(profile=profile).order_by("uploaded_at")
+            for d in docs_qs:
+                try:
+                    url = request.build_absolute_uri(d.file.url) if getattr(d, "file", None) else None
+                except Exception:
+                    url = None
+                files.append({
+                    "id": getattr(d, "id", None),
+                    "file_name": (os.path.basename(d.file.name) if getattr(d, "file", None) else ""),
+                    "url": url,
+                    "uploaded_at": getattr(d, "uploaded_at", None),
+                })
+    except Exception:
+        files = []
+
+    return Response(files, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_approve_investor(request, investor_id: int):
+    """
+    Set verification_status='approved' for the investor_details row.
+    """
+    if not _is_admin_or_staff(request.user):
+        return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+    inv = get_object_or_404(InvestorDetails, pk=investor_id)
+    inv.verification_status = "approved"
+    inv.save(update_fields=["verification_status"])
+    # Optional: return the rich admin serializer to refresh UI row
+    data = AdminInvestorSerializer(inv, context={"request": request}).data
+    return Response({"message": "Investor approved", "investor": data}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_reject_investor(request, investor_id: int):
+    """
+    Remove a pending/failed investor:
+      - deletes verification docs + profile
+      - deletes investor_interest rows
+      - deletes investor_details row
+      - optionally deletes the auth user (delete_user=true, default)
+    """
+    if not _is_admin_or_staff(request.user):
+        return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+    delete_user = bool(request.data.get("delete_user", True))
+    inv = get_object_or_404(InvestorDetails, pk=investor_id)
+    uid = getattr(inv, "user_id", None)
+
+    with transaction.atomic():
+        # 1) delete docs & profile
+        try:
+            profile = InvestorProfile.objects.filter(user_id=uid).first() if uid else None
+            if profile:
+                InvestorVerificationDoc.objects.filter(profile=profile).delete()
+                profile.delete()
+        except Exception:
+            pass
+
+        # 2) delete interests
+        try:
+            InvestorInterest.objects.filter(investor=inv).delete()
+        except Exception:
+            pass
+
+        # 3) delete investor_details row
+        inv.delete()
+
+        # 4) optionally delete auth user
+        if delete_user and uid:
+            try:
+                User.objects.filter(pk=uid).delete()
+            except Exception:
+                pass
+
+    return Response({"message": "Investor rejected and removed", "investor_id": investor_id}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_investor_list(request):
+    """
+    Full admin list of investors (any status) with attached docs & user info.
+    """
+    if not _is_admin_or_staff(request.user):
+        return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+    qs = InvestorDetails.objects.select_related("user").order_by("-investor_id")
+    ser = AdminInvestorSerializer(qs, many=True, context={"request": request})
+    return Response(ser.data, status=status.HTTP_200_OK)
