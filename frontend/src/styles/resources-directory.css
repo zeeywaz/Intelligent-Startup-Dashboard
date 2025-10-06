@@ -1,4 +1,4 @@
-/* ===== Professional Sleek Resources UI (Final Compact) ===== */
+/* ===== Resources Directory — aligned to ResourcesDirectory.jsx ===== */
 :root {
   --rs-bg: linear-gradient(180deg, #eef4ff, #c7d8f6);
   --rs-card: #ffffff;
@@ -11,11 +11,21 @@
   --rs-shadow-hover: 0 18px 36px rgba(16, 24, 40, 0.14);
   --rs-shadow-sm: 0 3px 10px rgba(16, 24, 40, 0.06);
   --rs-radius: 16px;
+
+  /* Admin accent helpers */
+  --rs-green: #007a2f;
+  --rs-green-ink: #0b3d2a;
+  --rs-green-bg: #e8f6ef;
+  --rs-red: #be1d1d;
+  --rs-red-bg: #ffefef;
 }
 
+/* Reset-ish */
 * { box-sizing: border-box; }
+button { font: inherit; }
+input, select, textarea { font: inherit; color: inherit; }
 
-/* page + typography */
+/* Page */
 .resources-page {
   min-height: 100dvh;
   background: var(--rs-bg);
@@ -24,7 +34,7 @@
   padding-bottom: 50px;
 }
 
-/* header */
+/* Header */
 .resources-header {
   max-width: 1100px;
   margin: 30px auto 15px;
@@ -43,14 +53,16 @@
   font-size: 14px;
 }
 
-/* toolbar */
+/* Generic muted used elsewhere in JSX */
+.muted { color: var(--rs-muted); }
+
+/* Toolbar */
 .toolbar {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
 }
-
 .input-wrap {
   position: relative;
   flex: 1 1 360px;
@@ -78,7 +90,7 @@
   outline: none;
 }
 
-/* chip */
+/* Toggle chip (bookmarks, load more) */
 .chip {
   border: 1px solid var(--rs-border);
   background: var(--rs-card);
@@ -98,7 +110,7 @@
   color: #8b5e00;
 }
 
-/* loading + empty */
+/* Loading + Empty states */
 .loading, .empty {
   max-width: 1100px;
   margin: 30px auto;
@@ -118,9 +130,7 @@
 }
 .empty-card .emoji { font-size: 22px; }
 
-/* card grid
-   - rows size to content
-   - items align to top so no equal-height stretching */
+/* Grid */
 .card-grid {
   max-width: 1100px;
   margin: 20px auto 40px;
@@ -132,16 +142,14 @@
   align-items: start;
 }
 
-/* resource card
-   - reserve space at top for badge/bookmark
-   - make sure card only takes the vertical space it needs */
+/* Card */
 .r-card {
   position: relative;
   background: var(--rs-card);
   border: 1px solid var(--rs-border);
   border-radius: var(--rs-radius);
   box-shadow: var(--rs-shadow);
-  padding: 36px 14px 12px; /* reserve top area for overlays */
+  padding: 36px 14px 12px; /* reserve top space for overlays */
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -156,7 +164,7 @@
   box-shadow: var(--rs-shadow-hover);
 }
 
-/* bookmark (top-right) */
+/* Bookmark (top-right) */
 .bookmark {
   position: absolute;
   right: 12px; top: 12px;
@@ -174,7 +182,7 @@
 .bookmark:hover { border-color: var(--rs-primary); }
 .bookmark.on svg { color: #f5b301; }
 
-/* type badge (top-left) */
+/* Type badge (top-left) */
 .type-badge {
   position: absolute;
   left: 12px; top: 12px;
@@ -194,10 +202,11 @@
 .type-badge.t-TRANSPORT { background:#e8f3ff; color:#0f5ba7; border-color:#d9ebff; }
 .type-badge.t-SECURITY,
 .type-badge.t-IT_SECURITY { background:#ffeef0; color:#a40e26; border-color:#ffd9de; }
+.type-badge.t-SAAS { background:#e9f0ff; color:#1d4ed8; border-color:#dbe7ff; }
 
-/* text - title, meta, desc */
+/* Text blocks */
 .name {
-  margin: 0; /* sits just under reserved overlay area */
+  margin: 0;
   font-size: 16.5px;
   font-weight: 700;
   color: var(--rs-ink);
@@ -220,8 +229,7 @@
   overflow: hidden;
 }
 
-/* actions/buttons
-   - placed directly after content, not pushed to bottom */
+/* Primary actions (website / map) */
 .actions {
   display: flex;
   gap: 8px;
@@ -243,6 +251,7 @@
   transition: all 0.18s ease;
 }
 .btn:hover { filter: brightness(1.05); }
+.btn:focus { outline: none; box-shadow: 0 0 0 3px var(--rs-ring); }
 .btn.secondary {
   border-color: var(--rs-border);
   background: var(--rs-card);
@@ -250,39 +259,183 @@
 }
 .btn.secondary:hover { background: #f8fafc; }
 
-/* center single action but avoid big bottom gap */
-.r-card .actions.single {
-  justify-content: center;
-  padding-bottom: 6px;
+/* Safety overrides to prevent stretched cards/gaps */
+.card-grid { grid-auto-rows: auto !important; align-items: start !important; }
+.card-grid > * { align-self: start !important; }
+.r-card { height: auto !important; min-height: 0 !important; padding-bottom: 12px !important; }
+.r-card .desc, .r-card .meta, .r-card .name { margin-bottom: 0 !important; }
+.r-card .actions { margin-top: 8px !important; margin-bottom: 0 !important; flex-wrap: wrap !important; }
+
+/* =========================
+   ADMIN ACTIONS (in-card)
+   ========================= */
+.adm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rs-border);
+}
+.adm-btn {
+  appearance: none;
+  border: 1px solid var(--rs-border);
+  background: #fff;
+  color: var(--rs-ink);
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--rs-shadow-sm);
+  transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease, color .2s ease;
+}
+.adm-btn:hover { transform: translateY(-1px); box-shadow: var(--rs-shadow); }
+.adm-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--rs-ring); }
+
+/* Variants used in JSX: .edit .delete .ghost .save */
+.adm-btn.edit {
+  border-color: rgba(0, 122, 47, 0.35);
+  color: var(--rs-green-ink);
+  background: var(--rs-green-bg);
+}
+.adm-btn.edit:hover { filter: brightness(0.98); }
+.adm-btn.delete {
+  border-color: rgba(190, 29, 29, 0.35);
+  color: #8b1c1c;
+  background: var(--rs-red-bg);
+}
+.adm-btn.delete:hover { filter: brightness(0.98); }
+
+.adm-btn.ghost {
+  border-color: var(--rs-border);
+  background: #fff;
+  color: var(--rs-ink);
+}
+.adm-btn.save {
+  border-color: var(--rs-primary);
+  background: var(--rs-primary);
+  color: #fff;
 }
 
-/* ---- Extra safety overrides to eliminate bottom whitespace / external conflicts ---- */
-.card-grid {
-  grid-auto-rows: auto !important;
-  align-items: start !important;
+/* =========================
+   ADMIN EDIT MODAL
+   ========================= */
+.adm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(15, 23, 42, 0.36);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  backdrop-filter: blur(2px);
 }
-.r-card {
-  height: auto !important;
-  min-height: 0 !important;
-  padding-bottom: 12px !important;
-  justify-content: flex-start !important;
-  align-self: start !important;
+.adm-dialog {
+  width: min(780px, 96vw);
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--rs-border);
+  box-shadow: var(--rs-shadow);
+  overflow: hidden;
+  animation: admPop .12s ease-out;
 }
-.r-card .desc,
-.r-card .meta,
-.r-card .name {
-  margin-bottom: 0 !important;
-}
-.r-card .actions {
-  margin-top: 8px !important;
-  margin-bottom: 0 !important;
-  flex-wrap: wrap !important;
-}
-.card-grid > * {
-  align-self: start !important;
+@keyframes admPop {
+  from { transform: translateY(6px); opacity: .8; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
+.adm-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rs-border);
+  background: #fafbff;
+}
+.adm-dialog__header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--rs-ink);
+}
+.adm-icon-btn {
+  appearance: none;
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--rs-border);
+  background: #fff;
+  cursor: pointer;
+  transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+}
+.adm-icon-btn:hover { transform: translateY(-1px); box-shadow: var(--rs-shadow-sm); }
+.adm-icon-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--rs-ring); }
 
+.adm-form { padding: 14px 16px 16px; }
+.adm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 640px){
+  .adm-grid { grid-template-columns: 1fr; }
+}
+.adm-field {
+  display: grid;
+  gap: 6px;
+}
+.adm-field span {
+  font-size: 12px;
+  color: var(--rs-muted);
+  font-weight: 600;
+}
+.adm-field input,
+.adm-field select,
+.adm-field textarea {
+  width: 100%;
+  border: 1px solid var(--rs-border);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 14px;
+  background: #fff;
+  color: var(--rs-ink);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.adm-field textarea { min-height: 90px; resize: vertical; }
+.adm-field input:focus,
+.adm-field select:focus,
+.adm-field textarea:focus {
+  outline: none;
+  border-color: var(--rs-primary);
+  box-shadow: 0 0 0 3px var(--rs-ring);
+}
+.adm-field--full { grid-column: 1 / -1; }
+
+.adm-error {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7f7;
+  color: #a10d0d;
+  border: 1px solid #ffd3d3;
+  font-size: 13px;
+}
+
+.adm-dialog__footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+/* =========================
+   CONFIRM OVERLAY (promise)
+   ========================= */
 .confirm-overlay {
   position: fixed;
   inset: 0;
@@ -301,7 +454,19 @@
   box-shadow: 0 10px 30px rgba(0,0,0,.2);
 }
 .confirm-message { font-size: 15px; color: #111; }
-.confirm-actions { margin-top: 12px; }
-.confirm-btn { padding: 8px 12px; border-radius: 8px; }
+.confirm-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end; }
+.confirm-btn { padding: 8px 12px; border-radius: 8px; cursor: pointer; }
 .confirm-btn.confirm { background: #1f6feb; color: white; border: none; }
 .confirm-btn.cancel { background: transparent; border: 1px solid #ddd; }
+
+/* Print */
+@media print {
+  .toolbar,
+  .bookmark,
+  .adm-actions,
+  .adm-modal,
+  .confirm-overlay,
+  .chip { display: none !important; }
+  .resources-page { background: #fff; padding: 0; }
+  .r-card { box-shadow: none !important; page-break-inside: avoid; }
+}

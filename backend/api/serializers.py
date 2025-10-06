@@ -404,3 +404,33 @@ class AdminInvestorSerializer(serializers.ModelSerializer):
             return []
         qs = InvestorVerificationDoc.objects.filter(profile=profile).order_by("uploaded_at")
         return InvestorDocSerializer(qs, many=True, context=self.context).data
+
+
+# add near other serializers
+class BusinessIdeaAdminSerializer(serializers.ModelSerializer):
+    category = serializers.SerializerMethodField()
+    category_id = serializers.PrimaryKeyRelatedField(
+        source="category",
+        queryset=BusinessCategory.objects.all(),
+        write_only=True,
+        required=False,
+    )
+    user = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = BusinessIdea
+        fields = [
+            "idea_id",
+            "user",
+            "category", "category_id",
+            "title", "description",
+            "target_audience", "location", "business_type",
+            "submission_date",
+        ]
+        read_only_fields = ["idea_id", "user", "submission_date"]
+
+    def get_category(self, obj):
+        try:
+            return obj.category.name if obj.category else None
+        except Exception:
+            return None

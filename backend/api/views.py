@@ -1634,3 +1634,28 @@ def resource_detail_admin(request, pk: int):
     # DELETE
     obj.delete()
     return Response(status=204)
+
+
+from rest_framework.permissions import IsAdminUser
+from django.shortcuts import get_object_or_404
+from rest_framework.parsers import JSONParser
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAdminUser])
+@parser_classes([JSONParser])
+def idea_detail_admin(request, pk: int):
+    """
+    Admin-only edit/delete for business ideas.
+    Front-end calls: PATCH/DELETE /api/ideas/<id>/
+    """
+    obj = get_object_or_404(BusinessIdea, pk=pk)
+    if request.method == "PATCH":
+        from .serializers import BusinessIdeaAdminSerializer
+        ser = BusinessIdeaAdminSerializer(obj, data=request.data, partial=True)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data, status=200)
+        return Response({"detail": ser.errors}, status=400)
+    # DELETE
+    obj.delete()
+    return Response(status=204)

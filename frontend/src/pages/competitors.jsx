@@ -18,6 +18,26 @@ const useDebounced = (v, ms = 350) => {
   return val;
 };
 
+async function getJSON(url) {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    for (const c of document.cookie.split(";")) {
+      const cookie = c.trim();
+      if (cookie.startsWith(name + "=")) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 /** Normalize various API shapes to { items, total, hasMore, nextPage } */
 const normalize = (json, currentPage, pageSize) => {
   if (json && Array.isArray(json.results)) {
@@ -49,26 +69,6 @@ const normalize = (json, currentPage, pageSize) => {
   }
   return { items: [], total: 0, hasMore: false, nextPage: currentPage };
 };
-
-async function getJSON(url) {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== "") {
-    for (const c of document.cookie.split(";")) {
-      const cookie = c.trim();
-      if (cookie.startsWith(name + "=")) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
 
 /* ------------------ Confirm modal (Promise-based) ------------------ */
 function ConfirmModal({ state, onClose }) {
@@ -136,16 +136,16 @@ function CompetitorCard({ item, bookmarked, onBookmark, isSuper, onEdit, onDelet
       )}
 
       {isSuper && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <button className="cmp-btn" onClick={() => onEdit(id)}>Edit</button>
-          <button className="cmp-btn" onClick={() => onDelete(id)}>Delete</button>
+        <div className="adm-actions">
+          <button className="adm-btn edit" onClick={() => onEdit(id)}>Edit</button>
+          <button className="adm-btn delete" onClick={() => onDelete(id)}>Delete</button>
         </div>
       )}
     </article>
   );
 }
 
-function IdeaCard({ idea, bookmarked, onBookmark }) {
+function IdeaCard({ idea, bookmarked, onBookmark, isSuper, onEdit, onDelete }) {
   const displayName =
     (idea?.user?.first_name || idea?.user?.last_name)
       ? `${idea.user.first_name || ""} ${idea.user.last_name || ""}`.trim()
@@ -153,6 +153,7 @@ function IdeaCard({ idea, bookmarked, onBookmark }) {
       ? `@${idea.user.username}`
       : "Unknown";
   const cat = idea?.category_name || "Uncategorised";
+  const id = idea?.idea_id ?? idea?.id ?? idea?.pk;
 
   return (
     <article className="cmp-card" role="listitem">
@@ -178,7 +179,254 @@ function IdeaCard({ idea, bookmarked, onBookmark }) {
       <h3 className="cmp-card__title">{idea?.title || "(Untitled idea)"}</h3>
       {idea?.user && <p className="cmp-card__desc">by {displayName}</p>}
       {idea?.description && <p className="cmp-card__desc">{idea.description}</p>}
+
+      {isSuper && (
+        <div className="adm-actions">
+          <button className="adm-btn edit" onClick={() => onEdit(id)}>Edit</button>
+          <button className="adm-btn delete" onClick={() => onDelete(id)}>Delete</button>
+        </div>
+      )}
     </article>
+  );
+}
+
+/* ---------- Edit modal (Competitor) ---------- */
+function EditCompetitorModal({ open, initial, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    name: "",
+    strength: "low",
+    website: "",
+    description: "",
+    category_id: "",
+  }));
+  const [cats, setCats] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      name: initial?.name || "",
+      strength: (initial?.strength || "low").toString().toLowerCase(),
+      website: initial?.website || "",
+      description: initial?.description || "",
+      category_id: initial?.category?.id ?? initial?.category_id ?? "",
+    });
+    (async () => {
+      try {
+        const j = await getJSON(`${API}/categories/`);
+        setCats(Array.isArray(j) ? j : (j?.results || []));
+      } catch {
+        setCats([]);
+      }
+    })();
+  }, [open, initial]);
+
+  const update = (k) => (e) => setForm((s) => ({ ...s, [k]: e.target.value }));
+  const close = () => !busy && onClose?.();
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      const payload = {
+        name: form.name?.trim(),
+        strength: form.strength?.trim(),
+        website: form.website?.trim(),
+        description: form.description ?? "",
+        category_id: form.category_id || null,
+      };
+      await onSave(payload);
+    } catch (ex) {
+      setErr(ex?.message || "Failed to save");
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+  };
+
+  if (!open) return null;
+  return (
+    <div className="adm-modal" role="dialog" aria-modal="true" aria-label="Edit competitor">
+      <div className="adm-dialog">
+        <header className="adm-dialog__header">
+          <h3>Edit competitor</h3>
+          <button className="adm-icon-btn" onClick={close} aria-label="Close">×</button>
+        </header>
+
+        <form className="adm-form" onSubmit={submit}>
+          <div className="adm-grid">
+            <label className="adm-field">
+              <span>Name</span>
+              <input value={form.name} onChange={update("name")} required />
+            </label>
+
+            <label className="adm-field">
+              <span>Strength</span>
+              <select value={form.strength} onChange={update("strength")}>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+
+            <label className="adm-field">
+              <span>Website</span>
+              <input value={form.website} onChange={update("website")} placeholder="https://example.com" />
+            </label>
+
+            <label className="adm-field adm-field--full">
+              <span>Description</span>
+              <textarea value={form.description} onChange={update("description")} rows={3} />
+            </label>
+
+            <label className="adm-field">
+              <span>Category</span>
+              <select value={form.category_id || ""} onChange={update("category_id")}>
+                <option value="">— Select —</option>
+                {cats.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {err && <div className="adm-error">{err}</div>}
+
+          <footer className="adm-dialog__footer">
+            <button type="button" className="adm-btn ghost" onClick={close} disabled={busy}>Cancel</button>
+            <button type="submit" className="adm-btn save" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Edit modal (Business Idea) ---------- */
+function EditIdeaModal({ open, initial, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    title: "",
+    description: "",
+    target_audience: "",
+    location: "",
+    business_type: "",
+    category_id: "", // optional (only change if admin picks one)
+  }));
+  const [cats, setCats] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  // load categories for the category dropdown
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        const j = await getJSON(`${API}/categories/`);
+        const arr = Array.isArray(j) ? j : (j?.results || []);
+        setCats(arr);
+      } catch {
+        setCats([]);
+      }
+    })();
+  }, [open]);
+
+  // prefill from current row
+  useEffect(() => {
+    if (!open) return;
+    setForm((s) => ({
+      ...s,
+      title: initial?.title || "",
+      description: initial?.description || "",
+      target_audience: initial?.target_audience || "",
+      location: initial?.location || "",
+      business_type: initial?.business_type || "",
+      // category_id will remain "" unless admin selects; that avoids changing it by accident
+      category_id: "",
+    }));
+  }, [open, initial]);
+
+  const update = (k) => (e) => setForm((cur) => ({ ...cur, [k]: e.target.value }));
+  const close = () => !busy && onClose?.();
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      // send only fields that have values (avoid overwriting with "")
+      const payload = {};
+      for (const [k, v] of Object.entries(form)) {
+        if (k === "category_id") {
+          if (String(v || "").trim()) payload.category_id = Number(v);
+        } else if (String(v ?? "").trim() !== "") {
+          payload[k] = v;
+        }
+      }
+      await onSave(payload);
+    } catch (ex) {
+      setErr(ex?.message || "Failed to save");
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+  };
+
+  if (!open) return null;
+  return (
+    <div className="adm-modal" role="dialog" aria-modal="true" aria-label="Edit idea">
+      <div className="adm-dialog">
+        <header className="adm-dialog__header">
+          <h3>Edit business idea</h3>
+          <button className="adm-icon-btn" onClick={close} aria-label="Close">×</button>
+        </header>
+
+        <form className="adm-form" onSubmit={submit}>
+          <div className="adm-grid">
+            <label className="adm-field">
+              <span>Title</span>
+              <input value={form.title} onChange={update("title")} required />
+            </label>
+
+            <label className="adm-field">
+              <span>Location</span>
+              <input value={form.location} onChange={update("location")} placeholder="Colombo, Kandy, …" />
+            </label>
+
+            <label className="adm-field">
+              <span>Business type</span>
+              <input value={form.business_type} onChange={update("business_type")} placeholder="Retail, SaaS, Food…" />
+            </label>
+
+            <label className="adm-field">
+              <span>Target audience</span>
+              <input value={form.target_audience} onChange={update("target_audience")} placeholder="Students, SMEs, etc." />
+            </label>
+
+            <label className="adm-field adm-field--full">
+              <span>Description</span>
+              <textarea rows={4} value={form.description} onChange={update("description")} />
+            </label>
+
+            <label className="adm-field">
+              <span>Category</span>
+              <select value={form.category_id || ""} onChange={update("category_id")}>
+                <option value="">— Keep current —</option>
+                {cats.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {err && <div className="adm-error">{err}</div>}
+
+          <footer className="adm-dialog__footer">
+            <button type="button" className="adm-btn ghost" onClick={close} disabled={busy}>Cancel</button>
+            <button type="submit" className="adm-btn save" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
+          </footer>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -200,11 +448,20 @@ export default function CompetitorsPage() {
   // admin flag
   const [isSuper, setIsSuper] = useState(false);
 
+  // edit modal state (companies)
+  const [editId, setEditId] = useState(null);
+  const [editRow, setEditRow] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+
+  // edit modal state (ideas)
+  const [editIdeaId, setEditIdeaId] = useState(null);
+  const [editIdeaRow, setEditIdeaRow] = useState(null);
+  const [editIdeaOpen, setEditIdeaOpen] = useState(false);
+
   // Server bookmarks, per kind
   const ideaBms = useServerBookmarks("idea");
   const cmpBms  = useServerBookmarks("competitor");
 
-  // pick helpers by current mode
   const isBookmarked = useMemo(
     () => (id) => (mode === "ideas" ? ideaBms.isBookmarked(id) : cmpBms.isBookmarked(id)),
     [mode, ideaBms.isBookmarked, cmpBms.isBookmarked]
@@ -343,12 +600,12 @@ export default function CompetitorsPage() {
     setConfirmState(null);
   };
 
-  // ---------------- admin handlers ----------------
+  // ---------------- admin handlers: competitors ----------------
   async function handleDeleteCompetitor(id) {
     const ok = await showConfirm("Delete this competitor permanently?");
     if (!ok) return;
     try {
-      const res = await fetch(`${API}/${"competitors"}/${id}/`, {
+      const res = await fetch(`${API}/competitors/${id}/`, {
         method: "DELETE",
         credentials: "include",
         headers: { "X-CSRFToken": getCookie("csrftoken") },
@@ -366,31 +623,102 @@ export default function CompetitorsPage() {
     }
   }
 
-  async function handleEditCompetitor(id) {
-    const newName = window.prompt ? window.prompt("New competitor name (leave empty to cancel):") : "";
-    if (newName == null || String(newName).trim() === "") return;
+  async function handleOpenEditCompetitor(id) {
+    const row = rows.find((r) => (r?.competitor_id ?? r?.id ?? r?.pk) === id);
+    setEditId(id);
+    setEditRow(row || null);
+    setEditOpen(true);
+  }
+
+  async function handleSaveEditCompetitor(payload) {
+    const res = await fetch(`${API}/competitors/${editId}/`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(j.detail || `Failed (${res.status})`);
+    }
+    const updated = await res.json();
+    setRows((prev) =>
+      prev.map((r) => {
+        const rid = r?.competitor_id ?? r?.id ?? r?.pk;
+        return rid === editId ? { ...r, ...updated } : r;
+      })
+    );
+    setEditOpen(false);
+    setEditId(null);
+    setEditRow(null);
+  }
+
+  // ---------------- admin handlers: ideas ----------------
+  async function handleDeleteIdea(id) {
+    const ok = await showConfirm("Delete this business idea permanently?");
+    if (!ok) return;
     try {
-      const res = await fetch(`${API}/${"competitors"}/${id}/`, {
-        method: "PATCH",
+      const res = await fetch(`${API}/ideas/${id}/`, {
+        method: "DELETE",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({ name: newName }),
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
       });
-      if (!res.ok) {
+      if (!(res.ok || res.status === 204)) {
         const j = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(j.detail || `Failed (${res.status})`);
       }
-      const updated = await res.json();
-      setRows((prev) => prev.map((r) => {
-        const rid = r?.competitor_id ?? r?.id ?? r?.pk;
-        return rid === id ? { ...r, ...updated } : r;
-      }));
+      setRows((prev) => prev.filter((r) => (r?.idea_id ?? r?.id ?? r?.pk) !== id));
     } catch (err) {
-      alert("Edit failed: " + (err.message || "unknown"));
+      alert("Delete failed: " + (err.message || "unknown"));
     }
+  }
+
+  async function handleOpenEditIdea(id) {
+    const row = rows.find((r) => (r?.idea_id ?? r?.id ?? r?.pk) === id);
+    setEditIdeaId(id);
+    setEditIdeaRow(row || null);
+    setEditIdeaOpen(true);
+  }
+
+  async function handleSaveEditIdea(payload) {
+    const res = await fetch(`${API}/ideas/${editIdeaId}/`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(j.detail || `Failed (${res.status})`);
+    }
+    const updated = await res.json();
+
+    // Our grid’s idea rows are from CompetitorIdeaSerializer (title, description, category_name, user…)
+    // Map back minimally:
+    setRows((prev) =>
+      prev.map((r) => {
+        const rid = r?.idea_id ?? r?.id ?? r?.pk;
+        if (rid !== editIdeaId) return r;
+        const next = { ...r };
+        if (updated.title != null) next.title = updated.title;
+        if (updated.description != null) next.description = updated.description;
+        if (updated.category) next.category_name = updated.category; // admin serializer returns string field 'category'
+        if (updated.location != null) next.location = updated.location;
+        if (updated.business_type != null) next.business_type = updated.business_type;
+        if (updated.target_audience != null) next.target_audience = updated.target_audience;
+        return next;
+      })
+    );
+
+    setEditIdeaOpen(false);
+    setEditIdeaId(null);
+    setEditIdeaRow(null);
   }
 
   return (
@@ -476,6 +804,9 @@ export default function CompetitorsPage() {
                   idea={row}
                   bookmarked={isBookmarked(rid)}
                   onBookmark={() => toggleBookmark(rid).catch(() => {})}
+                  isSuper={isSuper}
+                  onEdit={handleOpenEditIdea}
+                  onDelete={handleDeleteIdea}
                 />
               ) : (
                 <CompetitorCard
@@ -484,7 +815,7 @@ export default function CompetitorsPage() {
                   bookmarked={isBookmarked(rid)}
                   onBookmark={() => toggleBookmark(rid).catch(() => {})}
                   isSuper={isSuper}
-                  onEdit={handleEditCompetitor}
+                  onEdit={handleOpenEditCompetitor}
                   onDelete={handleDeleteCompetitor}
                 />
               );
@@ -508,7 +839,26 @@ export default function CompetitorsPage() {
         </section>
       </main>
 
-      {/* Confirm modal rendered here */}
+      {/* Edit modals */}
+      {isSuper && mode === "companies" && (
+        <EditCompetitorModal
+          open={editOpen}
+          initial={editRow}
+          onClose={() => { setEditOpen(false); setEditRow(null); setEditId(null); }}
+          onSave={handleSaveEditCompetitor}
+        />
+      )}
+
+      {isSuper && mode === "ideas" && (
+        <EditIdeaModal
+          open={editIdeaOpen}
+          initial={editIdeaRow}
+          onClose={() => { setEditIdeaOpen(false); setEditIdeaRow(null); setEditIdeaId(null); }}
+          onSave={handleSaveEditIdea}
+        />
+      )}
+
+      {/* Confirm modal */}
       <ConfirmModal state={confirmState} onClose={handleConfirmClose} />
 
       <Footer />

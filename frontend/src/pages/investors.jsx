@@ -43,19 +43,13 @@ function normalizeBookmarks(raw) {
 /* ---------- small UI bits ---------- */
 function Avatar({ name }) {
   const letter = (name || "?").trim().charAt(0).toUpperCase() || "?";
-
   const bucket = (() => {
     const s = String(name || "?");
     let h = 0;
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
     return Math.abs(h) % 5;
   })();
-
-  return (
-    <div className={`cmp-avatar pfp-${bucket}`} aria-hidden>
-      {letter}
-    </div>
-  );
+  return <div className={`cmp-avatar pfp-${bucket}`} aria-hidden>{letter}</div>;
 }
 
 function BookmarkBtn({ on, onClick, title }) {
@@ -75,67 +69,6 @@ function BookmarkBtn({ on, onClick, title }) {
   );
 }
 
-/* ---------- dual-thumb rating slider ---------- */
-function RatingRange({ min = 0, max = 1000, step = 10, valueMin, valueMax, onChange }) {
-  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  const [active, setActive] = useState(null); // "min" | "max" | null
-
-  const pMin = ((valueMin - min) / (max - min)) * 100;
-  const pMax = ((valueMax - min) / (max - min)) * 100;
-
-  const handleMin = (e) => {
-    const v = clamp(Number(e.target.value), min, valueMax - step);
-    onChange([v, valueMax]);
-  };
-  const handleMax = (e) => {
-    const v = clamp(Number(e.target.value), valueMin + step, max);
-    onChange([valueMin, v]);
-  };
-
-  const startMin = () => setActive("min");
-  const startMax = () => setActive("max");
-  const stop = () => setActive(null);
-
-  return (
-    <div className={`inv-range ${active === "min" ? "is-left" : ""} ${active === "max" ? "is-right" : ""}`}>
-      <div className="inv-range__rail" />
-      <div
-        className="inv-range__fill"
-        style={{ left: `${pMin}%`, width: `${Math.max(0, pMax - pMin)}%` }}
-        aria-hidden
-      />
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={valueMin}
-        onChange={handleMin}
-        onMouseDown={startMin}
-        onTouchStart={startMin}
-        onMouseUp={stop}
-        onTouchEnd={stop}
-        className="inv-range__thumb"
-        aria-label="Minimum rating"
-      />
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={valueMax}
-        onChange={handleMax}
-        onMouseDown={startMax}
-        onTouchStart={startMax}
-        onMouseUp={stop}
-        onTouchEnd={stop}
-        className="inv-range__thumb inv-range__thumb--right"
-        aria-label="Maximum rating"
-      />
-    </div>
-  );
-}
-
 /* ------------------ Confirm modal (Promise-based) ------------------ */
 function ConfirmModal({ state, onClose }) {
   if (!state) return null;
@@ -148,6 +81,103 @@ function ConfirmModal({ state, onClose }) {
           <button onClick={() => onClose(false)} className="confirm-btn cancel">Cancel</button>
           <button onClick={() => onClose(true)} className="confirm-btn confirm">Confirm</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Edit modal (Investor) ---------- */
+function EditInvestorModal({ open, initial, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    investor_name: "",
+    company_name: "",
+    email_address: "",
+    phone: "",
+    credit_score: 0,
+    verification_status: "pending",
+  }));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      investor_name: initial?.investor_name || "",
+      company_name: initial?.company_name || "",
+      email_address: initial?.email_address || "",
+      phone: initial?.phone || "",
+      credit_score: Number(initial?.credit_score ?? 0),
+      verification_status: (initial?.verification_status || "pending").toString().toLowerCase(),
+    });
+  }, [open, initial]);
+
+  const update = (k, parse = (v) => v) => (e) =>
+    setForm((s) => ({ ...s, [k]: parse(e.target.value) }));
+
+  const close = () => !busy && onClose?.();
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      const payload = { ...form };
+      await onSave(payload);
+    } catch (ex) {
+      setErr(ex?.message || "Failed to save");
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+  };
+
+  if (!open) return null;
+  return (
+    <div className="adm-modal" role="dialog" aria-modal="true" aria-label="Edit investor">
+      <div className="adm-dialog">
+        <header className="adm-dialog__header">
+          <h3>Edit investor</h3>
+          <button className="adm-icon-btn" onClick={close} aria-label="Close">×</button>
+        </header>
+
+        <form className="adm-form" onSubmit={submit}>
+          <div className="adm-grid">
+            <label className="adm-field">
+              <span>Investor name</span>
+              <input value={form.investor_name} onChange={update("investor_name")} required />
+            </label>
+            <label className="adm-field">
+              <span>Company name</span>
+              <input value={form.company_name} onChange={update("company_name")} />
+            </label>
+            <label className="adm-field">
+              <span>Email</span>
+              <input type="email" value={form.email_address} onChange={update("email_address")} />
+            </label>
+            <label className="adm-field">
+              <span>Phone</span>
+              <input value={form.phone} onChange={update("phone")} />
+            </label>
+            <label className="adm-field">
+              <span>Credit score</span>
+              <input type="number" value={form.credit_score} onChange={update("credit_score", (v)=> Number(v))} />
+            </label>
+            <label className="adm-field">
+              <span>Verification</span>
+              <select value={form.verification_status} onChange={update("verification_status")}>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </label>
+          </div>
+
+          {err && <div className="adm-error">{err}</div>}
+
+          <footer className="adm-dialog__footer">
+            <button type="button" className="adm-btn ghost" onClick={close} disabled={busy}>Cancel</button>
+            <button type="submit" className="adm-btn save" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
+          </footer>
+        </form>
       </div>
     </div>
   );
@@ -196,17 +226,13 @@ function InvestorCard({ item, isBookmarked, onToggle, busy, isSuper, onEdit, onD
         {has(email) && (
           <p className="cmp-line">
             <strong>Email:</strong>{" "}
-            <a href={`mailto:${email}`} className="cmp-link">
-              {email}
-            </a>
+            <a href={`mailto:${email}`} className="cmp-link">{email}</a>
           </p>
         )}
         {has(phone) && (
           <p className="cmp-line">
             <strong>Phone:</strong>{" "}
-            <a href={`tel:${String(phone).replace(/\s+/g, "")}`} className="cmp-link">
-              {phone}
-            </a>
+            <a href={`tel:${String(phone).replace(/\s+/g, "")}`} className="cmp-link">{phone}</a>
           </p>
         )}
         {has(website) && (
@@ -220,21 +246,15 @@ function InvestorCard({ item, isBookmarked, onToggle, busy, isSuper, onEdit, onD
       </div>
 
       {safeUrl && (
-        <a
-          href={safeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="cmp-btn--primary"
-          style={{ marginTop: ".45rem" }}
-        >
+        <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="cmp-btn--primary" style={{ marginTop: ".45rem" }}>
           Visit website
         </a>
       )}
 
       {isSuper && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <button className="cmp-btn" onClick={() => onEdit(investorId)}>Edit</button>
-          <button className="cmp-btn" onClick={() => onDelete(investorId)}>Delete</button>
+        <div className="adm-actions">
+          <button className="adm-btn edit" onClick={() => onEdit(investorId)}>Edit</button>
+          <button className="adm-btn delete" onClick={() => onDelete(investorId)}>Delete</button>
         </div>
       )}
     </article>
@@ -255,6 +275,10 @@ export default function InvestorsPage() {
   const [err, setErr] = useState("");
 
   const [isSuper, setIsSuper] = useState(false);
+
+  const [editId, setEditId] = useState(null);
+  const [editRow, setEditRow] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const getBookmarkFor = (id) => bookmarks.find((b) => Number(b.investor_id) === Number(id));
 
@@ -301,9 +325,7 @@ export default function InvestorsPage() {
         const data = await res.json().catch(() => ({}));
         if (!mounted) return;
         setIsSuper(Boolean(data?.user?.is_superuser || data?.is_superuser));
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     })();
     return () => { mounted = false; };
   }, []);
@@ -381,28 +403,34 @@ export default function InvestorsPage() {
     }
   }
 
-  async function handleEditInvestor(id) {
-    const newName = window.prompt ? window.prompt("New investor/company name (leave empty to cancel):") : "";
-    if (newName == null || String(newName).trim() === "") return;
-    try {
-      const res = await fetch(`${API_BASE}/api/investors/${id}/`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({ investor_name: newName, company_name: newName }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(j.detail || `Failed (${res.status})`);
-      }
-      const updated = await res.json();
-      setList((prev) => prev.map((it) => ((it.investor_id ?? it.id ?? it.pk) === id ? { ...it, ...updated } : it)));
-    } catch (err) {
-      alert("Edit failed: " + (err.message || "unknown"));
+  async function handleOpenEdit(id) {
+    const row = list.find((it) => (it.investor_id ?? it.id ?? it.pk) === id);
+    setEditId(id);
+    setEditRow(row || null);
+    setEditOpen(true);
+  }
+
+  async function handleSaveEdit(payload) {
+    const res = await fetch(`${API_BASE}/api/investors/${editId}/`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(j.detail || `Failed (${res.status})`);
     }
+    const updated = await res.json();
+    setList((prev) =>
+      prev.map((it) => ((it.investor_id ?? it.id ?? it.pk) === editId ? { ...it, ...updated } : it))
+    );
+    setEditOpen(false);
+    setEditId(null);
+    setEditRow(null);
   }
 
   const filtered = useMemo(() => {
@@ -477,13 +505,26 @@ export default function InvestorsPage() {
           <div className="inv-field inv-field--rating">
             <label className="inv-field__label">Rating</label>
             <div className="inv-rating">
-              <RatingRange
+              {/* Dual range simplified (kept from your previous file) */}
+              <input
+                type="range"
                 min={0}
                 max={1000}
                 step={10}
-                valueMin={ratingMin}
-                valueMax={ratingMax}
-                onChange={([lo, hi]) => { setRatingMin(lo); setRatingMax(hi); }}
+                value={ratingMin}
+                onChange={(e)=> setRatingMin(Number(e.target.value))}
+                className="inv-range__thumb"
+                aria-label="Min rating"
+              />
+              <input
+                type="range"
+                min={0}
+                max={1000}
+                step={10}
+                value={ratingMax}
+                onChange={(e)=> setRatingMax(Number(e.target.value))}
+                className="inv-range__thumb"
+                aria-label="Max rating"
               />
               <div className="inv-chips">
                 <span className="inv-chip inv-chip--value">{ratingMin}</span>
@@ -541,7 +582,7 @@ export default function InvestorsPage() {
                   onToggle={toggleBookmark}
                   busy={busy}
                   isSuper={isSuper}
-                  onEdit={handleEditInvestor}
+                  onEdit={handleOpenEdit}
                   onDelete={handleDeleteInvestor}
                 />
               </div>
@@ -552,6 +593,16 @@ export default function InvestorsPage() {
           )}
         </div>
       </main>
+
+      {/* Edit modal */}
+      {isSuper && (
+        <EditInvestorModal
+          open={editOpen}
+          initial={editRow}
+          onClose={() => { setEditOpen(false); setEditRow(null); setEditId(null); }}
+          onSave={handleSaveEdit}
+        />
+      )}
 
       {/* Confirm modal */}
       <ConfirmModal state={confirmState} onClose={handleConfirmClose} />

@@ -13,6 +13,9 @@
   --border:rgba(134,151,196,.55);
   --shadow-sm:0 6px 14px rgba(0,0,0,.08);
   --shadow-md:0 12px 26px rgba(0,0,0,.14);
+
+  --adm-border:#e7eaf3;
+  --adm-ring:rgba(61,82,160,.28);
 }
 
 /* ===== Page ===== */
@@ -93,7 +96,7 @@
   width:20px;height:20px;color:var(--blue-900);pointer-events:none;
 }
 
-/* Rating group */
+/* Rating group (simplified in this version) */
 .inv-rating{ display:flex; align-items:center; gap:.6rem; }
 .inv-chips{ display:flex; gap:.4rem; align-items:center; }
 .inv-chip{
@@ -106,41 +109,7 @@
 .inv-chip--value{ min-width:52px; text-align:center; }
 .inv-chip--sep{ background:transparent; border-color:transparent; color:#6b7280; }
 
-/* Dual range slider */
-.inv-range{ position:relative; height:44px; display:flex; align-items:center; min-width:320px; }
-.inv-range__rail{
-  position:absolute; left:2px; right:2px; height:8px; border-radius:999px;
-  background:#eaeef6; top:50%; transform:translateY(-50%);
-  border:1px solid #dde3f0;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,.06);
-}
-.inv-range__fill{
-  position:absolute; height:8px; top:50%; transform:translateY(-50%);
-  background:linear-gradient(90deg, var(--blue-600), var(--blue-900));
-  border-radius:999px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.05);
-}
-.inv-range__thumb{
-  -webkit-appearance:none; appearance:none;
-  position:absolute; inset:0; width:100%; background:transparent;
-  height:44px; z-index:2; /* left on top by default */
-}
-.inv-range__thumb--right{ z-index:1; }
-.inv-range.is-right .inv-range__thumb--right{ z-index:3; }
-.inv-range.is-left  .inv-range__thumb{ z-index:3; }
-.inv-range__thumb::-webkit-slider-thumb{
-  -webkit-appearance:none; appearance:none;
-  width:18px; height:18px; border-radius:50%;
-  background:#fff; border:2px solid var(--blue-700);
-  box-shadow:0 2px 6px rgba(0,0,0,.2);
-}
-.inv-range__thumb::-moz-range-thumb{
-  width:18px; height:18px; border-radius:50%;
-  background:#fff; border:2px solid var(--blue-700);
-  box-shadow:0 2px 6px rgba(0,0,0,.2);
-}
-
-/* Bookmarks toggle + reset */
+/* Bookmark toggle + reset */
 .inv-toggle{
   height:44px; padding:0 .85rem;
   border-radius:12px; border:1px solid var(--border);
@@ -194,7 +163,7 @@
 }
 .cmp-card__top{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; }
 
-/* avatar (palette buckets) */
+/* avatar buckets */
 .cmp-avatar{
   width:56px; height:56px; border-radius:999px;
   display:grid; place-items:center;
@@ -203,11 +172,11 @@
   user-select:none;
   background:var(--blue-700);
 }
-.cmp-avatar.pfp-0{ background:var(--blue-900); color:#fff; }
-.cmp-avatar.pfp-1{ background:var(--blue-700); color:#fff; }
-.cmp-avatar.pfp-2{ background:var(--blue-600); color:#fff; }
-.cmp-avatar.pfp-3{ background:var(--blue-500); color:#fff; }
-.cmp-avatar.pfp-4{ background:var(--blue-300); color:#0f172a; } /* lighter tile → dark text */
+.cmp-avatar.pfp-0{ background:var(--blue-900); }
+.cmp-avatar.pfp-1{ background:var(--blue-700); }
+.cmp-avatar.pfp-2{ background:var(--blue-600); }
+.cmp-avatar.pfp-3{ background:var(--blue-500); }
+.cmp-avatar.pfp-4{ background:var(--blue-300); color:#0f172a; }
 
 .cmp-card__title{
   margin:0; font-weight:800; letter-spacing:.02em;
@@ -235,7 +204,7 @@
 .cmp-link{ color:#3D52A0; text-decoration:none; border-bottom:1px solid transparent; }
 .cmp-link:hover{ border-color: currentColor; }
 
-/* CTA button */
+/* CTA */
 .cmp-btn--primary{
   align-self:flex-start;
   justify-content:center; display:inline-flex; gap:.4rem;
@@ -267,7 +236,7 @@
   border-radius:14px; padding:18px;
 }
 
-
+/* ---------- Confirm modal (shared) ---------- */
 .confirm-overlay {
   position: fixed;
   inset: 0;
@@ -275,7 +244,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(12, 18, 25, 0.45);
-  z-index: 9999;
+  z-index: 9998;
 }
 .confirm-box {
   background: #fff;
@@ -290,3 +259,47 @@
 .confirm-btn { padding: 8px 12px; border-radius: 8px; }
 .confirm-btn.confirm { background: #1f6feb; color: white; border: none; }
 .confirm-btn.cancel { background: transparent; border: 1px solid #ddd; }
+
+/* ---------- Admin buttons + modal ---------- */
+.adm-actions{
+  display:flex; gap:.5rem; margin-top:.6rem;
+}
+.adm-btn{
+  appearance:none; border:1px solid transparent; border-radius:10px;
+  font-weight:700; padding:.5rem .8rem; cursor:pointer; box-shadow: var(--shadow-sm);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.adm-btn:hover{ transform: translateY(-1px); }
+.adm-btn.edit{ background:linear-gradient(135deg, #2563eb, #3b82f6); color:#fff; }
+.adm-btn.delete{ background:#fff; border-color:#fecaca; color:#b91c1c; }
+.adm-btn.delete:hover{ filter:brightness(1.03); box-shadow: 0 8px 20px rgba(185,28,28,.15); }
+
+.adm-modal{
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: rgba(2,6,23, .45); z-index: 9999;
+}
+.adm-dialog{
+  width:min(720px, 94vw); background:#fff; border:1px solid var(--adm-border);
+  border-radius:16px; box-shadow: 0 24px 60px rgba(0,0,0,.25); overflow:hidden;
+}
+.adm-dialog__header{
+  padding:14px 16px; display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--adm-border);
+}
+.adm-dialog__header h3{ margin:0; font-size:1.05rem; font-weight:800; }
+.adm-icon-btn{ background:transparent; border:none; font-size:1.6rem; line-height:1; cursor:pointer; }
+.adm-form{ padding:14px 16px; }
+.adm-grid{ display:grid; gap:12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width:640px){ .adm-grid{ grid-template-columns:1fr; } }
+.adm-field{ display:flex; flex-direction:column; gap:6px; }
+.adm-field span{ font-weight:700; font-size:.88rem; color:#111; }
+.adm-field input, .adm-field select, .adm-field textarea{
+  border:1px solid var(--adm-border); border-radius:12px; padding:10px 12px; font-size:.95rem; background:#fff; outline:none;
+}
+.adm-field input:focus, .adm-field select:focus, .adm-field textarea:focus{
+  border-color:#93b0ff; box-shadow: 0 0 0 4px var(--adm-ring);
+}
+.adm-error{ margin-top:8px; color:#b91c1c; font-weight:600; }
+.adm-dialog__footer{ display:flex; justify-content:flex-end; gap:.6rem; padding-top:12px; border-top:1px solid var(--adm-border); margin-top:12px; }
+.adm-btn.ghost{ background:#fff; border:1px solid var(--adm-border); }
+.adm-btn.save{ background:linear-gradient(135deg, #16a34a, #22c55e); color:#fff; }

@@ -107,7 +107,6 @@ function coordsToLatLon(geo_data) {
 }
 
 /* ------------------ Confirm modal (Promise-based) ------------------ */
-/* Local, accessible, and avoids window.confirm() */
 function ConfirmModal({ state, onClose }) {
   if (!state) return null;
   const { message } = state;
@@ -119,6 +118,101 @@ function ConfirmModal({ state, onClose }) {
           <button onClick={() => onClose(false)} className="confirm-btn cancel">Cancel</button>
           <button onClick={() => onClose(true)} className="confirm-btn confirm">Confirm</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------ Edit modal (Resource) ------------------ */
+function EditResourceModal({ open, initial, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    name: "",
+    type: "WAREHOUSE",
+    location: "",
+    website: "",
+    description: "",
+    geo_data: "",
+  }));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      name: initial?.name || "",
+      type: (initial?.type || "WAREHOUSE").toString().toUpperCase(),
+      location: initial?.location || "",
+      website: initial?.website || "",
+      description: initial?.description || "",
+      geo_data: initial?.geo_data || "",
+    });
+  }, [open, initial]);
+
+  const update = (k) => (e) => setForm((s) => ({ ...s, [k]: e.target.value }));
+  const close = () => !busy && onClose?.();
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      const payload = { ...form };
+      await onSave(payload);
+    } catch (ex) {
+      setErr(ex?.message || "Failed to save");
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+  };
+
+  if (!open) return null;
+  return (
+    <div className="adm-modal" role="dialog" aria-modal="true" aria-label="Edit resource">
+      <div className="adm-dialog">
+        <header className="adm-dialog__header">
+          <h3>Edit resource</h3>
+          <button className="adm-icon-btn" onClick={close} aria-label="Close">×</button>
+        </header>
+
+        <form className="adm-form" onSubmit={submit}>
+          <div className="adm-grid">
+            <label className="adm-field">
+              <span>Name</span>
+              <input value={form.name} onChange={update("name")} required />
+            </label>
+            <label className="adm-field">
+              <span>Type</span>
+              <select value={form.type} onChange={update("type")}>
+                {Object.keys(TYPE_LABEL).map((t)=> (
+                  <option key={t} value={t}>{TYPE_LABEL[t]}</option>
+                ))}
+              </select>
+            </label>
+            <label className="adm-field">
+              <span>Location</span>
+              <input value={form.location} onChange={update("location")} />
+            </label>
+            <label className="adm-field">
+              <span>Website</span>
+              <input value={form.website} onChange={update("website")} placeholder="https://…" />
+            </label>
+            <label className="adm-field adm-field--full">
+              <span>Description</span>
+              <textarea rows={3} value={form.description} onChange={update("description")} />
+            </label>
+            <label className="adm-field adm-field--full">
+              <span>Geo (lon,lat)</span>
+              <input value={form.geo_data} onChange={update("geo_data")} placeholder="80.6, 7.29" />
+            </label>
+          </div>
+
+          {err && <div className="adm-error">{err}</div>}
+
+          <footer className="adm-dialog__footer">
+            <button type="button" className="adm-btn ghost" onClick={close} disabled={busy}>Cancel</button>
+            <button type="submit" className="adm-btn save" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
+          </footer>
+        </form>
       </div>
     </div>
   );
@@ -139,6 +233,11 @@ export default function ResourcesDirectory() {
   // admin flag
   const [isSuper, setIsSuper] = useState(false);
 
+  // edit modal
+  const [editId, setEditId] = useState(null);
+  const [editRow, setEditRow] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+
   // Server bookmarks
   const { ids: bmIds, isBookmarked, toggle } = useServerBookmarks("resource");
 
@@ -147,11 +246,8 @@ export default function ResourcesDirectory() {
 
   // Confirm modal state
   const [confirmState, setConfirmState] = useState(null);
-  // showConfirm returns a Promise that resolves to true/false
   const showConfirm = (message) =>
     new Promise((resolve) => setConfirmState({ message, resolve }));
-
-  // close handler called by modal buttons
   const handleConfirmClose = (result) => {
     if (confirmState && typeof confirmState.resolve === "function") {
       confirmState.resolve(Boolean(result));
@@ -169,9 +265,7 @@ export default function ResourcesDirectory() {
         const data = await res.json().catch(() => ({}));
         if (!mounted) return;
         setIsSuper(Boolean(data?.user?.is_superuser || data?.is_superuser));
-      } catch (e) {
-        // ignore: not authenticated or network error
-      }
+      } catch (e) {}
     })();
     return () => { mounted = false; };
   }, []);
@@ -186,9 +280,7 @@ export default function ResourcesDirectory() {
     usp.set("page", String(nextPage));
     usp.set("page_size", String(PAGE_SIZE));
 
-    const res = await fetch(`${API_URL}?${usp.toString()}`, {
-      credentials: "include",
-    });
+    const res = await fetch(`${API_URL}?${usp.toString()}`, { credentials: "include" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
 
@@ -217,9 +309,7 @@ export default function ResourcesDirectory() {
         setErrMsg(e.message || "Failed to load");
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, q]);
 
@@ -248,9 +338,7 @@ export default function ResourcesDirectory() {
 
   const filtered = useMemo(() => {
     const base = onlyBookmarks
-      ? rows.filter((r) =>
-          isBookmarked(r?.resource_id ?? r?.id ?? r?.pk)
-        )
+      ? rows.filter((r) => isBookmarked(r?.resource_id ?? r?.id ?? r?.pk))
       : rows;
     return base;
   }, [rows, onlyBookmarks, isBookmarked]);
@@ -275,28 +363,34 @@ export default function ResourcesDirectory() {
     }
   }
 
-  async function handleEditResource(id) {
-    const newName = window.prompt ? window.prompt("New resource name (leave empty to cancel):") : "";
-    if (newName == null || String(newName).trim() === "") return;
-    try {
-      const res = await fetch(`${API_URL}${id}/`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({ name: newName }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(j.detail || `Failed (${res.status})`);
-      }
-      const updated = await res.json();
-      setRows((prev) => prev.map((r) => ((r.resource_id ?? r.id ?? r.pk) === id ? { ...r, ...updated } : r)));
-    } catch (err) {
-      alert("Edit failed: " + (err.message || "unknown"));
+  async function handleOpenEdit(id) {
+    const row = rows.find((r) => (r.resource_id ?? r.id ?? r.pk) === id);
+    setEditId(id);
+    setEditRow(row || null);
+    setEditOpen(true);
+  }
+
+  async function handleSaveEdit(payload) {
+    const res = await fetch(`${API_URL}${editId}/`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(j.detail || `Failed (${res.status})`);
     }
+    const updated = await res.json();
+    setRows((prev) =>
+      prev.map((r) => ((r.resource_id ?? r.id ?? r.pk) === editId ? { ...r, ...updated } : r))
+    );
+    setEditOpen(false);
+    setEditId(null);
+    setEditRow(null);
   }
 
   return (
@@ -305,23 +399,12 @@ export default function ResourcesDirectory() {
 
       <header className="resources-header">
         <h1>{prettyTitle}</h1>
-        <p className="muted">
-          Browse vetted {prettyTitle.toLowerCase()}. Use the star to bookmark.
-        </p>
+        <p className="muted">Browse vetted {prettyTitle.toLowerCase()}. Use the star to bookmark.</p>
 
         <div className="toolbar">
           <div className="input-wrap">
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              aria-hidden="true"
-              className="search-icon"
-            >
-              <path
-                d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.49 21.49 20 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
-                fill="currentColor"
-              />
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="search-icon">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.49 21.49 20 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
             </svg>
             <input
               value={q}
@@ -343,9 +426,7 @@ export default function ResourcesDirectory() {
       </header>
 
       {status === "loading" && rows.length === 0 ? (
-        <div className="loading">
-          Loading {prettyTitle.toLowerCase()}…
-        </div>
+        <div className="loading">Loading {prettyTitle.toLowerCase()}…</div>
       ) : status === "error" && rows.length === 0 ? (
         <div className="empty">
           <div className="empty-card">
@@ -359,9 +440,7 @@ export default function ResourcesDirectory() {
           <div className="empty-card">
             <span className="emoji">🗂️</span>
             <h3>No results</h3>
-            <p>
-              Try clearing search or turning off the bookmarks filter.
-            </p>
+            <p>Try clearing search or turning off the bookmarks filter.</p>
           </div>
         </div>
       ) : (
@@ -370,95 +449,56 @@ export default function ResourcesDirectory() {
             {filtered.map((row) => {
               const rid = row?.resource_id ?? row?.id ?? row?.pk;
               const coords = coordsToLatLon(row.geo_data);
-              const website =
-                row.website && String(row.website).trim().length > 0
-                  ? row.website
-                  : null;
+              const website = row.website && String(row.website).trim().length > 0 ? row.website : null;
 
               return (
                 <article className="r-card" key={rid}>
                   <button
                     type="button"
-                    className={`bookmark ${
-                      isBookmarked(rid) ? "on" : ""
-                    }`}
+                    className={`bookmark ${isBookmarked(rid) ? "on" : ""}`}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       toggle(rid);
                     }}
-                    aria-label={
-                      isBookmarked(rid)
-                        ? "Remove bookmark"
-                        : "Add bookmark"
-                    }
-                    title={
-                      isBookmarked(rid)
-                        ? "Remove bookmark"
-                        : "Add bookmark"
-                    }
+                    aria-label={isBookmarked(rid) ? "Remove bookmark" : "Add bookmark"}
+                    title={isBookmarked(rid) ? "Remove bookmark" : "Add bookmark"}
                   >
                     <svg viewBox="0 0 24 24" width="18" height="18">
-                      <path
-                        d="M6 2h12a1 1 0 011 1v18l-7-4-7 4V3a1 1 0 011-1z"
-                        fill="currentColor"
-                      />
+                      <path d="M6 2h12a1 1 0 011 1v18l-7-4-7 4V3a1 1 0 011-1z" fill="currentColor" />
                     </svg>
                   </button>
 
-                  <div className={`type-badge t-${row.type}`}>
-                    {TYPE_LABEL[row.type] || row.type}
-                  </div>
+                  <div className={`type-badge t-${row.type}`}>{TYPE_LABEL[row.type] || row.type}</div>
 
                   <h3 className="name">{row.name}</h3>
                   {row.location && (
                     <div className="meta">
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                      >
-                        <path
-                          d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
-                          fill="currentColor"
-                        />
+                      <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" fill="currentColor"/>
                       </svg>
                       {row.location}
                     </div>
                   )}
                   {row.description && (
-                    <p className="desc" title={row.description}>
-                      {row.description}
-                    </p>
+                    <p className="desc" title={row.description}>{row.description}</p>
                   )}
 
                   <div className="actions">
                     {website && (
-                      <a
-                        className="btn"
-                        href={website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Visit website
-                      </a>
+                      <a className="btn" href={website} target="_blank" rel="noopener noreferrer">Visit website</a>
                     )}
                     {coords && (
-                      <a
-                        className="btn secondary"
-                        href={`https://www.google.com/maps?q=${coords.lat},${coords.lon}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <a className="btn secondary" href={`https://www.google.com/maps?q=${coords.lat},${coords.lon}`} target="_blank" rel="noopener noreferrer">
                         Open map
                       </a>
                     )}
                   </div>
 
                   {isSuper && (
-                    <div className="admin-actions">
-                      <button type="button" className="admin-btn edit" onClick={() => handleEditResource(rid)}>Edit</button>
-                      <button type="button" className="admin-btn delete" onClick={() => handleDeleteResource(rid)}>Delete</button>
+                    <div className="adm-actions">
+                      <button type="button" className="adm-btn edit" onClick={() => handleOpenEdit(rid)}>Edit</button>
+                      <button type="button" className="adm-btn delete" onClick={() => handleDeleteResource(rid)}>Delete</button>
                     </div>
                   )}
                 </article>
@@ -470,25 +510,26 @@ export default function ResourcesDirectory() {
           <div ref={sentinelRef} style={{ height: 1 }} />
 
           <div className="loading" style={{ textAlign: "center" }}>
-            {status === "error" && rows.length > 0 && (
-              <div className="muted">Error: {errMsg}</div>
-            )}
+            {status === "error" && rows.length > 0 && <div className="muted">Error: {errMsg}</div>}
             {!hasMore ? (
-              <div className="muted">
-                Showing {rows.length} of {total}
-              </div>
+              <div className="muted">Showing {rows.length} of {total}</div>
             ) : (
-              <button
-                className="chip"
-                type="button"
-                onClick={() => fetchPage(page + 1)}
-                disabled={status === "loading"}
-              >
+              <button className="chip" type="button" onClick={() => fetchPage(page + 1)} disabled={status === "loading"}>
                 {status === "loading" ? "Loading…" : "Load more"}
               </button>
             )}
           </div>
         </>
+      )}
+
+      {/* Edit modal */}
+      {isSuper && (
+        <EditResourceModal
+          open={editOpen}
+          initial={editRow}
+          onClose={() => { setEditOpen(false); setEditRow(null); setEditId(null); }}
+          onSave={handleSaveEdit}
+        />
       )}
 
       {/* Confirm modal (rendered at page level) */}
@@ -501,9 +542,5 @@ export default function ResourcesDirectory() {
 
 // Optional helper for external buttons
 export const openResourcesTab = (type) => {
-  window.open(
-    `/resources/directory?type=${encodeURIComponent(type)}`,
-    "_blank",
-    "noopener"
-  );
+  window.open(`/resources/directory?type=${encodeURIComponent(type)}`, "_blank", "noopener");
 };

@@ -81,7 +81,8 @@ urlpatterns = [
     path("admin/investor/<int:investor_id>/reject/", inv.admin_reject_investor, name="admin-reject-investor"),
     path("analytics/popular-businesses/", views.analytics_popular_businesses, name="analytics-popular-businesses"),
 
-    # urls.py
+    
     path("resources/<int:pk>/", views.resource_detail_admin, name="api-resource-detail"),
+    path("ideas/<int:pk>/", views.idea_detail_admin, name="api-idea-detail"),
 
 ]

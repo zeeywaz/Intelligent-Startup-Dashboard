@@ -2,9 +2,7 @@
    Competitors — Full Styles
    ========================= */
 
-/* --------- Theme tokens --------- */
 :root{
-  /* Metallic chic blues */
   --blue-900: #3D52A0;
   --blue-700: #5367B5;
   --blue-600: #7091E6;
@@ -24,6 +22,11 @@
   --shadow-md: 0 12px 28px rgba(0,0,0,0.14);
 
   --ring: rgba(112,145,230,.30);
+
+  /* admin modal vars */
+  --adm-bg:#ffffff;
+  --adm-border:#e7eaf3;
+  --adm-ring: rgba(61,82,160,.28);
 }
 
 /* --------- App shell --------- */
@@ -252,54 +255,31 @@
 /* --------- Primary button (Visit website) --------- */
 .cmp-btn--primary{
   display:block;
-  width:100%;                 /* full width */
+  width:100%;
   margin-top:.85rem;
-
   background: linear-gradient(135deg, var(--blue-700), var(--blue-600));
   color:#fff;
   font-weight:600;
   font-size:.95rem;
   letter-spacing:.01em;
-
   border:none;
   border-radius:10px;
-
-  padding:.55rem 1rem;         /* thinner vertical height */
+  padding:.55rem 1rem;
   text-align:center;
-
   cursor:pointer;
   text-decoration:none;
-
-  box-shadow:
-    0 2px 6px rgba(0,0,0,.08),
-    0 8px 20px rgba(99,102,241,.18);
-
-  transition:
-    transform .18s cubic-bezier(.22,.61,.36,1),
-    box-shadow .18s ease,
-    filter .15s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08), 0 8px 20px rgba(99,102,241,.18);
+  transition: transform .18s cubic-bezier(.22,.61,.36,1), box-shadow .18s ease, filter .15s ease;
 }
 
 .cmp-btn--primary:hover{
   transform: translateY(-2px);
   filter: brightness(1.06);
-  box-shadow:
-    0 4px 12px rgba(0,0,0,.10),
-    0 12px 24px rgba(99,102,241,.22);
+  box-shadow: 0 4px 12px rgba(0,0,0,.10), 0 12px 24px rgba(99,102,241,.22);
 }
 
 .cmp-btn--primary:active{
   transform: translateY(0) scale(.99);
-  box-shadow:
-    0 2px 6px rgba(0,0,0,.08),
-    0 6px 14px rgba(99,102,241,.18);
-}
-
-.cmp-btn--primary:focus-visible{
-  outline:none;
-  box-shadow:
-    0 0 0 3px var(--ring),
-    0 4px 12px rgba(99,102,241,.25);
 }
 
 /* --------- Strength badge --------- */
@@ -312,14 +292,12 @@
   user-select:none;
   color:#374151; background:#f9fafb; border-color:#eef0f3;
 }
-
 .cmp-strength::before{
   content:""; width:.55rem; height:.55rem; border-radius:999px; background:currentColor;
 }
-
-.cmp-strength--high{ color:#b91c1c; background:#fee2e2; border-color:#fecaca; box-shadow:0 0 0 2px rgba(185,28,28,.06) inset; }
-.cmp-strength--med { color:#b45309; background:#fef3c7; border-color:#fde68a; box-shadow:0 0 0 2px rgba(180,83,9,.06) inset; }
-.cmp-strength--low { color:#166534; background:#dcfce7; border-color:#bbf7d0; box-shadow:0 0 0 2px rgba(22,101,52,.06) inset; }
+.cmp-strength--high{ color:#b91c1c; background:#fee2e2; border-color:#fecaca; }
+.cmp-strength--med { color:#b45309; background:#fef3c7; border-color:#fde68a; }
+.cmp-strength--low { color:#166534; background:#dcfce7; border-color:#bbf7d0; }
 
 /* --------- States --------- */
 .state{ margin: 1rem 0; color: var(--text-muted); text-align:center; }
@@ -331,14 +309,13 @@
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
 }
 
-/* Global focus ring */
 :where(button, a, input, [role="tab"]):focus-visible{
   outline:3px solid var(--ring);
   outline-offset:2px;
   border-radius:12px;
 }
 
-
+/* --------- Confirm modal (already used) --------- */
 .confirm-overlay {
   position: fixed;
   inset: 0;
@@ -346,7 +323,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(12, 18, 25, 0.45);
-  z-index: 9999;
+  z-index: 9998;
 }
 .confirm-box {
   background: #fff;
@@ -361,3 +338,116 @@
 .confirm-btn { padding: 8px 12px; border-radius: 8px; }
 .confirm-btn.confirm { background: #1f6feb; color: white; border: none; }
 .confirm-btn.cancel { background: transparent; border: 1px solid #ddd; }
+
+/* =========================
+   Admin buttons + modal
+   ========================= */
+
+/* Buttons row inside card */
+.adm-actions{
+  display:flex;
+  gap:.5rem;
+  margin-top:.6rem;
+}
+.adm-btn{
+  appearance:none;
+  border:1px solid transparent;
+  border-radius:10px;
+  font-weight:700;
+  padding:.5rem .8rem;
+  cursor:pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.adm-btn:hover{ transform: translateY(-1px); }
+.adm-btn.edit{
+  background:linear-gradient(135deg, #2563eb, #3b82f6);
+  color:#fff;
+}
+.adm-btn.delete{
+  background:#fff;
+  border-color:#fecaca;
+  color:#b91c1c;
+}
+.adm-btn.delete:hover{
+  filter:brightness(1.03);
+  box-shadow: 0 8px 20px rgba(185,28,28,.15);
+}
+
+/* Modal shell */
+.adm-modal{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(2,6,23, .45);
+  z-index: 9999;
+}
+.adm-dialog{
+  width:min(720px, 94vw);
+  background: var(--adm-bg);
+  border:1px solid var(--adm-border);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.25);
+  overflow:hidden;
+}
+.adm-dialog__header{
+  padding:14px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--adm-border);
+}
+.adm-dialog__header h3{
+  margin:0; font-size:1.05rem; font-weight:800;
+}
+.adm-icon-btn{
+  background:transparent; border:none; font-size:1.6rem; line-height:1; cursor:pointer;
+}
+.adm-form{ padding:14px 16px; }
+.adm-grid{
+  display:grid; gap:12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width:640px){
+  .adm-grid{ grid-template-columns:1fr; }
+}
+.adm-field{ display:flex; flex-direction:column; gap:6px; }
+.adm-field span{ font-weight:700; font-size:.88rem; color:#111; }
+.adm-field input,
+.adm-field select,
+.adm-field textarea{
+  border:1px solid var(--adm-border);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:.95rem;
+  background:#fff;
+  outline:none;
+  box-shadow: 0 1px 0 rgba(15,23,42,.02);
+}
+.adm-field input:focus,
+.adm-field select:focus,
+.adm-field textarea:focus{
+  border-color:#93b0ff;
+  box-shadow: 0 0 0 4px var(--adm-ring);
+}
+.adm-field--full{ grid-column: 1 / -1; }
+
+.adm-error{
+  margin-top:8px;
+  color:#b91c1c;
+  font-weight:600;
+}
+
+.adm-dialog__footer{
+  display:flex; justify-content:flex-end; gap:.6rem;
+  padding-top:12px;
+  border-top:1px solid var(--adm-border);
+  margin-top:12px;
+}
+.adm-btn.ghost{
+  background:#fff;
+  border:1px solid var(--adm-border);
+}
+.adm-btn.save{
+  background:linear-gradient(135deg, #16a34a, #22c55e);
+  color:#fff;
+}
