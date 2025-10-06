@@ -171,43 +171,31 @@ class InvestorDetails(models.Model):
         managed = False
 
 
-class InvestorInterest(models.Model):
-    investor = models.ForeignKey(
-        "InvestorDetails",
-        on_delete=models.CASCADE,
-        db_column="investor_id"
-    )
-    category = models.ForeignKey(
-        "BusinessCategory",
-        on_delete=models.CASCADE,
-        db_column="category_id"
-    )
-
-    class Meta:
-        db_table = "investor_interest"
-        managed = False  # we’re mapping an existing table
-        unique_together = (("investor", "category"),)  # 👈 this tells Django it's a composite key
-
-    def _str_(self):
-        return f"Investor {self.investor_id} -> Category {self.category_id}"
-
+# --- Investor Interests (final) ---
 class InvestorInterest(models.Model):
     id = models.AutoField(primary_key=True)
     investor = models.ForeignKey(
-        InvestorDetails,
+        "InvestorDetails",
         on_delete=models.CASCADE,
         db_column="investor_id",
         related_name="interests",
     )
     category = models.ForeignKey(
-        BusinessCategory,
+        "BusinessCategory",
         on_delete=models.CASCADE,
         db_column="category_id",
     )
 
     class Meta:
         db_table = "investor_interest"
-        managed = False  # No duplicate enforcement as requested
+        managed = False  # legacy table
+        unique_together = (("investor", "category"),)
+
+    def __str__(self):
+        try:
+            return f"Investor {self.investor.investor_id} -> Category {self.category.id}"
+        except Exception:
+            return f"InvestorInterest {getattr(self, 'id', '')}"
 
 # --- Chat (minimal; matches serializer below) ---
 

@@ -205,3 +205,45 @@
   background: #fff; border: 1px solid #e5e7eb;
 }
 .prof-btn--ghost:hover{ background: #f3f4f6; }
+
+
+/* -------- Investor read-only section -------- */
+.prof-meta { display: grid; gap: .6rem; }
+.prof-meta__head { display:flex; align-items:center; gap:.6rem; }
+.prof-section-title { margin: 0; font-weight: 800; font-size: 1rem; }
+.prof-muted { color: #6b7280; font-size: .9rem; }
+
+.prof-meta-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: .75rem 1rem;
+}
+@media (max-width: 640px){
+  .prof-meta-grid{ grid-template-columns: 1fr; }
+}
+.prof-meta-item{ display:grid; gap:.25rem; }
+
+/* Badges for status */
+.prof-badge{
+  display:inline-block;
+  padding:.28rem .65rem;
+  border-radius:999px;
+  font-size:.8rem;
+  line-height:1;
+  border:1px solid transparent;
+}
+.prof-badge--approved{ color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
+.prof-badge--pending{ color:#a04b2a; background:#fff7ed; border-color:#fed7aa; }
+.prof-badge--rejected,
+.prof-badge--denied{ color:#991b1b; background:#fee2e2; border-color:#fecaca; }
+
+/* Chip for credit score (supports 0–1000) */
+.prof-chip{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:.22rem .6rem; border-radius:999px; font-weight:800; font-size:.85rem;
+  border:1px solid #c7d2fe; background:#eef2ff; color:#1e3a8a;
+}
+.prof-chip--score{ min-width: 3.2rem; }
+
+/* Small note */
+.prof-note{ margin: .25rem 0 0; color:#64748b; font-size:.9rem; }

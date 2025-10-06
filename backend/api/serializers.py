@@ -406,31 +406,45 @@ class AdminInvestorSerializer(serializers.ModelSerializer):
         return InvestorDocSerializer(qs, many=True, context=self.context).data
 
 
-# add near other serializers
-class BusinessIdeaAdminSerializer(serializers.ModelSerializer):
-    category = serializers.SerializerMethodField()
-    category_id = serializers.PrimaryKeyRelatedField(
-        source="category",
-        queryset=BusinessCategory.objects.all(),
-        write_only=True,
-        required=False,
+
+from django.db import transaction
+class SaveInterestsSerializer(serializers.Serializer):
+    category_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=True
     )
-    user = UserMiniSerializer(read_only=True)
 
-    class Meta:
-        model = BusinessIdea
-        fields = [
-            "idea_id",
-            "user",
-            "category", "category_id",
-            "title", "description",
-            "target_audience", "location", "business_type",
-            "submission_date",
-        ]
-        read_only_fields = ["idea_id", "user", "submission_date"]
+    def validate_category_ids(self, value):
+        # de-duplicate
+        return list({int(v) for v in value})
 
-    def get_category(self, obj):
-        try:
-            return obj.category.name if obj.category else None
-        except Exception:
-            return None
+    def save(self, investor):
+        """
+        Overwrite the investor's interest list with validated category_ids.
+        investor: InvestorDetails instance.
+        """
+        from .models import BusinessCategory, InvestorInterest
+
+        category_ids = self.validated_data.get("category_ids", [])
+        valid_ids = list(
+            BusinessCategory.objects.filter(pk__in=category_ids).values_list("pk", flat=True)
+        )
+
+        with transaction.atomic():
+            # remove any interests no longer selected
+            InvestorInterest.objects.filter(investor=investor).exclude(category_id__in=valid_ids).delete()
+
+            # add new interests (avoid duplicates)
+            existing = set(
+                InvestorInterest.objects.filter(investor=investor).values_list("category_id", flat=True)
+            )
+            to_create = [
+                InvestorInterest(investor=investor, category_id=cid)
+                for cid in valid_ids if cid not in existing
+            ]
+            if to_create:
+                InvestorInterest.objects.bulk_create(to_create, ignore_conflicts=True)
+
+        return list(
+            InvestorInterest.objects.filter(investor=investor).values_list("category_id", flat=True)
+        )

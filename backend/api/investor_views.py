@@ -277,19 +277,37 @@ def admin_investor_docs(request, investor_id: int):
     return Response(files, status=status.HTTP_200_OK)
 
 
+from rest_framework.parsers import JSONParser
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@parser_classes([JSONParser])
 def admin_approve_investor(request, investor_id: int):
     """
-    Set verification_status='approved' for the investor_details row.
+    Approve an investor. Optionally accept 'credit_score' in the body.
+    Example body: { "credit_score": 720 }
     """
     if not _is_admin_or_staff(request.user):
         return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
     inv = get_object_or_404(InvestorDetails, pk=investor_id)
+
+    # Optional credit score
+    score = request.data.get("credit_score", None)
+    fields_to_update = ["verification_status"]
+    if score is not None:
+        try:
+            score = int(score)
+        except (TypeError, ValueError):
+            return Response({"detail": "credit_score must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+        # clamp to a sensible range
+        score = max(0, min(850, score))
+        inv.credit_score = score
+        fields_to_update.append("credit_score")
+
     inv.verification_status = "approved"
-    inv.save(update_fields=["verification_status"])
-    # Optional: return the rich admin serializer to refresh UI row
+    inv.save(update_fields=fields_to_update)
+
     data = AdminInvestorSerializer(inv, context={"request": request}).data
     return Response({"message": "Investor approved", "investor": data}, status=status.HTTP_200_OK)
 
@@ -352,3 +370,67 @@ def admin_investor_list(request):
     qs = InvestorDetails.objects.select_related("user").order_by("-investor_id")
     ser = AdminInvestorSerializer(qs, many=True, context={"request": request})
     return Response(ser.data, status=status.HTTP_200_OK)
+
+
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import JSONParser
+from rest_framework import status
+
+from .models import InvestorDetails, InvestorInterest, BusinessIdea
+from .serializers import BusinessIdeaReadSerializer, SaveInterestsSerializer
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([JSONParser])
+def investor_interests(request, investor_id: int):
+    """
+    GET  -> { category_ids: [...] }
+    POST -> { category_ids: [1,2,3] }  (overwrite)
+    Only the investor themself or staff may modify.
+    """
+    investor = get_object_or_404(InvestorDetails, pk=investor_id)
+
+    inv_user = getattr(investor, "user", None)
+    if request.method == "POST":
+        if not (request.user.is_staff or (inv_user and inv_user.pk == request.user.pk)):
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        ser = SaveInterestsSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            final_ids = ser.save(investor)
+        except Exception:
+            return Response({"detail": "Failed to save interests"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"success": True, "category_ids": final_ids}, status=status.HTTP_200_OK)
+
+    ids = list(InvestorInterest.objects.filter(investor=investor).values_list("category_id", flat=True))
+    return Response({"category_ids": ids}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def investor_business_ideas(request, investor_id: int):
+    """
+    Business ideas whose category_id is in the investor's interests.
+    Query: limit (default 100), offset (default 0)
+    """
+    investor = get_object_or_404(InvestorDetails, pk=investor_id)
+    category_ids = list(InvestorInterest.objects.filter(investor=investor).values_list("category_id", flat=True))
+    if not category_ids:
+        return Response({"businessIdeas": []}, status=status.HTTP_200_OK)
+
+    limit = max(1, min(500, int(request.GET.get("limit", 100))))
+    offset = max(0, int(request.GET.get("offset", 0)))
+
+    qs = (BusinessIdea.objects
+          .select_related("category", "user")
+          .filter(category_id__in=category_ids)
+          .order_by("-submission_date"))
+    total = qs.count()
+    items = list(qs[offset: offset + limit])
+    ser = BusinessIdeaReadSerializer(items, many=True, context={"request": request})
+    return Response({"businessIdeas": ser.data, "meta": {"total": total, "limit": limit, "offset": offset}}, status=status.HTTP_200_OK)

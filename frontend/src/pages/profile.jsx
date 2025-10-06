@@ -171,9 +171,13 @@ export default function ProfilePage() {
   const [pwdOpen, setPwdOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Investor view-only info
+  const [investor, setInvestor] = useState(null);         // { verification_status, credit_score, ... }
+  const [loadingInvestor, setLoadingInvestor] = useState(false);
+
   const update = (key) => (e) => setForm((s) => ({ ...s, [key]: e.target.value }));
 
-  // Load current user
+  // Load current user and (if investor) their verification/score
   useEffect(() => {
     (async () => {
       try {
@@ -181,16 +185,38 @@ export default function ProfilePage() {
         const j = await res.json();
         if (j?.authenticated) {
           const u = j.user || {};
+          const email = u.email || "";
           setForm({
             firstName: u.firstName || "",
             lastName:  u.lastName  || "",
-            email:     u.email     || "",
+            email:     email,
             username:  u.username  || "",
           });
+
+          // Try to find an investor record by email; if found, show read-only section.
+          if (email) {
+            setLoadingInvestor(true);
+            try {
+              const ires = await fetch(
+                `${API_BASE}/api/investors/?search=${encodeURIComponent(email)}`,
+                { credentials: "include" }
+              );
+              if (ires.ok) {
+                const data = await ires.json();
+                const list = Array.isArray(data) ? data : (data.results || data.items || []);
+                const match = list.find(
+                  (it) =>
+                    String(it.email_address || it.email || "")
+                      .toLowerCase() === String(email).toLowerCase()
+                );
+                if (match) setInvestor(match);
+              }
+            } finally {
+              setLoadingInvestor(false);
+            }
+          }
         }
-      } catch {
-        // ignore
-      }
+      } catch {/* ignore */}
     })();
   }, []);
 
@@ -236,11 +262,7 @@ export default function ProfilePage() {
 
       if (res.status === 204) {
         setStatusMsg("Your account has been deleted.");
-        // Redirect after a brief pause
-        setTimeout(() => {
-          // Clear any local session/UI and go to landing or login
-          window.location.href = "/";
-        }, 800);
+        setTimeout(() => { window.location.href = "/"; }, 800);
       } else if (res.status === 401) {
         setErr("Please log in to delete your account.");
       } else {
@@ -253,6 +275,9 @@ export default function ProfilePage() {
       setDeleting(false);
     }
   };
+
+  const status = (investor?.verification_status || "pending").toLowerCase();
+  const score = typeof investor?.credit_score === "number" ? investor.credit_score : null;
 
   return (
     <div className="prof-app">
@@ -309,6 +334,47 @@ export default function ProfilePage() {
                 readOnly={!editing}
               />
             </div>
+
+            {/* Investor read-only section */}
+            {(loadingInvestor || investor) && (
+              <>
+                <div className="prof-line" />
+                <div className="prof-meta">
+                  <div className="prof-meta__head">
+                    <h3 className="prof-section-title">Investor Verification</h3>
+                    {loadingInvestor && <span className="prof-muted">Loading…</span>}
+                  </div>
+
+                  {investor ? (
+                    <>
+                      <div className="prof-meta-grid">
+                        <div className="prof-meta-item">
+                          <div className="prof-label">Verification status</div>
+                          <div>
+                            <span className={`prof-badge prof-badge--${status}`}>
+                              {investor.verification_status || "pending"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="prof-meta-item">
+                          <div className="prof-label">Credit score</div>
+                          <div>
+                            <span className="prof-chip prof-chip--score">
+                              {score ?? "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="prof-note">
+                        These values are set by our team during verification and can’t be edited.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="prof-muted">No investor profile found for this account.</p>
+                  )}
+                </div>
+              </>
+            )}
 
             <div className="prof-line" />
 
