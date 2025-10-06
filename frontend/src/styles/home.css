@@ -844,3 +844,21 @@
     transition:none !important; 
   } 
 }
+
+
+/* --- Testimonials: ultra-light blue fade (near white) --- */
+.ifx-testimonials--bluefade{
+  position: relative;
+  color: #0f172a; /* dark text for contrast on light bg */
+  background:
+    radial-gradient(900px 360px at 15% 25%, rgba(81,105,225,.08), transparent 60%),
+    radial-gradient(800px 360px at 85% 80%, rgba(61,82,160,.07), transparent 60%),
+    linear-gradient(135deg, #ffffff 0%, #fafcff 45%, #f2f6ff 100%);
+  border-top: none;
+  border-bottom: none;
+}
+
+.ifx-testimonials--bluefade .ifx-section__title{ color:#0f172a; }
+.ifx-testimonials--bluefade .ifx-quote{ color:#334155; }      /* slate-700 */
+.ifx-testimonials--bluefade .ifx-profile__name{ color:#111827; }
+.ifx-testimonials--bluefade .ifx-profile__role{ color:#475569; } /* slate-600 */

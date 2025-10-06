@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
-  Menu, X, LogIn as LogInIcon, Info, Mail, Code, BarChart, Package,
-  Sparkles, ShieldCheck, GaugeCircle, Phone, MapPin, ChevronRight
+  Menu, X, LogIn as LogInIcon, Info, Mail, Code,
+  Handshake, Radar, Rocket,
+  Sparkles, ShieldCheck, GaugeCircle, Phone, MapPin
 } from "lucide-react";
 import "../styles/home.css";
 
@@ -87,9 +88,7 @@ function FeatureCard({ icon: Icon, title, children }) {
       </div>
       <h3 className="ifx-card__title">{title}</h3>
       <p className="ifx-card__desc">{children}</p>
-      <div className="ifx-card__arrow">
-        <ChevronRight size={20} />
-      </div>
+      {/* arrow removed per request */}
     </article>
   );
 }
@@ -129,7 +128,7 @@ export default function HomePage() {
       <Header />
 
       <main>
-        {/* HERO - Updated with Dark Veil */}
+        {/* HERO - Dark Veil */}
         <section className="ifx-hero ifx-hero--dark-veil" aria-labelledby="hero-title">
           <div className="ifx-hero__background">
             <div className="ifx-hero__veil" aria-hidden />
@@ -159,7 +158,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* INTRO - Updated with main2.png */}
+        {/* INTRO */}
         <section id="about" className="ifx-section">
           <div className="ifx-container ifx-split">
             <div className="ifx-split__left">
@@ -196,13 +195,13 @@ export default function HomePage() {
               <p className="ifx-section__subtitle">Best-practice tooling wrapped in a clean workflow.</p>
             </header>
             <div className="ifx-grid" role="list">
-              <FeatureCard icon={Package} title="Sponsor Matching">
+              <FeatureCard icon={Handshake} title="Sponsor Matching">
                 Instantly find aligned sponsors and streamline outreach with warm intros.
               </FeatureCard>
-              <FeatureCard icon={BarChart} title="Competition Radar">
+              <FeatureCard icon={Radar} title="Competition Radar">
                 Track competitors, spot whitespace, and plan moves with confidence.
               </FeatureCard>
-              <FeatureCard icon={Package} title="Launch Resources">
+              <FeatureCard icon={Rocket} title="Launch Resources">
                 Curated vendors, SaaS, and services to build faster with less risk.
               </FeatureCard>
             </div>
@@ -233,8 +232,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* TESTIMONIAL - Updated with profile image */}
-        <section className="ifx-section ifx-testimonials" aria-labelledby="testimonials-title">
+        {/* TESTIMONIAL - Blue fade */}
+        <section className="ifx-section ifx-testimonials ifx-testimonials--bluefade" aria-labelledby="testimonials-title">
           <div className="ifx-container">
             <h2 id="testimonials-title" className="ifx-section__title">Loved by founders</h2>
             <blockquote className="ifx-quote">
@@ -259,66 +258,65 @@ export default function HomePage() {
         </section>
 
         {/* CONTACT */}
-        {/* CONTACT */}
-<section id="contact" className="ifx-section">
-  <div className="ifx-container ifx-contact">
-    <div>
-      <p className="ifx-eyebrow">Connect</p>
-      <h2 className="ifx-section__title">Get in touch</h2>
-      <p className="ifx-section__subtitle">We'll help you choose the fastest path to launch.</p>
-      <ul className="ifx-contact__list" role="list">
-        <li className="ifx-contact__row">
-          <Mail className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
-          <div>
-            <h3 className="ifx-contact__label">Email</h3>
-            <p className="ifx-contact__value">
-              <a href="mailto:support@ideaforge.com" className="ifx-link">support@ideaforge.com</a>
-            </p>
-          </div>
-        </li>
-        <li className="ifx-contact__row">
-          <Phone className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
-          <div>
-            <h3 className="ifx-contact__label">Phone</h3>
-            <p className="ifx-contact__value">
-              <a href="tel:+94123456789" className="ifx-link">+94 123 456 789</a>
-            </p>
-          </div>
-        </li>
-        <li className="ifx-contact__row">
-          <MapPin className="ifx-contact__icon" aria-hidden />
-          <div>
-            <h3 className="ifx-contact__label">Office</h3>
-            <p className="ifx-contact__value">
-              123, Sample St. Colombo 10 — <a href="#" className="ifx-link">Get Directions →</a>
-            </p>
-          </div>
-        </li>
-      </ul>
-    </div>
+        <section id="contact" className="ifx-section">
+          <div className="ifx-container ifx-contact">
+            <div>
+              <p className="ifx-eyebrow">Connect</p>
+              <h2 className="ifx-section__title">Get in touch</h2>
+              <p className="ifx-section__subtitle">We'll help you choose the fastest path to launch.</p>
+              <ul className="ifx-contact__list" role="list">
+                <li className="ifx-contact__row">
+                  <Mail className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
+                  <div>
+                    <h3 className="ifx-contact__label">Email</h3>
+                    <p className="ifx-contact__value">
+                      <a href="mailto:ideaforgesrilanka@gmai.com" className="ifx-link">ideaforgesrilanka@gmai.com</a>
+                    </p>
+                  </div>
+                </li>
+                <li className="ifx-contact__row">
+                  <Phone className="ifx-contact__icon" strokeWidth={1.5} aria-hidden />
+                  <div>
+                    <h3 className="ifx-contact__label">Phone</h3>
+                    <p className="ifx-contact__value">
+                      <a href="tel:+94123456789" className="ifx-link">+94 123 456 789</a>
+                    </p>
+                  </div>
+                </li>
+                <li className="ifx-contact__row">
+                  <MapPin className="ifx-contact__icon" aria-hidden />
+                  <div>
+                    <h3 className="ifx-contact__label">Office</h3>
+                    <p className="ifx-contact__value">
+                      123, Sample St. Colombo 10 — <a href="#" className="ifx-link">Get Directions →</a>
+                    </p>
+                  </div>
+                </li>
+              </ul>
+            </div>
 
-    <div className="ifx-form ifx-mapcard">
-      <iframe
-        title="IdeaForge Office Map"
-        className="ifx-map-embed"
-        src="https://www.openstreetmap.org/export/embed.html?bbox=79.8542%2C6.9251%2C79.8682%2C6.9351&layer=mapnik&marker=6.9301%2C79.8612"
-        allowFullScreen
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
-      <div className="ifx-map-footer">
-        <a
-          className="ifx-link"
-          href="https://www.openstreetmap.org/?mlat=6.9301&mlon=79.8612#map=18/6.9301/79.8612"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Open in OpenStreetMap →
-        </a>
-      </div>
-    </div>
-  </div>
-</section>
+            <div className="ifx-form ifx-mapcard">
+              <iframe
+                title="IdeaForge Office Map"
+                className="ifx-map-embed"
+                src="https://www.openstreetmap.org/export/embed.html?bbox=79.8542%2C6.9251%2C79.8682%2C6.9351&layer=mapnik&marker=6.9301%2C79.8612"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+              <div className="ifx-map-footer">
+                <a
+                  className="ifx-link"
+                  href="https://www.openstreetmap.org/?mlat=6.9301&mlon=79.8612#map=18/6.9301/79.8612"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open in OpenStreetMap →
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* FOOTER */}

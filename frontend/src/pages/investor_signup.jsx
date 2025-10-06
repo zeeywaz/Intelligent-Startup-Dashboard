@@ -32,7 +32,6 @@ function getCookie(name) {
   return match ? decodeURIComponent(match[2]) : null;
 }
 async function ensureCsrf(API_BASE) {
-  // make sure csrftoken cookie exists before POSTs that require it
   if (getCookie("csrftoken")) return;
   try { await fetch(`${API_BASE}/api/csrf/`, { credentials: "include" }); } catch {}
 }
@@ -217,7 +216,7 @@ export default function InvestorSignup() {
   const handleOtpRequest = async (e) => { e?.preventDefault(); if (!validFill || loading) return; await sendOtpRequest(); };
   const handleResendOtp = async () => { if (resendCooldown > 0) return; await sendOtpRequest(); };
 
-  // Complete registration using the role_id approach
+  // Complete registration
   const completeRegistration = async () => {
     setServerErrors(null); setMessage(null);
     if (!otpCode.trim()) { setServerErrors({ non_field_errors: ["Please enter the OTP code."] }); return; }
@@ -227,7 +226,7 @@ export default function InvestorSignup() {
       await ensureCsrf(API_BASE);
       const csrftoken = getCookie("csrftoken");
 
-      // Step 1: Verify OTP and create user account with role_id
+      // Step 1: Verify OTP and create user
       const verifyRes = await fetch(`${API_BASE}/api/register/verify-otp/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(csrftoken && { "X-CSRFToken": csrftoken }) },
@@ -239,13 +238,13 @@ export default function InvestorSignup() {
           username: form.username.trim(),
           first_name: form.firstName.trim(),
           last_name: form.lastName.trim(),
-          role_id: 2, // Investor role ID
+          role_id: 2, // Investor role
         }),
       });
       const verifyData = await verifyRes.json().catch(() => ({}));
       if (!verifyRes.ok) throw new Error(parseError(verifyData) || "OTP verification failed");
 
-      // Step 2: Auto-login to establish session
+      // Step 2: Auto-login (best effort)
       try {
         const loginRes = await fetch(`${API_BASE}/api/login/`, {
           method: "POST",
@@ -253,10 +252,10 @@ export default function InvestorSignup() {
           credentials: "include",
           body: JSON.stringify({ email: form.email.trim(), password: form.password }),
         });
-        if (!loginRes.ok) console.warn("Auto-login failed, continuing with investor registration");
-      } catch (loginErr) { console.warn("Login attempt failed:", loginErr); }
+        if (!loginRes.ok) console.warn("Auto-login failed, continuing.");
+      } catch {}
 
-      // Step 3: Ensure CSRF again then submit investor-specific data and files using FormData
+      // Step 3: Submit investor data + docs
       await ensureCsrf(API_BASE);
       const freshToken = getCookie("csrftoken");
       const investorData = new FormData();
@@ -272,11 +271,8 @@ export default function InvestorSignup() {
         headers: { ...(freshToken && { "X-CSRFToken": freshToken }) },
         body: investorData,
       });
-
-      // Try to read JSON; handle 403 HTML response safely
       let investorResult = {};
       try { investorResult = await investorRes.json(); } catch {}
-
       if (!investorRes.ok) {
         const msg = parseError(investorResult) || `Investor step failed (${investorRes.status})`;
         throw new Error(msg);
@@ -298,38 +294,6 @@ export default function InvestorSignup() {
     });
     setFiles([]); setPicked(new Set()); setSearchQuery("");
     setServerErrors(null); setMessage(null); setStep("fill"); setOtpCode("");
-  };
-
-  // Simple form submission (alternative without OTP)
-  const handleSimpleSubmit = async (e) => {
-    e.preventDefault();
-    setServerErrors(null); setMessage(null);
-    if (!form.username.trim() || !form.email.trim() || !form.password) {
-      setServerErrors({ non_field_errors: ["Username, email and password are required."] });
-      return;
-    }
-    setLoading(true);
-    try {
-      await ensureCsrf(API_BASE);
-      const csrftoken = getCookie("csrftoken");
-      const headers = { "Content-Type": "application/json", ...(csrftoken && { "X-CSRFToken": csrftoken }) };
-      const simpleFormData = {
-        firstName: form.firstName, lastName: form.lastName, username: form.username,
-        email: form.email, password: form.password, company_name: form.company_name,
-        phone: form.phone, role_id: 2,
-      };
-      const res = await fetch(`${API_BASE}/api/investor-register/`, {
-        method: "POST", headers, credentials: "include", body: JSON.stringify(simpleFormData),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(parseError(data));
-      setMessage(data?.message || "Registered successfully");
-      setServerErrors(null);
-      const next = data.next || "/investordashboard";
-      setTimeout(() => { window.location.href = next; }, 400);
-    } catch (err) {
-      setServerErrors({ non_field_errors: [err.message || "Registration failed"] });
-    } finally { setLoading(false); }
   };
 
   return (
@@ -422,10 +386,20 @@ export default function InvestorSignup() {
                   {filteredCats.map((cat) => {
                     const isSelected = picked.has(cat.id);
                     return (
-                      <button key={cat.id} type="button"
+                      <button
+                        key={cat.id}
+                        type="button"
                         className={`regv-cat-card ${isSelected ? "regv-cat-selected" : ""}`}
-                        onClick={() => toggleCategory(cat.id)} aria-pressed={isSelected}>
-                        <span className={`regv-cat-dot ${isSelected ? "regv-cat-dot-selected" : ""}`} />
+                        onClick={() => toggleCategory(cat.id)}
+                        aria-pressed={isSelected}
+                      >
+                        <span className={`regv-cat-box ${isSelected ? "is-selected" : ""}`} aria-hidden="true">
+                          {isSelected ? (
+                            <svg viewBox="0 0 16 16" focusable="false" aria-hidden="true">
+                              <path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          ) : null}
+                        </span>
                         <span className="regv-cat-label">{formatLabel(cat.name)}</span>
                       </button>
                     );
@@ -449,12 +423,14 @@ export default function InvestorSignup() {
 
               {/* File upload */}
               <div className="regv-upload">
-                <div className="regv-drop-zone"
+                <div
+                  className="regv-drop-zone"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => { e.preventDefault(); if (!loading) handleFilePick(e.dataTransfer.files); }}
                   role="button" tabIndex={0}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && fileInputRef.current?.click()}
-                  aria-label="Upload verification documents">
+                  aria-label="Upload verification documents"
+                >
                   <p className="regv-drop-title">Upload verification document(s)</p>
                   <p className="regv-drop-hint">
                     Drag & drop or{" "}
@@ -463,8 +439,14 @@ export default function InvestorSignup() {
                     </button>{" "}
                     (PDF/JPG/PNG, max {MAX_FILES} files, ≤ 10MB each)
                   </p>
-                  <input ref={fileInputRef} type="file" accept={ACCEPT} multiple className="regv-file-input"
-                    onChange={(e) => handleFilePick(e.target.files)} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPT}
+                    multiple
+                    className="regv-file-input"
+                    onChange={(e) => handleFilePick(e.target.files)}
+                  />
                 </div>
 
                 {files.length > 0 && (
@@ -475,7 +457,12 @@ export default function InvestorSignup() {
                           <span className="regv-file-name">{f.name}</span>
                           <span className="regv-file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
-                        <button type="button" className="regv-file-remove" onClick={() => handleRemoveFile(f.id)} aria-label={`Remove ${f.name}`}>
+                        <button
+                          type="button"
+                          className="regv-file-remove"
+                          onClick={() => handleRemoveFile(f.id)}
+                          aria-label={`Remove ${f.name}`}
+                        >
                           Remove
                         </button>
                       </li>
@@ -499,7 +486,6 @@ export default function InvestorSignup() {
                 </button>
               </div>
 
-              {/* Hidden role_id field */}
               <input type="hidden" name="role_id" value={2} />
             </form>
           )}
@@ -510,9 +496,15 @@ export default function InvestorSignup() {
                 An OTP was sent to <strong>{form.email}</strong>
               </p>
 
-              <input type="text" placeholder="Enter 6-digit code" value={otpCode}
+              <input
+                type="text"
+                placeholder="Enter 6-digit code"
+                value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="regv-input" maxLength={6} autoFocus />
+                className="regv-input"
+                maxLength={6}
+                autoFocus
+              />
 
               <button className="regv-btn-primary" onClick={completeRegistration} disabled={loading || otpCode.length !== 6}>
                 {loading ? "Finalizing Registration..." : "Confirm OTP & Complete Registration"}
