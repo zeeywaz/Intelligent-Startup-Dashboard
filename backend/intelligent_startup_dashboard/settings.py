@@ -28,15 +28,17 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",           # must be high
+    "corsheaders.middleware.CorsMiddleware",           # keep high
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",  # (only once)
+    "backend.api.audit.AuditRequestMiddleware",                 # <— after Auth
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
 
 ROOT_URLCONF = "backend.intelligent_startup_dashboard.urls"
 WSGI_APPLICATION = "backend.intelligent_startup_dashboard.wsgi.application"
@@ -129,3 +131,5 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # media/static (add or replace existing lines)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+AUDIT_LOG_DIR = BASE_DIR / "audit_logs"

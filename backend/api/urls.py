@@ -87,6 +87,8 @@ urlpatterns = [
 
     
     path("investors/<int:investor_id>/interests/", inv.investor_interests, name="investor-interests"),
-path("investors/<int:investor_id>/my-interests/", inv.investor_business_ideas, name="investor-my-interests"),
+    path("investors/<int:investor_id>/my-interests/", inv.investor_business_ideas, name="investor-my-interests"),
+    path("admin/audit/sessions/", views.audit_list_sessions, name="audit-list-sessions"),
+    path("admin/audit/sessions/<int:user_id>/<str:session_key>/", views.audit_download_session, name="audit-download-session"),
 
 ]

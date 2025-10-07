@@ -1,0 +1,31 @@
+{
+  "audit_id": 22,
+  "timestamp": "2025-10-07T04:58:48.239991+00:00",
+  "actor": {
+    "id": 11,
+    "username": "sharafa323"
+  },
+  "http": {
+    "method": "POST",
+    "path": "/api/bookmarks/toggle/",
+    "ip": "127.0.0.1",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "session_key": "mqw9zjk0bqejf00yj4m3zsltw3d37iap"
+  },
+  "action": "create",
+  "target": {
+    "entity": "Bookmark",
+    "id": 153
+  },
+  "changes": {
+    "new": {
+      "bookmark_id": 153,
+      "user": 11,
+      "investor": null,
+      "resource": 1456,
+      "competitor": null,
+      "idea": null,
+      "created_date": "2025-10-07T04:58:48.236677+00:00"
+    }
+  }
+}

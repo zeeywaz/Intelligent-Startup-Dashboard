@@ -16,6 +16,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "backend.api.audit.AuditRequestMiddleware",   # <— correct path & position
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -53,3 +54,6 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # media/static (add or replace existing lines)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+
+AUDIT_LOG_DIR = BASE_DIR / "audit_logs"

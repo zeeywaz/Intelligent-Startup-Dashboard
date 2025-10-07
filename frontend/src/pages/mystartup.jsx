@@ -12,46 +12,29 @@ function useDots(on) {
   const [dots, setDots] = useState("");
   useEffect(() => {
     if (!on) return setDots("");
-    const t = setInterval(
-      () => setDots((d) => (d.length >= 3 ? "" : d + ".")),
-      300
-    );
+    const t = setInterval(() => setDots((d) => (d.length >= 3 ? "" : d + ".")), 300);
     return () => clearInterval(t);
   }, [on]);
   return dots;
 }
 
-/* Investor field helpers (safe to older Babel – no ?? + || mixing) */
+/* Investor field helpers */
 const invId = (x) => (x && (x.id ?? x.investor_id ?? x.user_id)) || null;
-
 const invName = (x) => {
   if (!x) return "Investor";
-  // Prefer explicit names if present
   const maybe =
     x.investor_name ??
     x.full_name ??
     (x.user && (x.user.first_name || x.user.last_name)
       ? `${x.user.first_name || ""} ${x.user.last_name || ""}`.trim()
       : "");
-  const primary = maybe || x.company;
+  const primary = maybe || x.company || x.company_name;
   return primary || "Investor";
 };
-
-const invEmail = (x) => {
-  if (!x) return "";
-  const e = x.email ?? x.email_address;
-  return e || "";
-};
-const invPhone = (x) => {
-  if (!x) return "";
-  const p = x.phone ?? x.phone_number;
-  return p || "";
-};
-const invRating = (x) => {
-  const r =
-    x?.rating ??
-    x?.credit_score ??
-    (typeof x?.score === "number" ? x.score : null);
+const invEmail = (x) => (x?.email ?? x?.email_address) || "";
+const invPhone = (x) => (x?.phone ?? x?.phone_number) || "";
+const invScore = (x) => {
+  const r = x?.credit_score ?? x?.rating ?? (typeof x?.score === "number" ? x.score : null);
   return Number.isFinite(r) ? Number(r) : null;
 };
 const invVerified = (x) => {
@@ -62,8 +45,8 @@ const invVerified = (x) => {
 };
 
 /* ---------- Badge chip ---------- */
-function Badge({ children }) {
-  return <span className="chip">{children}</span>;
+function Badge({ children, subtle = false }) {
+  return <span className={cx("chip", subtle && "chip--subtle")}>{children}</span>;
 }
 
 /* ---------- Bookmark star ---------- */
@@ -106,18 +89,15 @@ function Card({ onClick, children }) {
   );
 }
 
-/* ---------- Strength pill for competitors ---------- */
+/* ---------- Strength pill (competitors) ---------- */
 function PriorityPill({ level }) {
   const lv = String(level || "").toLowerCase();
   if (!lv) return null;
   const cls =
-    lv === "high"
-      ? "pill pill--high"
-      : lv === "medium"
-      ? "pill pill--medium"
-      : lv === "low"
-      ? "pill pill--low"
-      : "pill";
+    lv === "high" ? "pill pill--high" :
+    lv === "medium" ? "pill pill--medium" :
+    lv === "low" ? "pill pill--low" :
+    "pill";
   const label = lv.charAt(0).toUpperCase() + lv.slice(1);
   return <span className={cls}>{label}</span>;
 }
@@ -145,15 +125,11 @@ function Modal({ open, title, children, onClose }) {
       <div className="modal__panel" role="document">
         <header className="modal__header">
           <h2 className="modal__title">{title}</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
+          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
         </header>
         <div className="modal__body">{children}</div>
         <footer className="modal__footer">
-          <button className="btn btn--ghost" onClick={onClose}>
-            Close
-          </button>
+          <button className="btn btn--ghost" onClick={onClose}>Close</button>
         </footer>
       </div>
     </div>
@@ -165,27 +141,20 @@ export default function StartupPage() {
   const navigate = useNavigate();
 
   const [idea, setIdea] = useState(null);
-  const hasIdea = !!idea; // <-- flag for button label
+  const hasIdea = !!idea;
 
   const [resources, setResources] = useState([]);
-  const [resourcesMeta, setResourcesMeta] = useState({
-    total: 0,
-    next_offset: null,
-    fallback: false,
-  });
+  const [resourcesMeta, setResourcesMeta] = useState({ total: 0, next_offset: null, fallback: false });
   const [resourcesBusy, setResourcesBusy] = useState(false);
 
   const [competitors, setCompetitors] = useState([]);
-  const [competitorsMeta, setCompetitorsMeta] = useState({
-    total: 0,
-    next_offset: null,
-    fallback: false,
-  });
+  const [competitorsMeta, setCompetitorsMeta] = useState({ total: 0, next_offset: null, fallback: false });
   const [competitorsBusy, setCompetitorsBusy] = useState(false);
 
   const [investors, setInvestors] = useState([]);
+  const [investorsMeta, setInvestorsMeta] = useState({ matched_count: 0, fallback: false });
 
-  // Server bookmark id sets
+  // Bookmark ids from server
   const [bmIds, setBmIds] = useState({
     resource: new Set(),
     competitor: new Set(),
@@ -209,7 +178,6 @@ export default function StartupPage() {
         setBmIds((prev) => ({ ...prev, [kind]: new Set(data.ids) }));
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error("bookmarkIds failed", e);
     }
   };
@@ -219,7 +187,6 @@ export default function StartupPage() {
       await api.toggleBookmark(kind, id);
       await refreshBookmarkIds(kind);
     } catch (e) {
-      // eslint-disable-next-line no-alert
       alert(e?.message || "Failed to toggle bookmark.");
     }
   };
@@ -230,13 +197,10 @@ export default function StartupPage() {
         setLoading(true);
         setErr("");
 
-        // Make sure CSRF cookie exists
         await api.csrf().catch(() => {});
 
-        // Get latest idea
-        const rIdeas = await fetch(`${API_BASE}/api/ideas/mine/`, {
-          credentials: "include",
-        });
+        // Latest idea
+        const rIdeas = await fetch(`${API_BASE}/api/ideas/mine/`, { credentials: "include" });
         const ideas = await rIdeas.json();
         if (!Array.isArray(ideas) || ideas.length === 0) {
           setErr("You don’t have any saved ideas yet.");
@@ -245,38 +209,28 @@ export default function StartupPage() {
         const latest = ideas[0];
         setIdea(latest);
 
-        // Bundle for page
-        const res = await fetch(
-          `${API_BASE}/api/mystartup/${latest.idea_id}/?res_limit=8&comp_limit=8`,
-          { credentials: "include" }
-        );
+        // Page bundle
+        const res = await fetch(`${API_BASE}/api/mystartup/${latest.idea_id}/?res_limit=8&comp_limit=8`, {
+          credentials: "include",
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
         setResources(data.resources || []);
-        setResourcesMeta(
-          data.resources_meta || { total: 0, next_offset: null, fallback: false }
-        );
+        setResourcesMeta(data.resources_meta || { total: 0, next_offset: null, fallback: false });
 
         setCompetitors(data.competitors || []);
-        setCompetitorsMeta(
-          data.competitors_meta || {
-            total: 0,
-            next_offset: null,
-            fallback: false,
-          }
-        );
+        setCompetitorsMeta(data.competitors_meta || { total: 0, next_offset: null, fallback: false });
 
         setInvestors(data.investors || []);
+        setInvestorsMeta(data.investors_meta || { matched_count: 0, fallback: false });
 
-        // Fetch server bookmark ids
         await Promise.all([
           refreshBookmarkIds("resource"),
           refreshBookmarkIds("competitor"),
           refreshBookmarkIds("investor"),
         ]);
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.error(e);
         setErr("Failed to load startup data.");
       } finally {
@@ -289,22 +243,12 @@ export default function StartupPage() {
     if (resourcesBusy || resourcesMeta.next_offset == null || !idea) return;
     try {
       setResourcesBusy(true);
-      const params = new URLSearchParams({
-        limit: "8",
-        offset: String(resourcesMeta.next_offset),
-        fallback: "1",
-      });
+      const params = new URLSearchParams({ limit: "8", offset: String(resourcesMeta.next_offset), fallback: "1" });
       if (idea.location) params.set("location", idea.location);
-      const res = await fetch(`${API_BASE}/api/resources/?${params}`, {
-        credentials: "include",
-      });
+      const res = await fetch(`${API_BASE}/api/resources/?${params}`, { credentials: "include" });
       const data = await res.json();
       setResources((prev) => [...prev, ...(data.items || [])]);
-      setResourcesMeta({
-        total: data.total,
-        next_offset: data.next_offset,
-        fallback: data.fallback,
-      });
+      setResourcesMeta({ total: data.total, next_offset: data.next_offset, fallback: data.fallback });
     } finally {
       setResourcesBusy(false);
     }
@@ -314,52 +258,26 @@ export default function StartupPage() {
     if (competitorsBusy || competitorsMeta.next_offset == null || !idea) return;
     try {
       setCompetitorsBusy(true);
-      const params = new URLSearchParams({
-        limit: "8",
-        offset: String(competitorsMeta.next_offset),
-        fallback: "1",
-      });
+      const params = new URLSearchParams({ limit: "8", offset: String(competitorsMeta.next_offset), fallback: "1" });
       if (idea.category) params.set("category", idea.category);
-      const res = await fetch(`${API_BASE}/api/competitors/?${params}`, {
-        credentials: "include",
-      });
+      const res = await fetch(`${API_BASE}/api/competitors/?${params}`, { credentials: "include" });
       const data = await res.json();
       setCompetitors((prev) => [...prev, ...(data.items || [])]);
-      setCompetitorsMeta({
-        total: data.total,
-        next_offset: data.next_offset,
-        fallback: data.fallback,
-      });
+      setCompetitorsMeta({ total: data.total, next_offset: data.next_offset, fallback: data.fallback });
     } finally {
       setCompetitorsBusy(false);
     }
   };
 
-  const show = (kind, obj) => {
-    setFocusKind(kind);
-    setFocusItem(obj);
-    setOpen(true);
-  };
-  const hide = () => {
-    setOpen(false);
-    setFocusItem(null);
-    setFocusKind("");
-  };
+  const show = (kind, obj) => { setFocusKind(kind); setFocusItem(obj); setOpen(true); };
+  const hide = () => { setOpen(false); setFocusItem(null); setFocusKind(""); };
 
-  // Build “Bookmarked” from visible lists + ids
+  // Build “Bookmarked” list from ids + visible data
   const bookmarkedCards = useMemo(() => {
     const out = [];
-    for (const r of resources)
-      if (bmIds.resource.has(r.resource_id))
-        out.push({ key: `resource-${r.resource_id}`, kind: "resource", obj: r });
-    for (const c of competitors)
-      if (bmIds.competitor.has(c.id))
-        out.push({ key: `competitor-${c.id}`, kind: "competitor", obj: c });
-    for (const i of investors) {
-      const iid = invId(i);
-      if (iid != null && bmIds.investor.has(iid))
-        out.push({ key: `investor-${iid}`, kind: "investor", obj: i });
-    }
+    for (const r of resources) if (bmIds.resource.has(r.resource_id)) out.push({ key: `resource-${r.resource_id}`, kind: "resource", obj: r });
+    for (const c of competitors) if (bmIds.competitor.has(c.id)) out.push({ key: `competitor-${c.id}`, kind: "competitor", obj: c });
+    for (const i of investors) { const iid = invId(i); if (iid != null && bmIds.investor.has(iid)) out.push({ key: `investor-${iid}`, kind: "investor", obj: i }); }
     return out;
   }, [resources, competitors, investors, bmIds]);
 
@@ -369,11 +287,8 @@ export default function StartupPage() {
       <div className="startup-app">
         <main className="container">
           <section className="pagehead">
-            <h1 className="pagehead__title">
-              Your Startup: {idea ? idea.title : "Loading"}
-              {dots}
-            </h1>
-            <p className="pagehead__subtitle">Where do you want to start</p>
+            <h1 className="pagehead__title">Your Startup: {idea ? idea.title : "Loading"}{dots}</h1>
+            <p className="pagehead__subtitle">Smart picks tailored to your idea.</p>
           </section>
 
           {loading && <p className="thinking">Loading{dots}</p>}
@@ -386,6 +301,10 @@ export default function StartupPage() {
                 <section className="panel">
                   <header className="panel__header">
                     <h3 className="panel__title">Recommended Investors</h3>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <Badge subtle>{investors.length} shown</Badge>
+                      <Badge>{investorsMeta.fallback ? "Matched + Top-ups" : `Matched: ${investorsMeta.matched_count}`}</Badge>
+                    </div>
                   </header>
 
                   {investors.length === 0 ? (
@@ -396,58 +315,27 @@ export default function StartupPage() {
                         const id = invId(it);
                         const active = id != null && isBookmarked("investor", id);
                         const v = invVerified(it);
-                        const rating = invRating(it);
+                        const score = invScore(it);
                         return (
-                          <Card
-                            key={`investor-${id ?? Math.random()}`}
-                            onClick={() => show("investor", it)}
-                          >
+                          <Card key={`investor-${id ?? Math.random()}`} onClick={() => show("investor", it)}>
                             <div className="card__content">
                               <div className="card__main">
                                 <h4 className="card__title">{invName(it)}</h4>
                                 <div className="row row--chips">
-                                  <span
-                                    className={cx(
-                                      "pill",
-                                      v === "ok"
-                                        ? "pill--ok"
-                                        : v === "pending"
-                                        ? "pill--muted"
-                                        : "pill--muted"
-                                    )}
-                                  >
-                                    {v === "ok"
-                                      ? "Verified"
-                                      : v === "pending"
-                                      ? "Pending"
-                                      : "Unverified"}
+                                  <span className={cx("pill", v === "ok" ? "pill--ok" : "pill--muted")}>
+                                    {v === "ok" ? "Verified" : v === "pending" ? "Pending" : "Unverified"}
                                   </span>
-                                  {Number.isFinite(rating) && (
-                                    <span className="pill pill--soft">
-                                      Rating {rating}
-                                    </span>
-                                  )}
+                                  {Number.isFinite(score) && <span className="pill pill--soft">Score {score}</span>}
                                 </div>
                                 {invEmail(it) && (
                                   <p className="card__sub">
-                                    <a
-                                      className="link"
-                                      href={`mailto:${invEmail(it)}`}
-                                    >
-                                      {invEmail(it)}
-                                    </a>
+                                    <a className="link" href={`mailto:${invEmail(it)}`}>{invEmail(it)}</a>
                                   </p>
                                 )}
-                                {/* Phone shown only if present */}
-                                {invPhone(it) && (
-                                  <p className="card__sub">{invPhone(it)}</p>
-                                )}
+                                {invPhone(it) && <p className="card__sub">{invPhone(it)}</p>}
                               </div>
                               <div className="card__meta">
-                                <Bookmark
-                                  active={active}
-                                  onClick={() => id != null && toggleBookmark("investor", id)}
-                                />
+                                <Bookmark active={active} onClick={() => id != null && toggleBookmark("investor", id)} />
                               </div>
                             </div>
                           </Card>
@@ -462,11 +350,7 @@ export default function StartupPage() {
                   <header className="panel__header">
                     <h3 className="panel__title">Recommended Resources & Services</h3>
                     <Badge>
-                      {resourcesMeta.fallback
-                        ? "Showing all locations"
-                        : idea?.location
-                        ? `Location: ${idea.location}`
-                        : "Location: —"}
+                      {resourcesMeta.fallback ? "Showing all locations" : idea?.location ? `Location: ${idea.location}` : "Location: —"}
                     </Badge>
                   </header>
 
@@ -479,38 +363,20 @@ export default function StartupPage() {
                           const id = it.resource_id;
                           const active = isBookmarked("resource", id);
                           return (
-                            <Card
-                              key={`resource-${id}`}
-                              onClick={() => show("resource", it)}
-                            >
+                            <Card key={`resource-${id}`} onClick={() => show("resource", it)}>
                               <div className="card__content">
                                 <div className="card__main">
                                   <h4 className="card__title">{it.name}</h4>
-                                  <p className="card__sub">
-                                    {[it.type, it.location]
-                                      .filter(Boolean)
-                                      .join(" • ")}
-                                  </p>
-                                  {it.description && (
-                                    <p className="card__desc">{it.description}</p>
-                                  )}
+                                  <p className="card__sub">{[it.type, it.location].filter(Boolean).join(" • ")}</p>
+                                  {it.description && <p className="card__desc">{it.description}</p>}
                                 </div>
                                 <div className="card__meta">
                                   {it.website && (
-                                    <a
-                                      href={it.website}
-                                      className="btn btn--tiny"
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <a href={it.website} className="btn btn--tiny" target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                                       Website
                                     </a>
                                   )}
-                                  <Bookmark
-                                    active={active}
-                                    onClick={() => toggleBookmark("resource", id)}
-                                  />
+                                  <Bookmark active={active} onClick={() => toggleBookmark("resource", id)} />
                                 </div>
                               </div>
                             </Card>
@@ -519,11 +385,7 @@ export default function StartupPage() {
                       </div>
                       <div className="panel__footer">
                         {resourcesMeta.next_offset != null ? (
-                          <button
-                            className="btn btn--ghost"
-                            onClick={loadMoreResources}
-                            disabled={resourcesBusy}
-                          >
+                          <button className="btn btn--ghost" onClick={loadMoreResources} disabled={resourcesBusy}>
                             {resourcesBusy ? "Loading…" : "Load more"}
                           </button>
                         ) : (
@@ -540,13 +402,7 @@ export default function StartupPage() {
                 <section className="panel">
                   <header className="panel__header">
                     <h3 className="panel__title">Similar Businesses around You</h3>
-                    <Badge>
-                      {competitorsMeta.fallback
-                        ? "Showing all categories"
-                        : idea?.category
-                        ? `Category: ${idea.category}`
-                        : "Category: —"}
-                    </Badge>
+                    <Badge>{competitorsMeta.fallback ? "Showing all categories" : idea?.category ? `Category: ${idea.category}` : "Category: —"}</Badge>
                   </header>
 
                   {competitors.length === 0 ? (
@@ -558,10 +414,7 @@ export default function StartupPage() {
                           const id = it.id;
                           const active = isBookmarked("competitor", id);
                           return (
-                            <Card
-                              key={`competitor-${id}`}
-                              onClick={() => show("business", it)}
-                            >
+                            <Card key={`competitor-${id}`} onClick={() => show("business", it)}>
                               <div className="card__content">
                                 <div className="card__main">
                                   <h4 className="card__title">{it.name}</h4>
@@ -569,21 +422,12 @@ export default function StartupPage() {
                                 </div>
                                 <div className="card__meta">
                                   {it.website && (
-                                    <a
-                                      href={it.website}
-                                      className="btn btn--tiny"
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <a href={it.website} className="btn btn--tiny" target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                                       Website
                                     </a>
                                   )}
                                   <PriorityPill level={it.strength} />
-                                  <Bookmark
-                                    active={active}
-                                    onClick={() => toggleBookmark("competitor", id)}
-                                  />
+                                  <Bookmark active={active} onClick={() => toggleBookmark("competitor", id)} />
                                 </div>
                               </div>
                             </Card>
@@ -592,11 +436,7 @@ export default function StartupPage() {
                       </div>
                       <div className="panel__footer">
                         {competitorsMeta.next_offset != null ? (
-                          <button
-                            className="btn btn--ghost"
-                            onClick={loadMoreCompetitors}
-                            disabled={competitorsBusy}
-                          >
+                          <button className="btn btn--ghost" onClick={loadMoreCompetitors} disabled={competitorsBusy}>
                             {competitorsBusy ? "Loading…" : "Load more"}
                           </button>
                         ) : (
@@ -621,92 +461,46 @@ export default function StartupPage() {
                         const kind = bm.kind;
                         const o = bm.obj;
 
-                        // For investors, compute chips
                         const v = kind === "investor" ? invVerified(o) : null;
-                        const rating =
-                          kind === "investor" ? invRating(o) : null;
-                        const investorName =
-                          kind === "investor" ? invName(o) : null;
-                        const investorEmail =
-                          kind === "investor" ? invEmail(o) : null;
+                        const score = kind === "investor" ? invScore(o) : null;
+                        const investorName = kind === "investor" ? invName(o) : null;
+                        const investorEmail = kind === "investor" ? invEmail(o) : null;
 
                         return (
-                          <Card
-                            key={bm.key}
-                            onClick={() =>
-                              show(kind === "competitor" ? "business" : kind, o)
-                            }
-                          >
+                          <Card key={bm.key} onClick={() => show(kind === "competitor" ? "business" : kind, o)}>
                             <div className="card__content">
                               <div className="card__main">
-                                <h4 className="card__title">
-                                  {kind === "investor"
-                                    ? investorName
-                                    : o.name || o.company}
-                                </h4>
+                                <h4 className="card__title">{kind === "investor" ? investorName : o.name || o.company}</h4>
 
                                 {kind === "investor" ? (
                                   <>
                                     <div className="row row--chips">
-                                      <span
-                                        className={cx(
-                                          "pill",
-                                          v === "ok"
-                                            ? "pill--ok"
-                                            : "pill--muted"
-                                        )}
-                                      >
-                                        {v === "ok"
-                                          ? "Verified"
-                                          : v === "pending"
-                                          ? "Pending"
-                                          : "Unverified"}
+                                      <span className={cx("pill", v === "ok" ? "pill--ok" : "pill--muted")}>
+                                        {v === "ok" ? "Verified" : v === "pending" ? "Pending" : "Unverified"}
                                       </span>
-                                      {Number.isFinite(rating) && (
-                                        <span className="pill pill--soft">
-                                          Rating {rating}
-                                        </span>
-                                      )}
+                                      {Number.isFinite(score) && <span className="pill pill--soft">Score {score}</span>}
                                     </div>
                                     {investorEmail && (
                                       <p className="card__sub">
-                                        <a
-                                          className="link"
-                                          href={`mailto:${investorEmail}`}
-                                        >
-                                          {investorEmail}
-                                        </a>
+                                        <a className="link" href={`mailto:${investorEmail}`}>{investorEmail}</a>
                                       </p>
                                     )}
                                   </>
                                 ) : (
-                                  <p className="card__sub">
-                                    {o.location || o.description || "—"}
-                                  </p>
+                                  <p className="card__sub">{o.location || o.description || "—"}</p>
                                 )}
                               </div>
 
                               <div className="card__meta">
                                 {kind !== "investor" && o.website && (
-                                  <a
-                                    href={o.website}
-                                    className="btn btn--tiny"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
+                                  <a href={o.website} className="btn btn--tiny" target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                                     Website
                                   </a>
                                 )}
                                 <Bookmark
                                   active
                                   onClick={() => {
-                                    const id =
-                                      kind === "resource"
-                                        ? o.resource_id
-                                        : kind === "competitor"
-                                        ? o.id
-                                        : invId(o);
+                                    const id = kind === "resource" ? o.resource_id : kind === "competitor" ? o.id : invId(o);
                                     if (id != null) toggleBookmark(kind, id);
                                   }}
                                 />
@@ -723,7 +517,7 @@ export default function StartupPage() {
           )}
         </main>
 
-        {/* Always-visible actions */}
+        {/* Sticky actions */}
         <div className="actions actions--sticky">
           <button className="btn" onClick={() => navigate("/chatbot")}>
             {hasIdea ? "Change Idea" : "Create Idea"}
@@ -735,114 +529,61 @@ export default function StartupPage() {
 
         <Modal
           open={open}
-          title={
-            focusItem ? focusItem.name || focusItem.company || "Details" : "Details"
-          }
+          title={focusItem ? focusItem.name || focusItem.company || "Details" : "Details"}
           onClose={hide}
         >
           {focusItem && (
             <div className="modal-grid">
               {focusKind === "investor" && (
                 <>
-                  <div>
-                    <strong>Company</strong>
-                    <div>{focusItem.company || "—"}</div>
-                  </div>
-                  <div>
-                    <strong>Role</strong>
-                    <div>{focusItem.role || "—"}</div>
-                  </div>
-                  <div>
-                    <strong>Phone</strong>
-                    <div>{invPhone(focusItem) || "—"}</div>
-                  </div>
+                  <div><strong>Company</strong><div>{focusItem.company || focusItem.company_name || "—"}</div></div>
+                  <div><strong>Role</strong><div>{focusItem.role || "—"}</div></div>
+                  <div><strong>Phone</strong><div>{invPhone(focusItem) || "—"}</div></div>
                   <div>
                     <strong>Email</strong>
                     <div>
                       {invEmail(focusItem) ? (
-                        <a
-                          href={`mailto:${invEmail(focusItem)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
+                        <a href={`mailto:${invEmail(focusItem)}`} target="_blank" rel="noreferrer">
                           {invEmail(focusItem)}
                         </a>
-                      ) : (
-                        "—"
-                      )}
+                      ) : "—"}
                     </div>
                   </div>
                 </>
               )}
               {focusKind === "resource" && (
                 <>
-                  <div>
-                    <strong>Name</strong>
-                    <div>{focusItem.name}</div>
-                  </div>
-                  <div>
-                    <strong>Type</strong>
-                    <div>{focusItem.type || "—"}</div>
-                  </div>
-                  <div>
-                    <strong>Location</strong>
-                    <div>{focusItem.location || "—"}</div>
-                  </div>
+                  <div><strong>Name</strong><div>{focusItem.name}</div></div>
+                  <div><strong>Type</strong><div>{focusItem.type || "—"}</div></div>
+                  <div><strong>Location</strong><div>{focusItem.location || "—"}</div></div>
                   <div>
                     <strong>Website</strong>
                     <div>
                       {focusItem.website ? (
-                        <a
-                          href={focusItem.website}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {focusItem.website}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
+                        <a href={focusItem.website} target="_blank" rel="noreferrer">{focusItem.website}</a>
+                      ) : "—"}
                     </div>
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <strong>Description</strong>
-                    <div>{focusItem.description || "—"}</div>
+                    <strong>Description</strong><div>{focusItem.description || "—"}</div>
                   </div>
                 </>
               )}
               {focusKind === "business" && (
                 <>
-                  <div>
-                    <strong>Name</strong>
-                    <div>{focusItem.name}</div>
-                  </div>
-                  <div>
-                    <strong>Strength</strong>
-                    <div>{focusItem.strength || "—"}</div>
-                  </div>
-                  <div>
-                    <strong>Category</strong>
-                    <div>{focusItem?.category?.name || "—"}</div>
-                  </div>
+                  <div><strong>Name</strong><div>{focusItem.name}</div></div>
+                  <div><strong>Strength</strong><div>{focusItem.strength || "—"}</div></div>
+                  <div><strong>Category</strong><div>{focusItem?.category?.name || "—"}</div></div>
                   <div>
                     <strong>Website</strong>
                     <div>
                       {focusItem.website ? (
-                        <a
-                          href={focusItem.website}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {focusItem.website}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
+                        <a href={focusItem.website} target="_blank" rel="noreferrer">{focusItem.website}</a>
+                      ) : "—"}
                     </div>
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <strong>Description</strong>
-                    <div>{focusItem.description || "—"}</div>
+                    <strong>Description</strong><div>{focusItem.description || "—"}</div>
                   </div>
                 </>
               )}

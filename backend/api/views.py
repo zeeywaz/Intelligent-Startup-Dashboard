@@ -453,12 +453,22 @@ def mystartup_data(request, idea_id: int):
     """
     Initial payload for My Startup page.
     Returns first pages for resources & competitors with meta + fallback flags.
+    Also returns investors who match the idea's category; if fewer than 5,
+    top up with additional investors (best credit scores first).
     """
+    from .models import InvestorInterest  # local import to ensure availability
+
     idea = get_object_or_404(BusinessIdea, pk=idea_id, user_id=request.user.id)
+
+    # Pagination/limits
     res_limit = _int(request, "res_limit", 8)
     comp_limit = _int(request, "comp_limit", 8)
+    inv_limit = _int(request, "investors_limit", 12)
+    min_investors = 5  # ensure at least this many are shown (if available)
 
-    # Resources by idea.location (fallback to all)
+    # --------------------------
+    # Resources by idea.location
+    # --------------------------
     res_q = Resource.objects.all().order_by("name")
     res_fallback = False
     if idea.location:
@@ -470,7 +480,9 @@ def mystartup_data(request, idea_id: int):
     res_total = res_q.count()
     res_items = list(res_q[:res_limit])
 
-    # Competitors by idea.category (fallback to all)
+    # --------------------------
+    # Competitors by idea.category
+    # --------------------------
     comp_q = Competitor.objects.select_related("category").all().order_by("id")
     comp_fallback = False
     if idea.category_id:
@@ -482,9 +494,42 @@ def mystartup_data(request, idea_id: int):
     comp_total = comp_q.count()
     comp_items = list(comp_q[:comp_limit])
 
-    investors = InvestorDetails.objects.all()[:5]
+    # ------------------------------------------
+    # Investors: match category, then top-up list
+    # ------------------------------------------
+    # Prefer verified/approved & higher scores first if those fields exist
+    base_inv_qs = InvestorDetails.objects.all().order_by("-credit_score", "-investor_id")
 
-   
+    investors = []
+    inv_fallback = False
+    matched_count = 0
+
+    if idea.category_id:
+        matched_ids = InvestorInterest.objects.filter(
+            category_id=idea.category_id
+        ).values_list("investor_id", flat=True)
+
+        matched_qs = base_inv_qs.filter(pk__in=matched_ids)
+        matched_count = matched_qs.count()
+
+        # first take up to `inv_limit` matched investors
+        investors = list(matched_qs[:inv_limit])
+
+        # top up if fewer than `min_investors`
+        if len(investors) < min_investors:
+            inv_fallback = True
+            target = max(min_investors, inv_limit)
+            need = target - len(investors)
+            if need > 0:
+                existing_ids = [obj.pk for obj in investors]
+                extras_qs = base_inv_qs.exclude(pk__in=existing_ids)
+                investors.extend(list(extras_qs[:need]))
+    else:
+        # No category on idea -> just take top investors
+        inv_fallback = True
+        target = max(min_investors, inv_limit)
+        investors = list(base_inv_qs[:target])
+
     return Response(
         {
             "idea": BusinessIdeaReadSerializer(idea).data,
@@ -504,9 +549,12 @@ def mystartup_data(request, idea_id: int):
                 "next_offset": comp_limit if comp_limit < comp_total else None,
                 "fallback": comp_fallback,
             },
-            "investors": InvestorSerializer(investors, many=True).data, 
-            
-            
+            "investors": InvestorSerializer(investors, many=True).data,
+            "investors_meta": {
+                "matched_count": matched_count,
+                "limit": inv_limit,
+                "fallback": inv_fallback,
+            },
         },
         status=200,
     )
@@ -1659,3 +1707,48 @@ def idea_detail_admin(request, pk: int):
     # DELETE
     obj.delete()
     return Response(status=204)
+
+
+
+
+import os, datetime as dt
+from django.conf import settings
+from django.http import FileResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def audit_list_sessions(request):
+    """
+    GET /api/admin/audit/sessions/?user_id=123
+    -> { sessions: [{session_key, bytes, created, modified}, ...] }
+    """
+    user_id = int(request.GET.get("user_id", 0))
+    base = os.path.join(settings.AUDIT_LOG_DIR, "sessions", str(user_id))
+    items = []
+    if os.path.isdir(base):
+        for name in os.listdir(base):
+            if not name.endswith(".jsonl"):
+                continue
+            p = os.path.join(base, name)
+            items.append({
+                "session_key": name[:-6],
+                "bytes": os.path.getsize(p),
+                "created": dt.datetime.fromtimestamp(os.path.getctime(p)).isoformat(),
+                "modified": dt.datetime.fromtimestamp(os.path.getmtime(p)).isoformat(),
+            })
+    return Response({"user_id": user_id, "sessions": sorted(items, key=lambda x: x["modified"], reverse=True)})
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def audit_download_session(request, user_id: int, session_key: str):
+    """
+    GET /api/admin/audit/sessions/<user_id>/<session_key>/
+    -> stream the JSONL file (download)
+    """
+    path = os.path.join(settings.AUDIT_LOG_DIR, "sessions", str(user_id), f"{session_key}.jsonl")
+    if not os.path.exists(path):
+        return Response({"detail": "Not found"}, status=404)
+    return FileResponse(open(path, "rb"), content_type="application/json", as_attachment=False)

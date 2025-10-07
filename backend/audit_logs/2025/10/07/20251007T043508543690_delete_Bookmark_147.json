@@ -1,0 +1,31 @@
+{
+  "audit_id": 12,
+  "timestamp": "2025-10-07T04:35:08.543690+00:00",
+  "actor": {
+    "id": 0,
+    "username": null
+  },
+  "http": {
+    "method": null,
+    "path": null,
+    "ip": null,
+    "ua": null,
+    "session_key": null
+  },
+  "action": "delete",
+  "target": {
+    "entity": "Bookmark",
+    "id": 147
+  },
+  "changes": {
+    "old": {
+      "bookmark_id": 147,
+      "user": 11,
+      "investor": null,
+      "resource": 526,
+      "competitor": null,
+      "idea": null,
+      "created_date": "2025-10-07T04:35:07.152174+00:00"
+    }
+  }
+}

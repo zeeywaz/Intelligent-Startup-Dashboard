@@ -1,0 +1,32 @@
+{
+  "audit_id": 15,
+  "timestamp": "2025-10-07T04:36:52.891055+00:00",
+  "actor": {
+    "id": 0,
+    "username": null
+  },
+  "http": {
+    "method": null,
+    "path": null,
+    "ip": null,
+    "ua": null,
+    "session_key": null
+  },
+  "action": "delete",
+  "target": {
+    "entity": "Resource",
+    "id": 526
+  },
+  "changes": {
+    "old": {
+      "resource_id": 526,
+      "category_id": 1,
+      "name": "Ceylon Business",
+      "description": "A Warehouse service operating in Galle.",
+      "website": "http://ceylonbusinesscentre.lk",
+      "location": "Galle",
+      "geo_data": "(81.154175,7.095876)",
+      "type": "WAREHOUSE"
+    }
+  }
+}

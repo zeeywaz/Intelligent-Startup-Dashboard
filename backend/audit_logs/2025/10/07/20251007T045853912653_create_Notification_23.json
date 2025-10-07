@@ -1,0 +1,33 @@
+{
+  "audit_id": 26,
+  "timestamp": "2025-10-07T04:58:53.912653+00:00",
+  "actor": {
+    "id": 11,
+    "username": "sharafa323"
+  },
+  "http": {
+    "method": "POST",
+    "path": "/api/bookmarks/toggle/",
+    "ip": "127.0.0.1",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "session_key": "mqw9zjk0bqejf00yj4m3zsltw3d37iap"
+  },
+  "action": "create",
+  "target": {
+    "entity": "Notification",
+    "id": 23
+  },
+  "changes": {
+    "new": {
+      "notification_id": 23,
+      "user": 296,
+      "title": "sharafa323 bookmarked your idea",
+      "message": "sharafa323 bookmarked your business idea: 'I want to start a software company online'.",
+      "type": "investor_interest",
+      "is_read": false,
+      "created_date": "2025-10-07T04:58:53.910650+00:00",
+      "related_entity_type": "idea",
+      "related_entity_id": 442
+    }
+  }
+}

@@ -292,4 +292,19 @@ class Notification(models.Model):
         return f"{self.title} - {self.user.username}"
     
     
+from django.db import models
+from django.utils import timezone
+
+class AuditLog(models.Model):
+    audit_id      = models.AutoField(primary_key=True)
+    admin_id      = models.IntegerField()                     # store actor's auth_user.id
+    action        = models.CharField(max_length=255)
+    target_entity = models.CharField(max_length=50)
+    target_id     = models.IntegerField()
+    timestamp     = models.DateTimeField(db_column="timestamp", default=timezone.now)
+    ip_address    = models.CharField(max_length=45, blank=True, null=True)
+
+    class Meta:
+        db_table = "audit_log"
+        managed = False
     

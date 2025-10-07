@@ -1,0 +1,33 @@
+{
+  "audit_id": 14,
+  "timestamp": "2025-10-07T04:35:18.186586+00:00",
+  "actor": {
+    "id": 0,
+    "username": null
+  },
+  "http": {
+    "method": null,
+    "path": null,
+    "ip": null,
+    "ua": null,
+    "session_key": null
+  },
+  "action": "create",
+  "target": {
+    "entity": "Notification",
+    "id": 22
+  },
+  "changes": {
+    "new": {
+      "notification_id": 22,
+      "user": 295,
+      "title": "sharafa32 bookmarked you",
+      "message": "sharafa32 bookmarked your investor profile.",
+      "type": "investor_interest",
+      "is_read": false,
+      "created_date": "2025-10-07T04:35:18.185586+00:00",
+      "related_entity_type": "investor",
+      "related_entity_id": 28
+    }
+  }
+}
