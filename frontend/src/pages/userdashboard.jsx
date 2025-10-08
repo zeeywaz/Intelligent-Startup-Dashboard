@@ -1,4 +1,4 @@
-// src/pages/userdashboard.jsx
+
 import React, { useEffect, useState } from "react";
 
 import Card from "../components/Card";
@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { API_BASE } from "../lib/api";
 
-// fallback palettes
+
 const COLORS = ["#2a5684", "#c1dfff", "#8699c4", "#667ba5", "#a9b8d9"];
 
 // fallbacks (only used if API fails)
@@ -35,7 +35,7 @@ export default function UserDashboard() {
   const [name, setName] = useState("");
   const [pieData, setPieData] = useState(FALLBACK_PIE);
   const [lineData, setLineData] = useState(FALLBACK_LINE);
-  const [myCategoryName, setMyCategoryName] = useState(""); // user's BusinessIdea category (derived server-side)
+  const [myCategoryName, setMyCategoryName] = useState(""); // user's BusinessIdea category 
 
   // fetch name
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function UserDashboard() {
       }
 
       try {
-        // We need two series:
+        
         // BLUE: all ideas (across DB) per month
         // GREEN: ideas per month for the user's own BusinessIdea category
         const months = 5;
@@ -79,7 +79,7 @@ export default function UserDashboard() {
           fetch(`${API_BASE}/api/analytics/monthly-overview/?months=${months}`, {
             credentials: "include",
           }),
-          // No category params needed: backend picks latest idea's category for this user
+          
           fetch(`${API_BASE}/api/analytics/category-trend/?months=${months}`, {
             credentials: "include",
           }),
@@ -94,7 +94,7 @@ export default function UserDashboard() {
           base = pts.map((p) => ({
             month: p.month,
             allCount: Number(p.thisMonth) || 0,
-            myCatCount: 0, // fill after we load the category series
+            myCatCount: 0, // to be filled in later
           }));
         }
 
@@ -133,7 +133,7 @@ export default function UserDashboard() {
       <Header />
       <div className="dashboard-app">
         <div className="container">
-          {/* Welcome LEFT, username */}
+          {/* Welcome, username */}
           <div className="dash-welcome">
             <h2>Welcome, {name || "there"} <span aria-hidden>👋</span></h2>
             <p className="dash-sub">Business Insight — Get ahead of your competition</p>
@@ -144,7 +144,7 @@ export default function UserDashboard() {
             <Card icon={Boxes} label="Resource & Services" to="/resources" />
             <Card icon={Store} label="Other Business & Competitors" to="/competitors" />
             <Card icon={Wallet} label="Sponsors and Investors" to="/investors" />
-            <Card icon={BrainCircuit} label="My Start up" to="/mystartup" />
+            <Card icon={BrainCircuit} label="My Startup" to="/mystartup" />
           </div>
 
           {/* Charts */}
@@ -171,7 +171,7 @@ export default function UserDashboard() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  {/* BLUE: all ideas (unchanged) */}
+                  {/* BLUE: all ideas */}
                   <Line
                     type="monotone"
                     dataKey="allCount"

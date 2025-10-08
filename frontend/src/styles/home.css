@@ -1,18 +1,16 @@
-/* =========================================================
-   IdeaForge — Home (Sleek & Modern)
-   ========================================================= */
+
 
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap");
 
 /* =========================
-   Tokens - Enhanced
+   Tokens 
    ========================= */
 :root{
-  --ifx-hue-primary: 227 45% 43%;   /* #3D52A0 */
-  --ifx-hue-button:  223 70% 67%;   /* #7091E6 */
-  --ifx-hue-accent:  224 34% 65%;   /* #8697C4 */
-  --ifx-hue-gray:    221 38% 77%;   /* #ADBBDA */
-  --ifx-hue-soft:    263 39% 94%;   /* #EDE8F5 */
+  --ifx-hue-primary: 227 45% 43%;  
+  --ifx-hue-button:  223 70% 67%;   
+  --ifx-hue-accent:  224 34% 65%;   
+  --ifx-hue-gray:    221 38% 77%;   
+  --ifx-hue-soft:    263 39% 94%;   
 
   --ifx-ink-900: 224 64% 10%;
   --ifx-ink-800: 227 52% 18%;
@@ -45,7 +43,7 @@
 }
 
 /* =========================
-   Base - Enhanced
+   Base 
    ========================= */
 .ifx-app *, .ifx-app *::before, .ifx-app *::after { box-sizing: border-box; }
 .ifx-app { 
@@ -59,7 +57,7 @@
 .ifx-container { max-width: 1200px; margin-inline:auto; padding-inline: clamp(1rem, 4vw, 2rem); }
 
 /* =========================
-   NAVBAR - Enhanced
+   NAVBAR 
    ========================= */
 .ifx-navbar { 
   position:sticky; 
@@ -138,7 +136,7 @@
 .ifx-nav__login--mobile{ display:none; }
 
 /* =========================
-   Header Login Link - Enhanced
+   Header Login Link 
    ========================= */
 .ifx-nav__link--login {
   display: inline-flex;
@@ -178,7 +176,7 @@
 }
 
 /* =========================
-   Buttons - Enhanced
+   Buttons 
    ========================= */
 .ifx-btn{ 
   position:relative; 
@@ -371,7 +369,7 @@
 }
 
 /* =========================
-   Sections / Split - Enhanced
+   Sections 
    ========================= */
 .ifx-section{ padding-block: clamp(3rem, 6vw, 5rem); }
 .ifx-section--alt {
@@ -430,7 +428,7 @@
 .ifx-actions{ display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem; }
 
 /* =========================
-   Visual Component - Updated for main2.png
+   Visual Component 
    ========================= */
 .ifx-visual{ 
   height: clamp(280px, 34vw, 440px); 
@@ -463,7 +461,7 @@
 }
 
 /* =========================
-   Features - Enhanced
+   Features 
    ========================= */
 .ifx-grid{ 
   display:grid; 
@@ -547,7 +545,7 @@
 }
 
 /* =========================
-   Steps - Enhanced
+   Steps 
    ========================= */
 .ifx-grid--steps { 
   align-items: stretch;
@@ -660,7 +658,7 @@
 }
 
 /* =========================
-   Testimonials - Enhanced with Profile Image
+   Testimonials 
    ========================= */
 .ifx-testimonials{ 
   background:hsl(var(--ifx-hue-soft)); 
@@ -708,7 +706,7 @@
 }
 
 /* =========================
-   Contact - Enhanced
+   Contact 
    ========================= */
 .ifx-contact{ 
   display:grid; 
@@ -776,7 +774,7 @@
 }
 
 /* =========================
-   Footer - Enhanced
+   Footer
    ========================= */
 .ifx-footer{ 
   background:#fff; 
@@ -794,7 +792,7 @@
 }
 
 /* =========================
-   Map Embed - Enhanced
+   Map Embed 
    ========================= */
 .ifx-mapcard{
   padding: 0;
@@ -846,10 +844,9 @@
 }
 
 
-/* --- Testimonials: ultra-light blue fade (near white) --- */
 .ifx-testimonials--bluefade{
   position: relative;
-  color: #0f172a; /* dark text for contrast on light bg */
+  color: #0f172a; 
   background:
     radial-gradient(900px 360px at 15% 25%, rgba(81,105,225,.08), transparent 60%),
     radial-gradient(800px 360px at 85% 80%, rgba(61,82,160,.07), transparent 60%),
@@ -859,6 +856,6 @@
 }
 
 .ifx-testimonials--bluefade .ifx-section__title{ color:#0f172a; }
-.ifx-testimonials--bluefade .ifx-quote{ color:#334155; }      /* slate-700 */
+.ifx-testimonials--bluefade .ifx-quote{ color:#334155; }     
 .ifx-testimonials--bluefade .ifx-profile__name{ color:#111827; }
-.ifx-testimonials--bluefade .ifx-profile__role{ color:#475569; } /* slate-600 */
+.ifx-testimonials--bluefade .ifx-profile__role{ color:#475569; } 

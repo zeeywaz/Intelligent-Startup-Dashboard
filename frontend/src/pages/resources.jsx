@@ -4,7 +4,7 @@ import "../styles/resources.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
 
-/** Card data (slug ids map to types below) */
+/** Card data  */
 const CATALOG = [
   { id: "warehouses", title: "Warehouses", blurb: "Find out possible locations to store your physical goods.", mark: "W" },
   { id: "wholesalers", title: "Wholesalers", blurb: "Find sources to get your goods from.", mark: "W" },
@@ -14,7 +14,7 @@ const CATALOG = [
   { id: "saas", title: "SAAS", blurb: "Utilize software solutions to enhance your business operations.", mark: "S" },
 ];
 
-/** Slug -> backend type */
+/** backend type */
 const TYPE_MAP = {
   warehouses: "WAREHOUSE",
   wholesalers: "WHOLESALE",

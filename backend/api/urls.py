@@ -42,6 +42,8 @@ urlpatterns = [
     path("", include(router.urls)),
     path("bookmarks/ids/", views.bookmark_ids, name="bookmark-ids"),
     path("bookmarks/toggle/", views.bookmark_toggle, name="bookmark-toggle"),
+    path("bookmarks/ids/", views.bookmark_ids),
+    path("bookmarks/<int:bookmark_id>/", views.bookmark_delete),
     # Chat
     path("chat/message/", views.ChatMessageListCreateView.as_view(), name="chat-message"),
     path("chat/history/", views.ChatMessageListCreateView.as_view(), name="chat-history"),
@@ -80,7 +82,7 @@ urlpatterns = [
     path("admin/investor/<int:investor_id>/approve/", inv.admin_approve_investor, name="admin-approve-investor"),
     path("admin/investor/<int:investor_id>/reject/", inv.admin_reject_investor, name="admin-reject-investor"),
     path("analytics/popular-businesses/", views.analytics_popular_businesses, name="analytics-popular-businesses"),
-
+    
     # urls.py
     path("resources/<int:pk>/", views.resource_detail_admin, name="api-resource-detail"),
     path("ideas/<int:pk>/", views.idea_detail_admin, name="api-idea-detail"),
@@ -90,5 +92,10 @@ urlpatterns = [
     path("investors/<int:investor_id>/my-interests/", inv.investor_business_ideas, name="investor-my-interests"),
     path("admin/audit/sessions/", views.audit_list_sessions, name="audit-list-sessions"),
     path("admin/audit/sessions/<int:user_id>/<str:session_key>/", views.audit_download_session, name="audit-download-session"),
+    # add this path in urls.py near other bookmark routes
+    path("bookmarks/<int:bookmark_id>/delete/", views.bookmark_delete, name="bookmark-delete"),
 
+
+    path("admin/users/<int:user_id>/", views.admin_user_delete_rest, name="admin-user-delete-rest"),
+    path("account/", views.account_delete, name="api-account-delete"),
 ]

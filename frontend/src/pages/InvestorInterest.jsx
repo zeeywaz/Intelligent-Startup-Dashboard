@@ -401,7 +401,7 @@ export default function InvestorInterest() {
             )}
           </section>
 
-          {/* Ideas that match my interests (now bookmarkable) */}
+          {/* Ideas that match my interests */}
           <section className="ii-panel">
             <header className="ii-panel__header">
               <h3 className="ii-panel__title">Business ideas in your interests</h3>

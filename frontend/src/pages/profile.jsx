@@ -5,7 +5,7 @@ import Footer from "../components/footer.jsx";
 import { Pencil, Camera, Trash, Lock } from "lucide-react";
 import { API_BASE } from "../lib/api";
 
-/* ---------- small helper to read csrftoken cookie ---------- */
+
 function getCSRFCookie() {
   const m = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
   return m ? decodeURIComponent(m[2]) : "";
@@ -29,7 +29,7 @@ function TextField({ id, label, type = "text", value, onChange, readOnly }) {
   );
 }
 
-/* ---------- Avatar uploader (client-side preview only) ---------- */
+/* ---------- Avatar uploader ---------- */
 function Avatar({ src, onPick }) {
   const fileRef = useRef(null);
   return (
@@ -172,7 +172,7 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
 
   // Investor view-only info
-  const [investor, setInvestor] = useState(null);         // { verification_status, credit_score, ... }
+  const [investor, setInvestor] = useState(null);         // { verification_status, credit_score }
   const [loadingInvestor, setLoadingInvestor] = useState(false);
 
   const update = (key) => (e) => setForm((s) => ({ ...s, [key]: e.target.value }));

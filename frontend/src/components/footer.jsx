@@ -1,75 +1,94 @@
 // src/components/Footer.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./footer.css";
-import {
-  Mail,
-  Phone,
-  MapPin,
-  Twitter,
-  Instagram,
-  Youtube,
-  Linkedin,
-  Boxes,
-  Store,
-  Wallet,
-  BrainCircuit
-} from "lucide-react";
+import { Mail, Phone, MapPin, Twitter, Instagram, Youtube, Linkedin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { API_BASE } from "../lib/api";
 
 export default function Footer() {
   const [homePath, setHomePath] = useState("/");
   const [roles, setRoles] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [me, setMe] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      setIsLoading(true);
+      setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/api/me/`, { credentials: "include" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const j = await res.json();
-        console.log("Footer API Response:", j);
+        setMe(j || {});
+        const rs = Array.isArray(j?.roles) ? j.roles : [];
+        setRoles(rs);
 
-        const authenticated = !!j?.authenticated;
-        setIsAuthenticated(authenticated);
+        const computed =
+          (j?.user?.is_superuser || rs.some(r => String(r).toLowerCase().includes("admin")))
+            ? "/admindashboard"
+            : rs.some(r => String(r).toLowerCase().includes("investor"))
+              ? "/investordashboard"
+              : j?.authenticated
+                ? "/userdashboard"
+                : "/";
 
-        if (authenticated) {
-          const rs = Array.isArray(j.roles) ? j.roles : [];
-          setRoles(rs);
-
-          const computed =
-            rs.some(r => String(r).toLowerCase().includes("investor")) ? "/investordashboard" :
-            rs.some(r => String(r).toLowerCase().includes("admin")) ? "/admindashboard" :
-            "/userdashboard";
-
-          setHomePath(j.next || computed);
-        } else {
-          setRoles([]);
-          setHomePath("/");
-        }
-      } catch (error) {
-        console.error("Footer fetch failed:", error);
+        setHomePath(j?.next || computed);
+      } catch {
+        setMe(null);
         setRoles([]);
         setHomePath("/");
-        setIsAuthenticated(false);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     })();
   }, []);
 
-  const isAdmin = roles.some(role => String(role).toLowerCase().includes("admin"));
-  const isInvestor = roles.some(role => String(role).toLowerCase().includes("investor"));
-  const isUser = isAuthenticated && !isAdmin && !isInvestor;
+  const isAuthed = !!me?.authenticated;
+  const isAdmin =
+    !!me?.user?.is_superuser ||
+    roles.some(r => String(r).toLowerCase().includes("admin"));
+  const isInvestor = roles.some(r => String(r).toLowerCase().includes("investor"));
+  const isUser = isAuthed && !isAdmin && !isInvestor;
 
-  if (isLoading) return <footer className="footer">Loading...</footer>;
+  // Exactly the links you want per role (NO icons here)
+  const navLinks = useMemo(() => {
+    if (isAdmin) {
+      return [
+        { to: "/resources", label: "Edit Resource & Services" },
+        { to: "/competitors", label: "Edit Other Business & Competitors" },
+        { to: "/investors", label: "Edit Sponsors and Investors" },
+        { to: "/admin_user", label: "User Management" },
+      ];
+    }
+    if (isInvestor) {
+      return [
+        { to: "/competitors", label: "Business & Startups" },
+        { to: "/investors", label: "Sponsors and Investors" },
+        { to: "/interests", label: "My interest" },
+      ];
+    }
+    if (isUser) {
+      return [
+        { to: "/resources", label: "Resource & Services" },
+        { to: "/competitors", label: "Other Business & Competitors" },
+        { to: "/investors", label: "Sponsors and Investors" },
+        { to: "/mystartup", label: "My Startup" },
+      ];
+    }
+    // Not signed in
+    return [
+      { to: "/", label: "Home" },
+      { to: "/resources", label: "Resources" },
+      { to: "/competitors", label: "Businesses" },
+      { to: "/investors", label: "Sponsors" },
+    ];
+  }, [isAdmin, isInvestor, isUser]);
+
+  if (loading) return <footer className="footer">Loading...</footer>;
 
   return (
     <footer className="footer">
       <div className="footer-grid">
-        {/* Logo / Socials */}
+        {/* Brand / Social */}
         <div>
           <Link to={homePath} aria-label="IdeaForge Home" className="footer-logo-link">
             <img src="/logo-white.png" alt="IdeaForge" className="footer-logo" height={40} width={200} />
@@ -82,31 +101,13 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Navigation Section */}
+        {/* Navigation – role-specific ONLY (no icons) */}
         <div className="footer-section left-align">
           <h2>Navigation</h2>
           <ul>
-            {/* User and Admin see My Startup */}
-            {(isUser || isAdmin) && <li><Link to="/mystartup">My Startup</Link></li>}
-
-            {/* Resources hidden for Investors */}
-            {!isInvestor && <li><Link to="/resources">Resources and Services</Link></li>}
-
-            <li><Link to="/competitors">Other Businesses</Link></li>
-            <li><Link to="/investors">Sponsors</Link></li>
-
-            {/* New: Your Interests visible to any authenticated user */}
-            {isAuthenticated && <li><Link to="/interests">Your Interests</Link></li>}
-
-            {/* Admin-specific management links */}
-            {isAdmin && (
-              <>
-                <li><Link to="/admin/resources"><Boxes size={16} /> Edit Resource &amp; Services</Link></li>
-                <li><Link to="/admin/competitors"><Store size={16} /> Edit Other Business &amp; Competitors</Link></li>
-                <li><Link to="/admin/investors"><Wallet size={16} /> Edit Sponsors and Investors</Link></li>
-                <li><Link to="/admin_user"><BrainCircuit size={16} /> User Management</Link></li>
-              </>
-            )}
+            {navLinks.map(({ to, label }, i) => (
+              <li key={i}><Link to={to}>{label}</Link></li>
+            ))}
           </ul>
         </div>
 
@@ -131,7 +132,7 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Contact Info */}
+      {/* Contact */}
       <div className="footer-contact">
         <p><Mail size={18} className="icon" /> <span>Email:</span> <a href="mailto:support@ideaforge.com">support@ideaforge.com</a></p>
         <p><Phone size={18} className="icon" /> <span>Phone:</span> <a href="tel:+941234567890">+94 123 456 7890</a></p>

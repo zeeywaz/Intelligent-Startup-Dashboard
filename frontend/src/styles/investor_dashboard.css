@@ -94,7 +94,7 @@
   align-items:center;
 }
 
-/* investor list (fits into the same .panel aesthetic) */
+/* investor list */
 .id-list{
   margin:12px 0 0;
   padding:0;
@@ -130,7 +130,7 @@
   .id-welcome{ font-size:1.4rem; }
 }
 
-/* ---------- Analysis panel polish (scoped) ---------- */
+/* ---------- Analysis panel---------- */
 .charts-grid--sleek{
   gap: 26px;
 }

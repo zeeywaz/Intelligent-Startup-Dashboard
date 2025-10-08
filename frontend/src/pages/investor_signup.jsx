@@ -150,7 +150,7 @@ export default function InvestorSignup() {
 
   const formatLabel = (name) => toTitleCase(name);
 
-  // Validation for step 1
+  // Validation 
   const validFill = useMemo(() => {
     const emailOk = EMAIL_RE.test(form.email.trim());
     const unameOk = form.username.trim().length >= 3;
@@ -226,7 +226,7 @@ export default function InvestorSignup() {
       await ensureCsrf(API_BASE);
       const csrftoken = getCookie("csrftoken");
 
-      // Step 1: Verify OTP and create user
+      // Verify OTP and create user
       const verifyRes = await fetch(`${API_BASE}/api/register/verify-otp/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(csrftoken && { "X-CSRFToken": csrftoken }) },
@@ -244,7 +244,7 @@ export default function InvestorSignup() {
       const verifyData = await verifyRes.json().catch(() => ({}));
       if (!verifyRes.ok) throw new Error(parseError(verifyData) || "OTP verification failed");
 
-      // Step 2: Auto-login (best effort)
+      // Auto-login 
       try {
         const loginRes = await fetch(`${API_BASE}/api/login/`, {
           method: "POST",
@@ -255,7 +255,7 @@ export default function InvestorSignup() {
         if (!loginRes.ok) console.warn("Auto-login failed, continuing.");
       } catch {}
 
-      // Step 3: Submit investor data + docs
+      //  Submit investor data + docs
       await ensureCsrf(API_BASE);
       const freshToken = getCookie("csrftoken");
       const investorData = new FormData();

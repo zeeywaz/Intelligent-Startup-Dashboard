@@ -10,7 +10,7 @@
   --surface:#ffffff;
   --border: rgba(134,151,196,.55);
   --shadow-sm: 0 6px 14px rgba(0,0,0,.08);
-  --shadow-lg: 6px 12px 0 rgba(0,0,0,.18); /* right/bottom drop */
+  --shadow-lg: 6px 12px 0 rgba(0,0,0,.18); 
 }
 
 /* Base */

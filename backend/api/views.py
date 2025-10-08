@@ -373,22 +373,73 @@ class CompetitorViewSet(viewsets.ModelViewSet):
 
 
 # --------------------- Resources ---------------------
+# views.py — corrected resources_list (replace the previous version)
+from django.http import JsonResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
+import logging
+
+logger = logging.getLogger(__name__)
+
+SLUG_TO_TYPE = {
+    "warehouses": "WAREHOUSE",
+    "wholesalers": "WHOLESALE",
+    "offices":     "OFFICE",
+    "transport":   "TRANSPORT",
+    "security":    "SECURITY",
+    "saas":        "SAAS",
+}
+
+ALLOWED_TYPES = set(SLUG_TO_TYPE.values())
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def resources_list(request):
-    search = request.GET.get("search") or request.GET.get("q") or ""
-    rtype = request.GET.get("type")
-    page = int(request.GET.get("page", 1))
-    page_size = int(request.GET.get("page_size", request.GET.get("limit", 20)))
+    """
+    GET /api/resources/?type=WHOLESALE&page=1&page_size=20&search=...
+    Accepts either canonical enum (WHOLESALE) or slug (wholesalers).
+    Returns only rows whose Resource.type matches the requested canonical type.
+    """
+    try:
+        search = (request.GET.get("search") or request.GET.get("q") or "").strip()
+        rtype_raw = (request.GET.get("type") or "").strip()
+        page = max(int(request.GET.get("page", 1)), 1)
+        page_size = max(int(request.GET.get("page_size", request.GET.get("limit", 20))), 1)
+    except Exception:
+        return JsonResponse({"detail": "Invalid query parameters."}, status=400)
 
-    qs = Resource.objects.all()
+    # Determine canonical requested type
+    requested_type = None
+    if rtype_raw:
+        slug_map = SLUG_TO_TYPE.get(rtype_raw.lower())
+        if slug_map:
+            requested_type = slug_map
+        else:
+            candidate = rtype_raw.upper()
+            if candidate in ALLOWED_TYPES:
+                requested_type = candidate
+            else:
+                return JsonResponse({
+                    "detail": "Unknown type.",
+                    "requested": rtype_raw,
+                    "allowed_types": sorted(list(ALLOWED_TYPES)),
+                }, status=400)
+    else:
+        return JsonResponse({
+            "detail": "Missing 'type' parameter. Please request a specific type (e.g. ?type=wholesalers).",
+            "allowed_types": sorted(list(ALLOWED_TYPES)),
+        }, status=400)
 
-    # Filter by type if provided
-    if rtype:
-        qs = qs.filter(type__iexact=rtype)
+    # Use model's actual PK name (safe against resource_id vs id)
+    pk_name = Resource._meta.pk.name  # e.g. 'resource_id'
+    qs = Resource.objects.all().order_by(pk_name)
 
-    # Search by name/location/description
-    if search.strip():
+    # Strict filter: only include exact canonical type
+    qs = qs.filter(type__iexact=requested_type)
+
+    # Search by name/location/description (applied after strict type filter)
+    if search:
         qs = qs.filter(
             Q(name__icontains=search) |
             Q(location__icontains=search) |
@@ -400,16 +451,18 @@ def resources_list(request):
     # Pagination
     start = (page - 1) * page_size
     end = start + page_size
-    qs = qs[start:end]
+    rows = list(qs[start:end])
 
-    serializer = ResourceSerializer(qs, many=True)
+    serializer = ResourceSerializer(rows, many=True)
     return JsonResponse({
+        "requested_type": requested_type,
         "items": serializer.data,
         "total": total,
         "page": page,
         "page_size": page_size,
         "pageCount": (total + page_size - 1) // page_size,
-    })
+    }, status=200)
+
 
 # --------------------- Notifications (ViewSet for router) ---------------------
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -564,13 +617,27 @@ def mystartup_data(request, idea_id: int):
 def _ids_for(qs, field):
     return list(qs.exclude(**{f"{field}__isnull": True}).values_list(field, flat=True))
 
+# --- Bookmarks ---------------------------------------------------------------
+from django.db import transaction, IntegrityError
+from django.db.models import Q
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import JSONParser
+from rest_framework.response import Response
+
+from .models import Bookmark, InvestorProfile, BusinessIdea, Competitor, Resource, Notification
+
+def _ids_for(qs, field):
+    # distinct + sorted so duplicates (if they existed) won’t keep showing up
+    return sorted(set(qs.exclude(**{f"{field}__isnull": True})
+                       .values_list(field, flat=True)))
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def bookmark_ids(request):
     """
-    GET /api/bookmarks/ids/?kind=resource|competitor|investor
-    If kind omitted: returns all three lists.
+    GET /api/bookmarks/ids/?kind=resource|competitor|investor|idea
+    If kind omitted: returns all four lists.
     """
     qs = Bookmark.objects.filter(user=request.user)
     kind = (request.GET.get("kind") or "").strip().lower()
@@ -581,24 +648,16 @@ def bookmark_ids(request):
         return Response({"kind": "competitor", "ids": _ids_for(qs, "competitor_id")})
     if kind in ("investor", "investors"):
         return Response({"kind": "investor", "ids": _ids_for(qs, "investor_id")})
+    if kind in ("idea", "ideas"):
+        return Response({"kind": "idea", "ids": _ids_for(qs, "idea_id")})
 
-    return Response(
-        {
-            "resource": _ids_for(qs, "resource_id"),
-            "competitor": _ids_for(qs, "competitor_id"),
-            "investor": _ids_for(qs, "investor_id"),
-        }
-    )
+    return Response({
+        "resource":   _ids_for(qs, "resource_id"),
+        "competitor": _ids_for(qs, "competitor_id"),
+        "investor":   _ids_for(qs, "investor_id"),
+        "idea":       _ids_for(qs, "idea_id"),
+    })
 
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-
-import logging
-
-logger = logging.getLogger(__name__)
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -607,113 +666,100 @@ def bookmark_toggle(request):
     """
     POST /api/bookmarks/toggle/
     body: { "kind": "resource|competitor|investor|idea", "id": <int> }
+
+    If a bookmark exists for (user, kind, id) -> delete ALL matches and return bookmarked:false
+    Else -> create one and return bookmarked:true
     """
     kind = (request.data.get("kind") or "").strip().lower()
-    raw_id = request.data.get("id")
-    logger.info("bookmark_toggle called: user=%s kind=%s id=%s", getattr(request.user, "id", None), kind, raw_id)
-
     try:
-        obj_id = int(raw_id)
+        obj_id = int(request.data.get("id"))
     except (TypeError, ValueError):
-        logger.warning("bookmark_toggle: invalid id: %r", raw_id)
         return Response({"detail": "Valid id is required."}, status=400)
 
-    field_map = {"resource": "resource_id", "competitor": "competitor_id", "investor": "investor_id", "idea": "idea_id"}
+    field_map = {
+        "resource":   "resource_id",
+        "competitor": "competitor_id",
+        "investor":   "investor_id",
+        "idea":       "idea_id",
+    }
     field = field_map.get(kind)
     if not field:
-        logger.warning("bookmark_toggle: invalid kind: %s", kind)
         return Response({"detail": "Invalid kind."}, status=400)
 
-    # toggle: delete if exists
-    qs = Bookmark.objects.filter(user=request.user, **{field: obj_id})
-    existing = qs.first()
-    if existing:
-        existing.delete()
-        logger.info("bookmark_toggle: removed bookmark user=%s %s=%s", request.user.id, field, obj_id)
-        return Response({"ok": True, "bookmarked": False})
+    with transaction.atomic():
+        qs = Bookmark.objects.select_for_update().filter(user=request.user, **{field: obj_id})
+        existing_count = qs.count()
+        if existing_count:
+            deleted, _ = qs.delete()  # delete ALL matches (in case there were duplicates)
+            return Response({"ok": True, "bookmarked": False, "deleted": deleted})
 
-    # create bookmark
-    payload = {"user": request.user, "resource_id": None, "competitor_id": None, "investor_id": None, "idea_id": None}
-    payload[field] = obj_id
-    bm = Bookmark.objects.create(**payload)
-    logger.info("bookmark_toggle: created bookmark id=%s user=%s %s=%s", getattr(bm, "bookmark_id", None), request.user.id, field, obj_id)
+        # create exactly one; set other *_id to None to avoid multi-column conflicts
+        payload = {
+            "user": request.user,
+            "resource_id": None, "competitor_id": None,
+            "investor_id": None, "idea_id": None,
+        }
+        payload[field] = obj_id
+        try:
+            bm = Bookmark.objects.create(**payload)
+        except IntegrityError:
+            # another request raced us or a unique constraint already satisfied
+            return Response({"ok": True, "bookmarked": True})
 
-    # notification resolution with multiple fallbacks
+    # ---- Optional lightweight notifications (only for investor/idea owners) ----
     try:
         target_user = None
-        note_title = None
-        note_message = None
+        title = message = None
+        related_type = kind
 
-        if field == "investor_id":
-            # try InvestorProfile (your code used this)
-            investor = InvestorProfile.objects.filter(investor_id=obj_id).select_related("user").first()
-            if investor:
-                target_user = getattr(investor, "user", None)
-                logger.debug("bookmark_toggle: resolved investor via InvestorProfile investor_id=%s -> user=%s", obj_id, getattr(target_user, "id", None))
+        if kind == "investor":
+            inv = InvestorProfile.objects.filter(investor_id=obj_id).select_related("user").first()
+            target_user = getattr(inv, "user", None)
+            if not target_user:
+                # fallback if you also have InvestorDetails with FK to auth user
+                from .models import InvestorDetails
+                ind = InvestorDetails.objects.filter(investor_id=obj_id).select_related("user").first()
+                target_user = getattr(ind, "user", None)
+            title = f"{request.user.username} bookmarked you"
+            message = f"{request.user.username} bookmarked your investor profile."
 
-            # fallback to InvestorDetails (some parts of your code create InvestorDetails)
-            if target_user is None:
-                try:
-                    from .models import InvestorDetails as _InvestorDetails
-                    invd = _InvestorDetails.objects.filter(investor_id=obj_id).select_related("user").first()
-                    if invd:
-                        target_user = getattr(invd, "user", None)
-                        logger.debug("bookmark_toggle: resolved investor via InvestorDetails investor_id=%s -> user=%s", obj_id, getattr(target_user, "id", None))
-                except Exception:
-                    # ignore import / lookup errors
-                    logger.debug("bookmark_toggle: InvestorDetails lookup failed", exc_info=True)
-
-            # final fallback: maybe frontend sent a raw auth user id mistakenly
-            if target_user is None:
-                from django.contrib.auth import get_user_model
-                User = get_user_model()
-                u = User.objects.filter(pk=obj_id).first()
-                if u:
-                    target_user = u
-                    logger.debug("bookmark_toggle: fallback resolved user by auth id=%s", obj_id)
-
-            note_title = f"{request.user.username} bookmarked you"
-            note_message = f"{request.user.username} bookmarked your investor profile."
-
-        elif field == "idea_id":
-            # BusinessIdea.owner
-            idea = BusinessIdea.objects.filter(idea_id=obj_id).select_related("user").first()
-            if idea is None:
-                idea = BusinessIdea.objects.filter(pk=obj_id).select_related("user").first()
+        elif kind == "idea":
+            idea = BusinessIdea.objects.filter(idea_id=obj_id).select_related("user").first() \
+                   or BusinessIdea.objects.filter(pk=obj_id).select_related("user").first()
             if idea:
-                target_user = getattr(idea, "user", None)
-                logger.debug("bookmark_toggle: resolved idea owner idea_id=%s -> user=%s", obj_id, getattr(target_user, "id", None))
-                idea_title = (getattr(idea, "title", "") or "")[:150]
-                note_title = f"{request.user.username} bookmarked your idea"
-                note_message = f"{request.user.username} bookmarked your business idea: '{idea_title}'."
-            else:
-                logger.debug("bookmark_toggle: idea not found idea_id=%s", obj_id)
+                target_user = idea.user
+                t = (idea.title or "")[:150]
+                title = f"{request.user.username} bookmarked your idea"
+                message = f"{request.user.username} bookmarked your business idea: '{t}'."
 
-        else:
-            # competitor/resource: no owner by design
-            logger.debug("bookmark_toggle: no owner for kind=%s id=%s; no notification will be sent", kind, obj_id)
-
-        # create notification if we resolved an owner and it's not self
         if target_user and target_user.pk != request.user.pk:
             Notification.objects.create(
                 user=target_user,
-                title=note_title or f"{request.user.username} bookmarked you",
-                message=note_message or f"{request.user.username} bookmarked something you own.",
+                title=title or "New bookmark",
+                message=message or "Your content was bookmarked.",
                 type=Notification.NotificationType.INVESTOR_INTEREST,
-                related_entity_type=kind,
+                related_entity_type=related_type,
                 related_entity_id=obj_id,
             )
-            logger.info("bookmark_toggle: notification created for user=%s related=%s/%s", target_user.pk, kind, obj_id)
-        else:
-            if target_user is None:
-                logger.debug("bookmark_toggle: no target_user resolved for kind=%s id=%s", kind, obj_id)
-            else:
-                logger.debug("bookmark_toggle: resolved target is same as actor; skipping notify user=%s", request.user.pk)
-
-    except Exception as exc:
-        logger.exception("bookmark_toggle: error while creating notification for kind=%s id=%s: %s", kind, obj_id, exc)
+    except Exception:
+        # don’t break bookmarking because of a notify failure
+        pass
 
     return Response({"ok": True, "bookmarked": True})
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def bookmark_delete(request, bookmark_id: int):
+    """
+    DELETE /api/bookmarks/<bookmark_id>/
+    Convenient when the UI already knows the bookmark row PK.
+    """
+    deleted, _ = Bookmark.objects.filter(bookmark_id=bookmark_id, user=request.user).delete()
+    if not deleted:
+        return Response({"detail": "Not found"}, status=404)
+    return Response(status=204)
+
 
 # ---- Investor-specific bookmark endpoints (to satisfy urls.py) ----
 class InvestorBookmarkListCreateView(generics.ListCreateAPIView):
@@ -1752,3 +1798,82 @@ def audit_download_session(request, user_id: int, session_key: str):
     if not os.path.exists(path):
         return Response({"detail": "Not found"}, status=404)
     return FileResponse(open(path, "rb"), content_type="application/json", as_attachment=False)
+
+
+
+
+
+# --- Account deletion (self) and admin user deletion ---
+
+from django.db.models.deletion import ProtectedError
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import logout, get_user_model
+
+User = get_user_model()
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def account_delete(request):
+    """
+    DELETE /api/account/
+    Deletes the currently logged-in user's account.
+    Returns 204 on success.
+    """
+    u = request.user
+
+    # (Optional) do not allow superusers to self-delete through this endpoint
+    if getattr(u, "is_superuser", False):
+        return Response({"detail": "Superuser cannot delete account here."}, status=403)
+
+    # end the session first so the cookie isn’t orphaned
+    try:
+        logout(request)
+    except Exception:
+        pass
+
+    try:
+        u.delete()  # rely on on_delete rules; cascade where configured
+    except ProtectedError:
+        # As a last resort, deactivate and scrub PII if a protected relation blocks delete
+        u.is_active = False
+        u.email = f"deleted+{u.pk}@example.invalid"
+        u.username = f"deleted_user_{u.pk}"
+        u.first_name = ""
+        u.last_name = ""
+        u.save(update_fields=["is_active", "email", "username", "first_name", "last_name"])
+
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def admin_user_delete_rest(request, user_id: int):
+    """
+    DELETE /api/admin/users/<user_id>/
+    Restful variant to match the frontend request.
+    (Your older /api/admin/users/<id>/delete/ stays supported separately.)
+    """
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+
+    if getattr(user, "is_superuser", False):
+        return Response({"error": "Refusing to delete a superuser here."}, status=403)
+
+    try:
+        user.delete()
+    except ProtectedError:
+        # Same protection as above
+        user.is_active = False
+        user.email = f"deleted+{user.pk}@example.invalid"
+        user.username = f"deleted_user_{user.pk}"
+        user.first_name = ""
+        user.last_name = ""
+        user.save(update_fields=["is_active", "email", "username", "first_name", "last_name"])
+
+    return Response(status=status.HTTP_204_NO_CONTENT)

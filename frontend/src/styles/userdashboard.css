@@ -1,7 +1,7 @@
-/* ===== theme (match investor palette) ===== */
+
 :root{
-  --brand:#2a5684;        /* icon + accent */
-  --card:#e8efff;         /* light tile background */
+  --brand:#2a5684;        
+  --card:#e8efff;        
   --bg-start:#eef4ff;
   --bg-end:#c7d8f6;
   --panel:#ffffff;
@@ -10,7 +10,7 @@
   --shadow:0 18px 35px rgba(31,42,68,.12);
 }
 
-/* page background + container stays the same */
+/* page background + container */
 .dashboard-app{
   background: linear-gradient(180deg, var(--bg-start), var(--bg-end));
   min-height: 100vh;
@@ -26,7 +26,7 @@
 
 /* --- welcome: LEFT aligned --- */
 .dash-welcome{
-  text-align:left;                 /* <- left */
+  text-align:left;                
   margin-top: 6px;
 }
 .dash-welcome h2{
@@ -42,7 +42,7 @@
   color: var(--sub);
 }
 
-/* --- cards grid (unchanged layout) --- */
+/* --- cards grid --- */
 .cards{
   display:grid;
   grid-template-columns: repeat(4, minmax(220px, 1fr));
@@ -52,9 +52,9 @@
 @media (max-width: 1024px){ .cards{ grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 620px){ .cards{ grid-template-columns: 1fr; } }
 
-/* --- tile skin now matches investor dashboard --- */
+/* individual card/tile */
 .cards .tile{
-  background: var(--card);           /* light blue like investor page */
+  background: var(--card);           
   border-radius: 18px;
   box-shadow: 6px 8px 0 rgba(0,0,0,.10);
   padding: 22px 20px;
@@ -69,13 +69,13 @@
   box-shadow: 10px 12px 0 rgba(0,0,0,.14);
   filter: saturate(1.03);
 }
-/* icon color matches investor */
+/* icon color  */
 .cards .tile svg{
   width: 40px; height: 40px;
   color: var(--brand);
 }
 
-/* --- analytics panels (unchanged) --- */
+/* --- analytics panels --- */
 .charts-grid{
   display:grid;
   grid-template-columns: 1fr 1fr;

@@ -1,6 +1,6 @@
 import React from "react";
-import Header from "../components/Header.jsx";     // keep if you already use this
-import Footer from "../components/footer.jsx";     // keep if you already use this
+import Header from "../components/Header.jsx";    
+import Footer from "../components/footer.jsx";    
 import "../styles/investedbusiness.css";
 
 function Card() {

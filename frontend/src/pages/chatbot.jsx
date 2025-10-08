@@ -442,7 +442,7 @@ export default function ChatPage() {
           // Saved idea path: replace-or-insert a single saved card
           addOrReplaceCard(msgKey, html);
         } else {
-          // Ad-hoc prompt: append a new card so multiple prompts show multiple suggestions
+          //append a new card so multiple prompts show multiple suggestions
           const newKey = `ask:${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
           appendNewCard(newKey, html);
         }
@@ -573,7 +573,7 @@ export default function ChatPage() {
           <span>Where Ideas Turn Into Reality</span>
         </h1>
 
-        {/* Saved ideas chips (hidden) */}
+        {/* Saved ideas chips  */}
         {SHOW_SAVED_CHIPS && savedIdeas.length > 0 && (
           <div className="ibot-saved" style={{ margin: "8px 0 16px" }}>
             <div className="pillrow" role="listbox" aria-label="Saved ideas">

@@ -310,7 +310,7 @@ export default function ResourcesDirectory() {
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [type, q]);
 
   useEffect(() => {
@@ -332,7 +332,7 @@ export default function ResourcesDirectory() {
     io.observe(sentinelRef.current);
     ioRef.current = io;
     return () => io.disconnect();
-  }, [page, hasMore, status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, hasMore, status]); 
 
   const prettyTitle = TYPE_LABEL[type] || type;
 
@@ -532,7 +532,7 @@ export default function ResourcesDirectory() {
         />
       )}
 
-      {/* Confirm modal (rendered at page level) */}
+      {/* Confirm modal */}
       <ConfirmModal state={confirmState} onClose={handleConfirmClose} />
 
       <Footer />
@@ -540,7 +540,6 @@ export default function ResourcesDirectory() {
   );
 }
 
-// Optional helper for external buttons
 export const openResourcesTab = (type) => {
   window.open(`/resources/directory?type=${encodeURIComponent(type)}`, "_blank", "noopener");
 };

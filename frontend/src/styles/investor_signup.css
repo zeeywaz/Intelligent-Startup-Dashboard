@@ -20,10 +20,9 @@ body{
   color:var(--v-text);
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  background:#fff;          /* keep body neutral; app wrapper gets the gradient */
+  background:#fff;          
 }
 
-/* app shell – match signup background */
 .regv-app{
   min-height:100vh;
   display:grid;

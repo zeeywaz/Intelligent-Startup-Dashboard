@@ -1,7 +1,7 @@
-/* ===== Chatbot Theme variables (unique) ===== */
+
 :root {
-  --ibot-brand: #2a5684;        /* icon + accent */
-  --ibot-card: #e8efff;         /* light tile background */
+  --ibot-brand: #2a5684;        
+  --ibot-card: #e8efff;         
   --ibot-bg-start: #eef4ff;
   --ibot-bg-end: #c7d8f6;
   --ibot-panel: #ffffff;

@@ -69,7 +69,7 @@ function BookmarkBtn({ on, onClick, title }) {
   );
 }
 
-/* ------------------ Confirm modal (Promise-based) ------------------ */
+/* ------------------ Confirm modal  ------------------ */
 function ConfirmModal({ state, onClose }) {
   if (!state) return null;
   const { message } = state;
@@ -86,7 +86,7 @@ function ConfirmModal({ state, onClose }) {
   );
 }
 
-/* ---------- Edit modal (Investor) ---------- */
+/* ---------- Edit modal  ---------- */
 function EditInvestorModal({ open, initial, onClose, onSave }) {
   const [form, setForm] = useState(() => ({
     investor_name: "",
@@ -505,7 +505,7 @@ export default function InvestorsPage() {
           <div className="inv-field inv-field--rating">
             <label className="inv-field__label">Rating</label>
             <div className="inv-rating">
-              {/* Dual range simplified (kept from your previous file) */}
+             
               <input
                 type="range"
                 min={0}

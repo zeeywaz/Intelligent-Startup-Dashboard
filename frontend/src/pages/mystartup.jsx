@@ -237,7 +237,7 @@ export default function StartupPage() {
         setLoading(false);
       }
     })();
-  }, []); // eslint-disable-line
+  }, []); 
 
   const loadMoreResources = async () => {
     if (resourcesBusy || resourcesMeta.next_offset == null || !idea) return;

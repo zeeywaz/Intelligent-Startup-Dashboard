@@ -526,7 +526,7 @@ export default function CompetitorsPage() {
       }
     })();
     return () => { cancel = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [dq, mode]);
 
   // fetch current user once to learn is_superuser
@@ -565,9 +565,9 @@ export default function CompetitorsPage() {
     );
     io.observe(loaderRef.current);
     return () => io.disconnect();
-  }, [page, hasMore, status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, hasMore, status]); 
 
-  // bookmarks filter + push uncategorized to bottom (stable)
+  // bookmarks filter + push uncategorized to bottom 
   const filteredRows = useMemo(() => {
     const base = onlyBookmarks ? rows.filter((r) => isBookmarked(getRowId(r))) : rows;
 
@@ -580,7 +580,7 @@ export default function CompetitorsPage() {
     decorated.sort((a, b) => (a.uncat - b.uncat) || (a.i - b.i));
 
     return decorated.map((x) => x.r);
-  }, [rows, onlyBookmarks, isBookmarked, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, onlyBookmarks, isBookmarked, mode]); 
 
   const headerSubtitle = useMemo(
     () => (dq ? "Search results" : mode === "ideas"
@@ -699,8 +699,6 @@ export default function CompetitorsPage() {
     }
     const updated = await res.json();
 
-    // Our grid’s idea rows are from CompetitorIdeaSerializer (title, description, category_name, user…)
-    // Map back minimally:
     setRows((prev) =>
       prev.map((r) => {
         const rid = r?.idea_id ?? r?.id ?? r?.pk;

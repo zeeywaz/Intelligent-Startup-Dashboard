@@ -200,7 +200,7 @@
 .prof-modal__form{ display: grid; gap: 10px; }
 .prof-modal__actions{ display: flex; justify-content: flex-end; gap: 10px; }
 
-/* buttons (reuse look) */
+/* buttons */
 .prof-btn--ghost{
   background: #fff; border: 1px solid #e5e7eb;
 }
@@ -237,7 +237,7 @@
 .prof-badge--rejected,
 .prof-badge--denied{ color:#991b1b; background:#fee2e2; border-color:#fecaca; }
 
-/* Chip for credit score (supports 0–1000) */
+/* Chip for credit score */
 .prof-chip{
   display:inline-flex; align-items:center; justify-content:center;
   padding:.22rem .6rem; border-radius:999px; font-weight:800; font-size:.85rem;

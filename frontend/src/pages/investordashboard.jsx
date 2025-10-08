@@ -1,4 +1,4 @@
-// investordashboard.jsx
+
 import React, { useEffect, useState } from "react";
 import Header from "../components/Header";
 import Footer from "../components/footer";
@@ -81,7 +81,7 @@ export default function InvestorDashboard() {
     })();
   }, []);
 
-  // fetch "Popular Businesses For The Month"
+  
   // 1) try latest ideas for current month
   // 2) if none, fallback to latest competitors
   useEffect(() => {
@@ -156,7 +156,7 @@ export default function InvestorDashboard() {
             <Card icon={BrainCircuit} label="My interest" to="/interests" />
           </div>
 
-          {/* -------- Sleek Analysis Section (only this block changed) -------- */}
+          {/* -------- Sleek Analysis Section  -------- */}
           <div className="charts-grid charts-grid--sleek">
             {/* Donut */}
             <section className="panel">
@@ -234,7 +234,7 @@ export default function InvestorDashboard() {
               </div>
             </section>
           </div>
-          {/* -------- /Sleek Analysis Section -------- */}
+          
         </div>
       </div>
 

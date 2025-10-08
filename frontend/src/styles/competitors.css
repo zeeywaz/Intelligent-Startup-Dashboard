@@ -1,6 +1,4 @@
-/* =========================
-   Competitors — Full Styles
-   ========================= */
+
 
 :root{
   --blue-900: #3D52A0;
@@ -131,7 +129,7 @@
 .cmp-searchbar__input{
   flex:1 1 auto;
   height:44px;
-  padding:0 2.9rem 0 2.25rem; /* left for icon, right for clear btn */
+  padding:0 2.9rem 0 2.25rem; 
   border:1px solid #e5e7eb;
   border-radius:999px;
   background:#fff;
@@ -315,7 +313,7 @@
   border-radius:12px;
 }
 
-/* --------- Confirm modal (already used) --------- */
+/* --------- Confirm modal --------- */
 .confirm-overlay {
   position: fixed;
   inset: 0;

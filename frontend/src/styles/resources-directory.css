@@ -1,4 +1,4 @@
-/* ===== Resources Directory — aligned to ResourcesDirectory.jsx ===== */
+/* ===== Resources Directory ===== */
 :root {
   --rs-bg: linear-gradient(180deg, #eef4ff, #c7d8f6);
   --rs-card: #ffffff;
@@ -20,7 +20,7 @@
   --rs-red-bg: #ffefef;
 }
 
-/* Reset-ish */
+/* Reset */
 * { box-sizing: border-box; }
 button { font: inherit; }
 input, select, textarea { font: inherit; color: inherit; }
@@ -53,7 +53,7 @@ input, select, textarea { font: inherit; color: inherit; }
   font-size: 14px;
 }
 
-/* Generic muted used elsewhere in JSX */
+
 .muted { color: var(--rs-muted); }
 
 /* Toolbar */
@@ -434,7 +434,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* =========================
-   CONFIRM OVERLAY (promise)
+   CONFIRM DELETE OVERLAY
    ========================= */
 .confirm-overlay {
   position: fixed;

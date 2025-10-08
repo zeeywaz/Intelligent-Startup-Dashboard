@@ -11,8 +11,8 @@ const cx = (...l) => l.filter(Boolean).join(" ");
 
 function Button({
   as: Comp = "button",
-  variant = "primary",        // primary | outline | ghost
-  size = "lg",                // sm | md | lg
+  variant = "primary",        
+  size = "lg",                
   className,
   children,
   ...props

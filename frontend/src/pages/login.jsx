@@ -3,12 +3,12 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import "../styles/login.css";
 import { API_BASE, getCookie } from "../lib/api";
-import { useAuth } from "../auth/AuthProvider"; // 👈 NEW
+import { useAuth } from "../auth/AuthProvider"; 
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();              // 👈 NEW
-  const auth = useAuth();                      // 👈 NEW
+  const location = useLocation();             
+  const auth = useAuth();                      
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
@@ -58,7 +58,7 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "Incorrect email or password.");
 
-      // ⬇️ Critical: refresh auth context so guards see the new session
+      
       await auth.refresh();
 
       // Prefer the page the guard sent us from, else backend-provided next, else a safe default
