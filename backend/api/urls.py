@@ -70,8 +70,8 @@ urlpatterns = [
     path("admin/users/", views.admin_user_list, name="admin-user-list"),
     path("admin/users/<int:user_id>/delete/", views.admin_user_delete, name="admin-user-delete"),
 
-    path("investor-register/", inv.investor_register,           name="investor-register"),   # JSON fallback
-    path("register/investor/", inv.register_investor_details,   name="register-investor"),   # multipart -> writes investor_details
+    path("investor-register/", inv.investor_register,           name="investor-register"),   
+    path("register/investor/", inv.register_investor_details,   name="register-investor"),   
     path("register/investor/base/", inv.investor_register, name="investor-base-register"),
     path("register/investor/details/", inv.register_investor_details, name="register-investor-details"),
     
@@ -92,7 +92,7 @@ urlpatterns = [
     path("investors/<int:investor_id>/my-interests/", inv.investor_business_ideas, name="investor-my-interests"),
     path("admin/audit/sessions/", views.audit_list_sessions, name="audit-list-sessions"),
     path("admin/audit/sessions/<int:user_id>/<str:session_key>/", views.audit_download_session, name="audit-download-session"),
-    # add this path in urls.py near other bookmark routes
+   
     path("bookmarks/<int:bookmark_id>/delete/", views.bookmark_delete, name="bookmark-delete"),
 
 

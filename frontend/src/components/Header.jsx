@@ -4,7 +4,7 @@ import "./Header.css";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, Bell, BellDot, Mail, Info, LogIn as LogInIcon } from "lucide-react";
 import { API_BASE, getCookie } from "../lib/api";
-import { useAuth } from "../auth/AuthProvider"; // ✅ use shared auth state
+import { useAuth } from "../auth/AuthProvider"; 
 
 const cx = (...l) => l.filter(Boolean).join(" ");
 

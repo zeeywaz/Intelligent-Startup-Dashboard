@@ -1,12 +1,12 @@
 from django.contrib import admin
 from django.urls import path, include
-from backend.api import urls as api_urls   # import the module (safer)
+from backend.api import urls as api_urls
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include(api_urls)),        # /api/...
+    path("api/", include(api_urls)),       
 ]
 
 

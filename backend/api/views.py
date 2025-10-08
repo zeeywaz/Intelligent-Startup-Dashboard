@@ -1125,7 +1125,6 @@ def reset_password(request):
     user.save()
     return Response({"detail": "Password reset successful"})
 
-# !!!!!!!!!!!!!!!!!!
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([])
@@ -1825,7 +1824,7 @@ def account_delete(request):
     """
     u = request.user
 
-    # (Optional) do not allow superusers to self-delete through this endpoint
+    # do not allow superusers to self-delete through this endpoint
     if getattr(u, "is_superuser", False):
         return Response({"detail": "Superuser cannot delete account here."}, status=403)
 
@@ -1838,7 +1837,7 @@ def account_delete(request):
     try:
         u.delete()  # rely on on_delete rules; cascade where configured
     except ProtectedError:
-        # As a last resort, deactivate and scrub PII if a protected relation blocks delete
+       
         u.is_active = False
         u.email = f"deleted+{u.pk}@example.invalid"
         u.username = f"deleted_user_{u.pk}"
@@ -1868,7 +1867,7 @@ def admin_user_delete_rest(request, user_id: int):
     try:
         user.delete()
     except ProtectedError:
-        # Same protection as above
+        
         user.is_active = False
         user.email = f"deleted+{user.pk}@example.invalid"
         user.username = f"deleted_user_{user.pk}"

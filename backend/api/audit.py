@@ -9,7 +9,7 @@ from django.conf import settings
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 
-from . import models as m  # your app models
+from . import models as m  
 
 # ------- Thread-local & constants -------
 _local = threading.local()
@@ -147,7 +147,7 @@ def _log_event(action: str, instance, details: Optional[Dict[str, Any]] = None) 
     pk = getattr(instance, "pk", None)
     _log_detailed(action, model, pk, details or {})
 
-    # optional SQL mirror
+    
     try:
         m.AuditLog.objects.create(
             admin_id=_actor_user_id(),

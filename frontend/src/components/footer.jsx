@@ -49,7 +49,7 @@ export default function Footer() {
   const isInvestor = roles.some(r => String(r).toLowerCase().includes("investor"));
   const isUser = isAuthed && !isAdmin && !isInvestor;
 
-  // Exactly the links you want per role (NO icons here)
+  
   const navLinks = useMemo(() => {
     if (isAdmin) {
       return [

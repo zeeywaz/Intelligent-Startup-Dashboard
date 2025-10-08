@@ -6,5 +6,5 @@ class ApiConfig(AppConfig):
     label = "api"
 
     def ready(self):
-        # Import once to register audit signal handlers
-        from . import audit  # noqa: F401
+        
+        from . import audit  

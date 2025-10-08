@@ -1,9 +1,4 @@
-# ml_runtime.py — robust runtime for split models + human advice
-# - Robust encoder loading (dict/list/object)
-# - Location inference: Online > explicit district > model
-# - Optional category overrides for common misses
-# - Suggestion cleanup (removes "Start in <District>, ..." etc.), de-dup + near-dup filter
-# - Graceful degrade if embedder/ANN/corpus missing (never raises; returns baseline)
+
 
 import os, re, json, sys, types
 import numpy as np

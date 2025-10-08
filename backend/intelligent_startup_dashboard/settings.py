@@ -1,4 +1,4 @@
-# backend/intelligent_startup_dashboard/settings.py
+
 
 import os
 from pathlib import Path
@@ -22,19 +22,19 @@ INSTALLED_APPS = [
     # 3rd-party
     "corsheaders",
     "rest_framework",
-    # Your apps
+  
     "backend.api",
     "backend.healthcheck",
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",           # keep high
+    "corsheaders.middleware.CorsMiddleware",     
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",  # (only once)
-    "backend.api.audit.AuditRequestMiddleware",                 # <— after Auth
+    "django.contrib.auth.middleware.AuthenticationMiddleware", 
+    "backend.api.audit.AuditRequestMiddleware",             
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -125,10 +125,10 @@ EMAIL_HOST_PASSWORD = "roqy skpb kmrq gfre"
 
 
 STATIC_URL = "/static/"
-# optional if you use a collected static directory
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# media/static (add or replace existing lines)
+
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 

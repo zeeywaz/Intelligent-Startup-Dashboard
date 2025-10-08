@@ -1,4 +1,4 @@
-// src/pages/chatbot.jsx
+
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/chatbot.css";
@@ -11,7 +11,7 @@ const INSTANT_CACHE = true;
 const PREWARM_ML = true;
 const SKIP_REFRESH_IF_CACHED = true;
 
-/* ---------------- Simple classify cache (same quality, faster repeats) ---------------- */
+/* ---------------- Simple classify cache---------------- */
 const CLASSIFY_CACHE_VERSION = "v1";
 const mkClassifyKey = (text, opts = {}) =>
   `ml:${CLASSIFY_CACHE_VERSION}:${(text || "").trim().toLowerCase()}|k=${opts.top_k ?? 5}|advice=${!!opts.with_advice}|nbr=${!!opts.include_neighbors}`;

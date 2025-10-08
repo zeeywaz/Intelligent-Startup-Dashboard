@@ -297,7 +297,7 @@ from django.utils import timezone
 
 class AuditLog(models.Model):
     audit_id      = models.AutoField(primary_key=True)
-    admin_id      = models.IntegerField()                     # store actor's auth_user.id
+    admin_id      = models.IntegerField()                     #
     action        = models.CharField(max_length=255)
     target_entity = models.CharField(max_length=50)
     target_id     = models.IntegerField()

@@ -72,8 +72,8 @@ class InvestorRegisterSerializer(RegisterSerializer):
         required=False,
         allow_empty=True,
     )
-    # Optional verification documents
-    # (We don't validate here because files arrive via request.FILES in the view.)
+    
+   
 
     def create(self, validated):
         """
@@ -189,7 +189,7 @@ class BusinessIdeaReadSerializer(serializers.ModelSerializer):
         fields = [
             "idea_id",
             "user_id",
-            "category",          # string
+            "category",        
             "title",
             "description",
             "target_audience",
@@ -249,7 +249,7 @@ class IdeaCreateSerializer(serializers.Serializer):
 # ---------- Investors ----------
 # backend/api/serializers.py
 from rest_framework import serializers
-from .models import InvestorDetails  # <-- make sure this is imported
+from .models import InvestorDetails  
 
 class InvestorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -353,7 +353,7 @@ class InvestorDocSerializer(serializers.ModelSerializer):
         if not getattr(obj, "file", None):
             return None
         try:
-            url = obj.file.url  # may raise if storage not configured
+            url = obj.file.url  
         except Exception:
             return None
         return request.build_absolute_uri(url) if request else url

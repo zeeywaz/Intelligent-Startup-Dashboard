@@ -292,7 +292,7 @@ def admin_approve_investor(request, investor_id: int):
 
     inv = get_object_or_404(InvestorDetails, pk=investor_id)
 
-    # Optional credit score
+    
     score = request.data.get("credit_score", None)
     fields_to_update = ["verification_status"]
     if score is not None:
@@ -300,7 +300,7 @@ def admin_approve_investor(request, investor_id: int):
             score = int(score)
         except (TypeError, ValueError):
             return Response({"detail": "credit_score must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
-        # clamp to a sensible range
+      
         score = max(0, min(850, score))
         inv.credit_score = score
         fields_to_update.append("credit_score")
@@ -348,7 +348,7 @@ def admin_reject_investor(request, investor_id: int):
         # 3) delete investor_details row
         inv.delete()
 
-        # 4) optionally delete auth user
+   
         if delete_user and uid:
             try:
                 User.objects.filter(pk=uid).delete()
@@ -434,42 +434,3 @@ def investor_business_ideas(request, investor_id: int):
     items = list(qs[offset: offset + limit])
     ser = BusinessIdeaReadSerializer(items, many=True, context={"request": request})
     return Response({"businessIdeas": ser.data, "meta": {"total": total, "limit": limit, "offset": offset}}, status=status.HTTP_200_OK)
-
-
-# investor_views.py  (add somewhere near other investor endpoints)
-from rest_framework.parsers import JSONParser
-
-@api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
-@parser_classes([JSONParser])
-def my_investor_profile(request):
-    """
-    GET  -> return the current user's InvestorDetails (if exists)
-    PATCH -> allow updates to a white-list of fields only (no credit_score or verification_status)
-    """
-    # find investor row for current auth user
-    inv = InvestorDetails.objects.filter(user_id=request.user.id).first()
-    if not inv:
-        return Response({"detail": "Investor profile not found."}, status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == "GET":
-        return Response(InvestorSerializer(inv).data, status=status.HTTP_200_OK)
-
-    # PATCH: whitelist of editable fields
-    allowed = {"investor_name", "company_name", "phone", "email_address"}
-    data = request.data or {}
-    payload = {k: v for k, v in data.items() if k in allowed}
-
-    if not payload:
-        return Response({"detail": "No editable fields provided."}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        # Use update to avoid unexpected side effects; then reload
-        InvestorDetails.objects.filter(pk=inv.pk).update(**payload)
-        inv = InvestorDetails.objects.filter(pk=inv.pk).first()
-        return Response(InvestorSerializer(inv).data, status=status.HTTP_200_OK)
-    except Exception as exc:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.exception("my_investor_profile: failed to update investor for user=%s: %s", request.user.id, exc)
-        return Response({"detail": "Failed to update investor details."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
