@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import "../styles/competitors.css";
 import Header from "../components/Header.jsx";
 import Footer from "../components/footer.jsx";
@@ -462,14 +462,12 @@ export default function CompetitorsPage() {
   const ideaBms = useServerBookmarks("idea");
   const cmpBms  = useServerBookmarks("competitor");
 
-  const isBookmarked = useMemo(
-    () => (id) => (mode === "ideas" ? ideaBms.isBookmarked(id) : cmpBms.isBookmarked(id)),
-    [mode, ideaBms.isBookmarked, cmpBms.isBookmarked]
-  );
-  const toggleBookmark = useMemo(
-    () => (id) => (mode === "ideas" ? ideaBms.toggle(id) : cmpBms.toggle(id)),
-    [mode, ideaBms.toggle, cmpBms.toggle]
-  );
+  const isBookmarked = (id) =>
+    mode === "ideas" ? ideaBms.isBookmarked(id) : cmpBms.isBookmarked(id);
+
+  const toggleBookmark = (id) =>
+    mode === "ideas" ? ideaBms.toggle(id) : cmpBms.toggle(id);
+
   const bookmarkCount = mode === "ideas" ? (ideaBms.ids?.size || 0) : (cmpBms.ids?.size || 0);
 
   function getRowId(row) {
@@ -486,7 +484,7 @@ export default function CompetitorsPage() {
     return !s || s === "uncategorized" || s === "uncategorised";
   };
 
-  async function fetchPage(nextPage, replace = false) {
+  const fetchPage = useCallback(async (nextPage, replace = false) => {
     if (replace) setStatus("loading");
     setErrMsg("");
 
@@ -508,7 +506,7 @@ export default function CompetitorsPage() {
     setPage(norm.nextPage);
     setRows((prev) => (replace ? norm.items : [...prev, ...norm.items]));
     setStatus("ready");
-  }
+  }, [dq, mode]);
 
   useEffect(() => {
     let cancel = false;
@@ -526,8 +524,7 @@ export default function CompetitorsPage() {
       }
     })();
     return () => { cancel = true; };
-    
-  }, [dq, mode]);
+  }, [dq, mode, fetchPage]);
 
   // fetch current user once to learn is_superuser
   useEffect(() => {
@@ -539,35 +536,48 @@ export default function CompetitorsPage() {
         const data = await res.json().catch(() => ({}));
         if (!mounted) return;
         setIsSuper(Boolean(data?.user?.is_superuser || data?.is_superuser));
-      } catch (e) {
+      } catch {
         // ignore
       }
     })();
     return () => { mounted = false; };
   }, []);
 
-  // infinite scroll
+  // infinite scroll (robust against rapid scroll)
   const loaderRef = useRef(null);
+  const loadingMoreRef = useRef(false);
+
   useEffect(() => {
     if (!loaderRef.current) return;
+    const el = loaderRef.current;
+
     const io = new IntersectionObserver(
       (entries) => {
         const first = entries[0];
-        if (first.isIntersecting && hasMore && status !== "loading") {
-          fetchPage(page + 1).catch((e) => {
-            setHasMore(false);
-            setStatus("error");
-            setErrMsg(e.message || "Failed to load more");
-          });
+        if (first.isIntersecting && hasMore && status !== "loading" && !loadingMoreRef.current) {
+          loadingMoreRef.current = true;
+          fetchPage(page + 1)
+            .catch((e) => {
+              setHasMore(false);
+              setStatus("error");
+              setErrMsg(e.message || "Failed to load more");
+            })
+            .finally(() => {
+              loadingMoreRef.current = false;
+            });
         }
       },
-      { rootMargin: "600px 0px" }
+      { root: null, rootMargin: "600px 0px", threshold: 0.01 }
     );
-    io.observe(loaderRef.current);
-    return () => io.disconnect();
-  }, [page, hasMore, status]); 
 
-  // bookmarks filter + push uncategorized to bottom 
+    io.observe(el);
+    return () => {
+      io.unobserve(el);
+      io.disconnect();
+    };
+  }, [page, hasMore, status, fetchPage]);
+
+  // bookmarks filter + push uncategorized to bottom
   const filteredRows = useMemo(() => {
     const base = onlyBookmarks ? rows.filter((r) => isBookmarked(getRowId(r))) : rows;
 
@@ -580,7 +590,7 @@ export default function CompetitorsPage() {
     decorated.sort((a, b) => (a.uncat - b.uncat) || (a.i - b.i));
 
     return decorated.map((x) => x.r);
-  }, [rows, onlyBookmarks, isBookmarked, mode]); 
+  }, [rows, onlyBookmarks, mode]); 
 
   const headerSubtitle = useMemo(
     () => (dq ? "Search results" : mode === "ideas"
@@ -820,9 +830,10 @@ export default function CompetitorsPage() {
             })}
           </div>
 
+          {/* sentinel for infinite scroll */}
           <div ref={loaderRef} style={{ height: 1 }} />
 
-          <div className="state">
+          <div className="state" role="status" aria-live="polite">
             {status === "loading" && <span>Loading…</span>}
             {!hasMore && filteredRows.length > 0 && (
               <span className="muted">Showing {filteredRows.length}{total ? ` of ${total}` : ""}</span>
