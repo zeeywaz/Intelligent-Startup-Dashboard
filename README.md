@@ -7,3 +7,4 @@
 
 # Notes
 - Go to the applied branch to run the application successfully.
+- if you want to view the ai model training code go to: backend/api/ml_artifacts
